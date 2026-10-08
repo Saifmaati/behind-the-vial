@@ -1,6 +1,6 @@
 # Product brief (as given by the project owner, 2026-10-07)
 
-PROJECT: "Behind the Vial". An educational web app that shows, visually, what
+PROJECT: "PeptideScope". An educational web app that shows, visually, what
 happens inside the human body after someone injects a peptide that is going
 viral on social media. Audience: regular people who see these on TikTok and
 Instagram, not clinicians. Goal: a premium, futuristic, medical-grade visual

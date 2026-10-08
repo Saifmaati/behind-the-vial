@@ -12,6 +12,14 @@ const ORD = ['first', 'second', 'third', 'fourth', 'fifth', 'sixth', 'seventh', 
 /** BP3D (mm, Z up, -Y front, +X left) -> HRA axes (m, Y up, +Z front, +X left). */
 export const bpAxes = (p) => [p[0] / 1000, p[2] / 1000, -p[1] / 1000];
 
+/** Centroid of the vertices within `slab` metres of the mesh's highest point. */
+function topSlab(m, slab) {
+  const p = m.positions; let hi = -Infinity; for (let i = 1; i < p.length; i += 3) hi = Math.max(hi, p[i]);
+  let n = 0; const c = [0, 0, 0];
+  for (let i = 0; i < p.length; i += 3) if (p[i + 1] > hi - slab) { c[0] += p[i]; c[1] += p[i + 1]; c[2] += p[i + 2]; n++; }
+  return n ? c.map((v) => v / n) : null;
+}
+
 function endCentroid(m, which, frac = 0.1) {
   // centroid of the vertices in the top (which='top') or bottom fraction of the height range
   const b = M.bounds(m); const p = m.positions; const lo = b.min[1], hi = b.max[1]; const H = hi - lo;
@@ -50,7 +58,17 @@ export function makeWarp(pa, { src, dst }, extra = [], { lambda = 0.002 } = {}) 
 }
 
 /** Landmark pairs (pre-aligned BP3D -> HRA). Slow (skin slicing); the build caches the result. */
-export function warpLandmarks({ hra, po, isa, hraSkin, log = () => {} }) {
+/**
+ * Options (defaults reproduce the male build exactly):
+ *   hip: 'whole' pairs whole hip-bone centroids; 'crest' pairs the top 15 mm of the iliac crests (for a body whose HRA
+ *        pelvis is the ilium only, as in the female set).
+ *   sternum: also pair the manubrium and sternal body centroids and the jugular notch (top of the manubrium).
+ *   maskHRA(p): drop ring samples whose HRA point satisfies the predicate (the female breasts: a male BodyParts3D
+ *        chest has no counterpart there, and pairing it would drag the anterior chest wall forward).
+ *   armX: |x| beyond which a horizontal skin loop counts as the arm (axilla detection), metres.
+ */
+export function warpLandmarks({ hra, po, isa, hraSkin, log = () => {}, opts = {} }) {
+  const { hip = 'whole', sternum = false, maskHRA = null, armX = 0.17 } = opts;
   const pa = preAlign(po, hraSkin); const { s, pre, preMesh } = pa;
   const bpSkin = M.simplify(M.weld(preMesh(po.mesh('skin')), 1e-6), 120000, { error: 0.003 });
   log(`BP3D pre-scale ${s.toFixed(4)} (BP3D skin height ${pa.bpHeight.toFixed(3)} m -> HRA ${pa.hraHeight.toFixed(3)} m)`);
@@ -68,8 +86,20 @@ export function warpLandmarks({ hra, po, isa, hraSkin, log = () => {} }) {
   vert.push(['VH_M_sacrum', 'sacrum']);
   const vc = {};
   for (const [h, b] of vert) { const hc = hC(h), bc = bpC(po, b); vc[h] = { hra: hc, bp: bc }; pair(`spine:${h}`, bc, hc); }
-  pair('hip:L', bpC(po, 'left hip bone'), hC(['VH_M_ilium_compact_bone_L', 'VH_M_ischium_compact_bone_L', 'VH_M_pubis_compact_bone_L']));
-  pair('hip:R', bpC(po, 'right hip bone'), hC(['VH_M_ilium_compact_bone_R', 'VH_M_ischium_compact_bone_R', 'VH_M_pubis_compact_bone_R']));
+  if (hip === 'whole') {
+    pair('hip:L', bpC(po, 'left hip bone'), hC(['VH_M_ilium_compact_bone_L', 'VH_M_ischium_compact_bone_L', 'VH_M_pubis_compact_bone_L']));
+    pair('hip:R', bpC(po, 'right hip bone'), hC(['VH_M_ilium_compact_bone_R', 'VH_M_ischium_compact_bone_R', 'VH_M_pubis_compact_bone_R']));
+  } else {
+    pair('hip:crest:L', topSlab(preMesh(po.mesh('left hip bone')), 0.015), topSlab(hra.collect('VH_M_ilium_compact_bone_L'), 0.015));
+    pair('hip:crest:R', topSlab(preMesh(po.mesh('right hip bone')), 0.015), topSlab(hra.collect('VH_M_ilium_compact_bone_R'), 0.015));
+  }
+  if (sternum) {
+    const man = preMesh(po.mesh('manubrium')), body = preMesh(po.mesh('body of sternum'));
+    const hMan = hra.collect('VH_M_manubrium'), hBody = hra.collect('VH_M_sternum');
+    pair('sternum:manubrium', M.surfaceCentroid(man), M.surfaceCentroid(hMan));
+    pair('sternum:body', M.surfaceCentroid(body), M.surfaceCentroid(hBody));
+    pair('sternum:notch', topSlab(man, 0.006), topSlab(hMan, 0.006));
+  }
 
   // 3) Leg bones (ends).
   for (const [S, side] of [['L', 'left'], ['R', 'right']]) {
@@ -98,7 +128,8 @@ export function warpLandmarks({ hra, po, isa, hraSkin, log = () => {} }) {
   }
 
   // 5) Skin rings: neck/torso at vertebral levels, head above the eyes, legs, arms.
-  const ringPairs = (tag, ra, rb) => { if (!ra || !rb) return; ra.samples.forEach((p, i) => pair(`${tag}:${i}`, p, rb.samples[i])); };
+  let masked = 0;
+  const ringPairs = (tag, ra, rb) => { if (!ra || !rb) return; ra.samples.forEach((p, i) => { if (maskHRA && maskHRA(rb.samples[i])) { masked++; return; } pair(`${tag}:${i}`, p, rb.samples[i]); }); };
   const levels = [['C3', 'VH_M_cervical_vertebra_3'], ['C6', 'VH_M_cervical_vertebra_6'], ['T2', 'VH_M_thoracic_vertebra_2'], ['T6', 'VH_M_thoracic_vertebra_6'], ['T10', 'VH_M_thoracic_vertebra_10'], ['L2', 'VH_M_lumbar_vertebra_2'], ['L4', 'VH_M_lumbar_vertebra_4']];
   for (const [lab, h] of levels) {
     const { hra: hc, bp: bc } = vc[h];
@@ -146,9 +177,9 @@ export function warpLandmarks({ hra, po, isa, hraSkin, log = () => {} }) {
       }
       // axilla: highest horizontal slice with a separate loop on this side, lateral to the torso
       const yTop = b.min[1] + 0.82 * b.size[1];
-      const ax = findSplitHeight(skin, yTop, b.min[1] + 0.45 * b.size[1], (c) => sx * c[0] > 0.17);
+      const ax = findSplitHeight(skin, yTop, b.min[1] + 0.45 * b.size[1], (c) => sx * c[0] > armX);
       const loops = hLoops(skin, ax - 0.002);
-      const armLoop = loops.filter((l) => sx * l.centroid[0] > 0.17).sort((a, c) => sx * a.centroid[0] - sx * c.centroid[0])[0];
+      const armLoop = loops.filter((l) => sx * l.centroid[0] > armX).sort((a, c) => sx * a.centroid[0] - sx * c.centroid[0])[0];
       // axilla point: innermost (most medial) vertex of the separate arm loop, at the loop's mid-depth
       const medial = armLoop.points.reduce((m, q) => (sx * q[0] < sx * m[0] ? q : m), armLoop.points[0]);
       const root = [medial[0], ax + 0.01, armLoop.centroid[2]];
@@ -169,7 +200,7 @@ export function warpLandmarks({ hra, po, isa, hraSkin, log = () => {} }) {
     } else { log(`hand ${S}: fingertip detection failed; falling back to the extreme fingertip`); pair(`arm:tip${S}`, ab.tip, ah.tip); }
   }
 
-  log(`warp landmarks: ${src.length}`);
+  log(`warp landmarks: ${src.length}${masked ? ` (${masked} ring samples masked)` : ''}`);
   const arms = Object.fromEntries(Object.entries(armInfo).map(([k, v]) => [k, { hra: { tip: v.hra.tip, root: v.hra.root, rings: v.hra.rings.map((r) => r && { f: r.f, center: r.center, normal: r.normal, area: r.area }) } }]));
   return { src, dst, tags, arms };
 }

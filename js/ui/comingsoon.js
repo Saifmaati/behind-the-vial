@@ -1,4 +1,4 @@
-// Behind the Vial: stubs for peptides whose full visual entry is not ready.
+// PeptideScope: stubs for peptides whose full visual entry is not ready.
 import { html } from './util.js';
 import { statusPill } from './picker.js';
 import { icon } from './icons.js';

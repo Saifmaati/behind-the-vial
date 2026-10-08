@@ -1,4 +1,4 @@
-// Behind the Vial: #too-much: signs of too much, what to do, and why the
+// PeptideScope: #too-much: signs of too much, what to do, and why the
 // amount in a gray-market vial cannot be known. No amounts, ever.
 import { html } from './util.js';
 import { icon } from './icons.js';

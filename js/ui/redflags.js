@@ -1,4 +1,4 @@
-// Behind the Vial: #red-flags: "Call 911 now" vs "See a doctor today", plus
+// PeptideScope: #red-flags: "Call 911 now" vs "See a doctor today", plus
 // the US Poison Control and 988 lines.
 import { html, uid } from './util.js';
 import { icon } from './icons.js';

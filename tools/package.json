@@ -1,5 +1,5 @@
 {
-  "name": "behind-the-vial-tools",
+  "name": "peptidescope-tools",
   "private": true,
   "type": "module",
   "description": "Dev-only tooling (asset pipeline, screenshots). Not shipped to the site.",

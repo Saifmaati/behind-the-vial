@@ -13,7 +13,7 @@ import { normals as computeNormals } from './mesh.mjs';
 export async function writeGLB(file, items, { compress = true, extras = {}, copyright = '' } = {}) {
   const doc = new Document();
   if (copyright) doc.getRoot().getAsset().copyright = copyright;
-  doc.getRoot().getAsset().generator = 'Behind the Vial tools/build-anatomy.mjs (glTF-Transform)';
+  doc.getRoot().getAsset().generator = 'PeptideScope tools/build-anatomy.mjs (glTF-Transform)';
   doc.createBuffer();
   const scene = doc.createScene('anatomy');
   scene.setExtras(extras);

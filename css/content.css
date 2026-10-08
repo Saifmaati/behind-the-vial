@@ -1,4 +1,4 @@
-/* Behind the Vial: content sections, pickers, cards, tables, charts.
+/* PeptideScope: content sections, pickers, cards, tables, charts.
    Owner: content. Uses the shared tokens from css/tokens.css (--bg, --surface,
    --line, --text, --accent, --warn, --danger, ...). Derived colors are defined on
    the content scopes (not :root) so they follow whatever element carries the theme.

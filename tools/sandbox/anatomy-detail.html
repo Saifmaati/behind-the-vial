@@ -1,0 +1,266 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Anatomy Detail Sandbox</title>
+<meta name="description" content="Dev-only viewer for the close-up anatomy layer assets/anatomy/detail-male.glb over body.glb (Behind the Vial).">
+<link rel="icon" href="data:,">
+<!--
+  Dev-only viewer for the close-up detail layer. Serve the repo root (node tools/serve.mjs 8816) and open
+  /tools/sandbox/anatomy-detail.html. Query parameters (all optional):
+    body=/assets/anatomy/body.glb   detail=/assets/anatomy/detail-male.glb   atlas=/assets/anatomy/atlas-male.json
+    view=front|back|side|rside|threequarter|backleft          focus=full|torso|face|abdomen|thigh|arm|hand|foot|knee|ear
+    dist=<metres from target>   az=<deg> el=<deg> (override view)   fov=<deg>
+    skin=real|ghost|glass|lo|off   (real = opaque lifelike skin_hi; ghost = faint shell over muscles; glass = site-style;
+                                     lo = body.glb skin with the same lifelike shading, for comparison)
+    layers=muscles,skeleton,skeleton_lo,organs,vessels,eyes        only=<mesh names>   hide=<mesh names>
+    labels=1 (atlas plain names at muscle centres)   theme=dark|light   ui=0 (hide HUD, for screenshots)   tone=<sRGB hex skin tone>
+-->
+<style>
+  :root { --bg: #0A0A0B; --bg-2: #151417; --surface: rgba(21, 20, 23, .78); --text: #F3EEE6; --text-2: #D9D2C5; --muted: #A39C8F; --line: rgba(232, 220, 196, .16); --accent: #C8A96A; --focus: #E6D3A3; }
+  @media (prefers-color-scheme: light) { :root:not([data-theme="dark"]) { --bg: #F6F2EA; --bg-2: #FFFDF8; --surface: rgba(255, 253, 248, .85); --text: #17140F; --text-2: #2E2920; --muted: #6B6355; --line: rgba(40, 32, 20, .16); --accent: #7A5C28; --focus: #7A5C28; } }
+  :root[data-theme="light"] { --bg: #F6F2EA; --bg-2: #FFFDF8; --surface: rgba(255, 253, 248, .85); --text: #17140F; --text-2: #2E2920; --muted: #6B6355; --line: rgba(40, 32, 20, .16); --accent: #7A5C28; --focus: #7A5C28; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body { background: radial-gradient(120% 90% at 50% 35%, var(--bg-2), var(--bg) 72%); color: var(--text); font: 13px/1.45 Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; overflow: hidden; }
+  #host { position: fixed; inset: 0; }
+  canvas { display: block; outline: none; }
+  canvas:focus-visible { outline: 2px solid var(--focus); outline-offset: -4px; }
+  .hud { position: fixed; left: 16px; top: 16px; max-width: min(420px, calc(100vw - 32px)); pointer-events: none; }
+  .hud h1 { font-size: 11px; letter-spacing: .16em; text-transform: uppercase; color: var(--accent); margin: 0 0 6px; font-weight: 600; }
+  .hud p { margin: 0; color: var(--text-2); font-variant-numeric: tabular-nums; }
+  .labels { position: fixed; inset: 0; pointer-events: none; }
+  .labels div { position: absolute; transform: translate(-50%, -50%); font: 10px/1.2 Inter, system-ui, sans-serif; color: var(--text); padding: 3px 6px; border-radius: 4px; background: var(--surface); border: 1px solid var(--line); white-space: nowrap; }
+  .noui .hud { display: none; }
+  #err { position: fixed; left: 16px; right: 16px; bottom: 16px; color: #D9A05B; }
+</style>
+<script type="importmap">
+{ "imports": { "three": "/vendor/three/three.module.min.js", "three/addons/": "/vendor/three/addons/" } }
+</script>
+</head>
+<body>
+<div id="host"></div>
+<div class="labels" id="labels" aria-hidden="true"></div>
+<div class="hud"><h1>Behind the Vial · close-up anatomy layer</h1><p id="stats" aria-live="polite">Loading…</p></div>
+<div id="err" role="alert"></div>
+<script type="module">
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+
+const q = new URLSearchParams(location.search);
+const BODY = q.get('body') || '/assets/anatomy/body.glb';
+const DETAIL = q.get('detail') || '/assets/anatomy/detail-male.glb';
+const ATLAS = q.get('atlas') || '/assets/anatomy/atlas-male.json';
+const LANDMARKS = q.get('landmarks') || '/assets/anatomy/landmarks.json';
+const view = q.get('view') || 'front';
+const focus = q.get('focus') || 'full';
+const skinMode = q.get('skin') || 'real';
+const layers = new Set((q.get('layers') || '').split(',').filter(Boolean));
+const only = q.get('only') ? new Set(q.get('only').split(',')) : null;
+const hide = new Set((q.get('hide') || '').split(',').filter(Boolean));
+if (q.get('theme')) document.documentElement.dataset.theme = q.get('theme');
+if (q.get('ui') === '0') document.body.classList.add('noui');
+const light = document.documentElement.dataset.theme === 'light' || (!document.documentElement.dataset.theme && matchMedia('(prefers-color-scheme: light)').matches);
+const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const SKIN_TONE = new THREE.Color('#' + (q.get('tone') || 'c58f74'));
+
+const host = document.getElementById('host');
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setSize(innerWidth, innerHeight);
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = Number(q.get('exposure') || 1.0);
+renderer.shadowMap.enabled = q.get('shadow') !== '0';
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.domElement.tabIndex = 0;
+renderer.domElement.setAttribute('role', 'img');
+renderer.domElement.setAttribute('aria-label', 'Lifelike 3D human body: skin, muscles and skeleton. Drag or use the arrow keys to look around.');
+host.appendChild(renderer.domElement);
+const scene = new THREE.Scene();
+const pmrem = new THREE.PMREMGenerator(renderer);
+scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+scene.environmentIntensity = 0.55;
+const camera = new THREE.PerspectiveCamera(Number(q.get('fov') || 30), innerWidth / innerHeight, 0.005, 50);
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = !reduced;
+controls.listenToKeyEvents(renderer.domElement);
+
+// Studio light rig: warm key with soft shadows, cool fill, warm rim from behind.
+const hemi = new THREE.HemisphereLight(0xfff4ea, 0x2a2420, 0.55); scene.add(hemi);
+const key = new THREE.DirectionalLight(0xfff1e4, 2.6); key.castShadow = true; key.shadow.mapSize.set(2048, 2048); key.shadow.bias = -0.0004; key.shadow.normalBias = 0.002; scene.add(key, key.target);
+const fill = new THREE.DirectionalLight(0xdfe8ff, 0.7); scene.add(fill, fill.target);
+const rim = new THREE.DirectionalLight(0xffe2c4, 1.5); scene.add(rim, rim.target);
+
+// ---- shared GLSL: value noise + fbm (world space, metres) ----
+const NOISE = `
+float bvHash(vec3 p){ p = fract(p * 0.3183099 + vec3(0.71, 0.113, 0.419)); p *= 17.0; return fract(p.x * p.y * p.z * (p.x + p.y + p.z)); }
+float bvNoise(vec3 x){ vec3 i = floor(x); vec3 f = fract(x); f = f * f * (3.0 - 2.0 * f);
+  return mix(mix(mix(bvHash(i + vec3(0,0,0)), bvHash(i + vec3(1,0,0)), f.x), mix(bvHash(i + vec3(0,1,0)), bvHash(i + vec3(1,1,0)), f.x), f.y),
+             mix(mix(bvHash(i + vec3(0,0,1)), bvHash(i + vec3(1,0,1)), f.x), mix(bvHash(i + vec3(0,1,1)), bvHash(i + vec3(1,1,1)), f.x), f.y), f.z); }
+float bvFbm(vec3 p){ float a = 0.5, s = 0.0; for (int i = 0; i < 4; i++) { s += a * bvNoise(p); p = p * 2.03 + 11.7; a *= 0.5; } return s; }
+// surface-gradient bump (Mikkelsen) from screen-space derivatives of a height field: no UVs needed
+vec3 bvBump(vec3 surfPos, vec3 surfNorm, float h, float faceDir){
+  vec3 sx = dFdx(surfPos), sy = dFdy(surfPos); vec3 r1 = cross(sy, surfNorm), r2 = cross(surfNorm, sx);
+  float det = dot(sx, r1) * faceDir; vec2 dh = vec2(dFdx(h), dFdy(h));
+  vec3 grad = sign(det) * (dh.x * r1 + dh.y * r2); return normalize(abs(det) * surfNorm - grad);
+}`;
+// Wrapped diffuse: red light scatters further under the skin than green/blue (cheap subsurface scattering look).
+const WRAP_FROM = 'reflectedLight.directDiffuse += irradiance * BRDF_Lambert( material.diffuseContribution );';
+const WRAP_TO = `{ float ndlW = dot( geometryNormal, directLight.direction ); vec3 wrapW = clamp( ( vec3( ndlW ) + uWrap ) / ( 1.0 + uWrap ), 0.0, 1.0 );
+  wrapW *= mix( vec3( 1.0 ), uScatterTint, clamp( 1.0 - ndlW * 2.0, 0.0, 1.0 ) );
+  reflectedLight.directDiffuse += wrapW * directLight.color * BRDF_Lambert( material.diffuseContribution ); }`;
+function patchCommon(sh) {
+  sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vWPos;\nvarying vec3 vONrm;')
+    .replace('#include <project_vertex>', '#include <project_vertex>\nvWPos = (modelMatrix * vec4(transformed, 1.0)).xyz;\nvONrm = normalize(mat3(modelMatrix) * objectNormal);');
+  sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying vec3 vWPos;\nvarying vec3 vONrm;\n' + NOISE);
+}
+function skinMaterial(hasAO) {
+  const m = new THREE.MeshPhysicalMaterial({
+    color: SKIN_TONE, roughness: 0.5, metalness: 0, vertexColors: hasAO,
+    sheen: 0.35, sheenRoughness: 0.55, sheenColor: new THREE.Color(0.85, 0.5, 0.42),
+    clearcoat: 0.06, clearcoatRoughness: 0.5, specularIntensity: 0.5, specularColor: new THREE.Color(1, 0.97, 0.94),
+  });
+  m.onBeforeCompile = (sh) => {
+    sh.uniforms.uWrap = { value: new THREE.Vector3(0.5, 0.24, 0.16) };
+    sh.uniforms.uScatterTint = { value: new THREE.Vector3(1.0, 0.62, 0.52) };
+    sh.uniforms.uDetail = { value: Number(q.get('detailAmp') || 1) };
+    patchCommon(sh);
+    sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nuniform vec3 uWrap;\nuniform vec3 uScatterTint;\nuniform float uDetail;')
+      .replace('#include <lights_physical_pars_fragment>', THREE.ShaderChunk.lights_physical_pars_fragment.replace(WRAP_FROM, WRAP_TO))
+      // albedo mottling (pigment + capillary redness), world-space so it needs no UVs
+      .replace('#include <color_fragment>', `#include <color_fragment>
+        { float m1 = bvFbm(vWPos * 38.0); float m2 = bvFbm(vWPos * 9.0 + 3.1); float fp = length(fwidth(vWPos));
+          diffuseColor.rgb *= mix(vec3(1.0), vec3(1.04, 0.96, 0.95) + vec3(0.07, -0.02, -0.03) * (m2 - 0.5) * 2.0, 0.9) * (1.0 + 0.07 * (m1 - 0.5));
+          float freck = smoothstep(0.78, 0.86, bvNoise(vWPos * 420.0)) * (1.0 - smoothstep(0.00015, 0.0006, fp));
+          diffuseColor.rgb *= 1.0 - 0.10 * freck; }`)
+      // micro relief: pores + fine crosshatched furrows, faded out when a pixel is larger than the detail
+      .replace('#include <normal_fragment_maps>', `#include <normal_fragment_maps>
+        { float fp = length(fwidth(vWPos));
+          float pores = 1.0 - smoothstep(0.55, 0.9, bvNoise(vWPos * 1700.0));
+          float furrow = abs(bvNoise(vWPos * vec3(520.0, 900.0, 520.0)) - 0.5) + abs(bvNoise(vWPos.zyx * vec3(900.0, 520.0, 520.0) + 7.0) - 0.5);
+          float fine = bvFbm(vWPos * 260.0);
+          float wPore = 1.0 - smoothstep(0.00012, 0.0005, fp), wFine = 1.0 - smoothstep(0.0005, 0.002, fp);
+          float h = uDetail * (0.00005 * wPore * (-pores + 0.6 * furrow) + 0.00012 * wFine * fine);
+          normal = bvBump(-vViewPosition, normal, h, faceDirection); }`);
+  };
+  return m;
+}
+function muscleMaterial(axis) {
+  const m = new THREE.MeshPhysicalMaterial({ color: new THREE.Color('#8f2d27'), roughness: 0.42, metalness: 0, clearcoat: 0.35, clearcoatRoughness: 0.32, sheen: 0.25, sheenRoughness: 0.5, sheenColor: new THREE.Color(0.9, 0.45, 0.4), specularIntensity: 0.6 });
+  m.onBeforeCompile = (sh) => {
+    sh.uniforms.uAxis = { value: new THREE.Vector3(...(axis || [0, 1, 0])).normalize() };
+    patchCommon(sh);
+    sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nuniform vec3 uAxis;')
+      .replace('#include <color_fragment>', `#include <color_fragment>
+        { vec3 ax = uAxis; if (vWPos.x < 0.0) ax.x = -ax.x; vec3 p = vWPos * 900.0; vec3 s = p - ax * dot(p, ax) * 0.94;
+          float fib = bvNoise(s) * 0.6 + bvNoise(s * 2.3) * 0.4; float tendon = 0.0;
+          diffuseColor.rgb *= 0.86 + 0.28 * fib; }`)
+      .replace('#include <normal_fragment_maps>', `#include <normal_fragment_maps>
+        { vec3 ax = uAxis; if (vWPos.x < 0.0) ax.x = -ax.x; vec3 p = vWPos * 700.0; vec3 s = p - ax * dot(p, ax) * 0.95;
+          float fp = length(fwidth(vWPos)); float w = 1.0 - smoothstep(0.0003, 0.0015, fp);
+          float h = 0.00008 * w * bvNoise(s); normal = bvBump(-vViewPosition, normal, h, faceDirection); }`);
+  };
+  return m;
+}
+function ghostMaterial(color, base = 0.02, pow = 2.6, gain = 0.5) {
+  return new THREE.ShaderMaterial({
+    transparent: true, depthWrite: false, side: THREE.FrontSide, blending: light ? THREE.NormalBlending : THREE.AdditiveBlending,
+    uniforms: { uColor: { value: new THREE.Color(color) }, uBase: { value: base }, uPow: { value: pow }, uGain: { value: gain } },
+    vertexShader: 'varying vec3 vN; varying vec3 vV; void main(){ vec4 mv = modelViewMatrix * vec4(position,1.); vN = normalize(normalMatrix*normal); vV = normalize(-mv.xyz); gl_Position = projectionMatrix*mv; }',
+    fragmentShader: 'uniform vec3 uColor; uniform float uBase; uniform float uPow; uniform float uGain; varying vec3 vN; varying vec3 vV; void main(){ float f = pow(1. - abs(dot(normalize(vN), normalize(vV))), uPow); gl_FragColor = vec4(uColor*(0.3+0.9*f), uBase + uGain*f); }',
+  });
+}
+const ORGAN_COLORS = { brain: 0xd9a6b3, thyroid: 0xc96f86, heart: 0xb8414b, lungs: 0xe0a3a6, liver: 0x7c3b33, gallbladder: 0x6f7f3a, stomach: 0xd08f74, pancreas: 0xe0b86b, spleen: 0x7a3554, small_intestine: 0xd9a184, large_intestine: 0xc08c6a, kidneys: 0x963f3a, bladder: 0xd0b25c };
+
+const statsEl = document.getElementById('stats');
+const loader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
+const shown = (n) => (!only || only.has(n)) && !hide.has(n);
+const info = { meshes: {}, tris: 0 };
+const fetchJSON = (u) => fetch(u).then((r) => (r.ok ? r.json() : null)).catch(() => null);
+try {
+  const [bodyG, detailG, atlas, lm] = await Promise.all([loader.loadAsync(BODY), loader.loadAsync(DETAIL), fetchJSON(ATLAS), fetchJSON(LANDMARKS)]);
+  const atlasById = new Map((atlas?.structures || []).map((s) => [s.id, s]));
+  const add = (o, visible) => { o.visible = visible; if (visible) { const t = (o.geometry.index ? o.geometry.index.count : o.geometry.attributes.position.count) / 3; info.meshes[o.name] = t; info.tris += t; } };
+  bodyG.scene.traverse((o) => {
+    if (!o.isMesh) return; const n = o.name;
+    if (n === 'skin') {
+      if (skinMode === 'lo') { o.material = skinMaterial(false); o.castShadow = o.receiveShadow = true; add(o, true); }
+      else if (skinMode === 'glass') { o.material = ghostMaterial(light ? 0x7a5c28 : 0xc8a96a, light ? 0.05 : 0.02, 2.4, 0.6); o.renderOrder = 10; add(o, false); }
+      else add(o, false);
+    } else if (n === 'arteries' || n === 'veins') { o.material = new THREE.MeshStandardMaterial({ color: n === 'arteries' ? 0xb0403a : 0x4a6aa8, roughness: 0.4 }); add(o, layers.has('vessels') && shown(n)); }
+    else if (n === 'skeleton') { o.material = new THREE.MeshStandardMaterial({ color: 0xe6dcc6, roughness: 0.62 }); o.castShadow = o.receiveShadow = true; add(o, layers.has('skeleton_lo') && shown(n)); }
+    else { o.material = new THREE.MeshStandardMaterial({ color: ORGAN_COLORS[n] || 0xcccccc, roughness: 0.5 }); add(o, layers.has('organs') && shown(n)); }
+  });
+  scene.add(bodyG.scene);
+  const muscleMeshes = [];
+  detailG.scene.traverse((o) => {
+    if (!o.isMesh) return; const n = o.name; const ex = o.userData || {};
+    if (n === 'skin_hi') {
+      if (skinMode === 'real') { o.material = skinMaterial(!!o.geometry.attributes.color); o.castShadow = o.receiveShadow = true; add(o, true); }
+      else if (skinMode === 'ghost') { o.material = ghostMaterial(light ? 0x5a4a3a : 0xe8d2bc, light ? 0.04 : 0.015, 2.2, light ? 0.35 : 0.42); o.renderOrder = 10; add(o, true); }
+      else if (skinMode === 'glass') { o.material = ghostMaterial(light ? 0x7a5c28 : 0xc8a96a, light ? 0.05 : 0.02, 2.4, 0.6); o.renderOrder = 10; add(o, true); }
+      else add(o, false);
+    } else if (n.startsWith('muscle_')) { o.material = muscleMaterial(ex.fiberAxis); o.castShadow = o.receiveShadow = true; add(o, layers.has('muscles') && shown(n)); muscleMeshes.push(o); }
+    else if (n === 'skeleton_hi') { o.material = new THREE.MeshPhysicalMaterial({ color: 0xe6dcc6, roughness: 0.6, sheen: 0.2 }); o.castShadow = o.receiveShadow = true; add(o, layers.has('skeleton') && shown(n)); }
+    else if (n === 'eyes') { o.material = new THREE.MeshPhysicalMaterial({ color: 0xffffff, vertexColors: !!o.geometry.attributes.color, roughness: 0.25, clearcoat: 1, clearcoatRoughness: 0.03 }); o.receiveShadow = true; add(o, (skinMode === 'real' || layers.has('eyes')) && shown(n)); }
+    else add(o, shown(n) && layers.has(n));
+  });
+  scene.add(detailG.scene);
+
+  // ---- camera framing ----
+  const sites = lm?.sites || {};
+  const eyesC = atlasById.get('eyes')?.center || [0.0036, 1.653, 0.086];
+  const FOCUS = {
+    full: { target: [0, 0.9, 0], dist: 4.3 }, torso: { target: [0, 1.15, 0], dist: 2.0 },
+    face: { target: [eyesC[0], eyesC[1] - 0.035, eyesC[2]], dist: 0.62 }, ear: { target: [0.075, 1.63, -0.01], dist: 0.32, az: 90, el: 0 },
+    abdomen: sites.abdomen ? { target: sites.abdomen.point, dist: 0.62, normal: sites.abdomen.normal } : { target: [0.05, 1.01, 0.14], dist: 0.6 },
+    thigh: sites.thigh ? { target: sites.thigh.point, dist: 0.75, normal: sites.thigh.normal } : { target: [0.12, 0.7, 0.1], dist: 0.7 },
+    arm: sites.arm ? { target: sites.arm.point, dist: 0.62, normal: sites.arm.normal } : { target: [0.27, 1.25, -0.06], dist: 0.6 },
+    hand: { target: [0.47, 0.9, 0.02], dist: 0.55 }, foot: { target: [0.1, 0.05, 0.05], dist: 0.6 }, knee: { target: [0.1, 0.5, 0.06], dist: 0.55 },
+  };
+  const VIEWS = { front: [0, 6], back: [180, 6], side: [90, 4], rside: [-90, 4], threequarter: [35, 10], backleft: [140, 10] };
+  const f = FOCUS[focus] || FOCUS.full;
+  const target = new THREE.Vector3(...f.target);
+  let dir;
+  if (q.get('az') || q.get('el') || f.az !== undefined || !f.normal || q.get('view')) {
+    const [az0, el0] = VIEWS[view] || VIEWS.front;
+    const az = THREE.MathUtils.degToRad(Number(q.get('az') ?? f.az ?? az0)), el = THREE.MathUtils.degToRad(Number(q.get('el') ?? f.el ?? el0));
+    dir = new THREE.Vector3(Math.sin(az) * Math.cos(el), Math.sin(el), Math.cos(az) * Math.cos(el));
+  } else dir = new THREE.Vector3(...f.normal).add(new THREE.Vector3(0, 0.12, 0)).normalize();
+  const dist = Number(q.get('dist') || f.dist);
+  camera.position.copy(target).addScaledVector(dir, dist);
+  controls.target.copy(target); camera.lookAt(target);
+  // light rig follows the view: key from upper camera-left, fill camera-right, rim behind
+  const side = new THREE.Vector3().crossVectors(dir, new THREE.Vector3(0, 1, 0)).normalize();
+  const span = Math.max(0.25, dist * 0.9);
+  key.position.copy(target).addScaledVector(dir, 2).addScaledVector(side, 1.1).add(new THREE.Vector3(0, 1.6, 0)); key.target.position.copy(target);
+  Object.assign(key.shadow.camera, { left: -span, right: span, top: span, bottom: -span, near: 0.05, far: 6 }); key.shadow.camera.updateProjectionMatrix();
+  fill.position.copy(target).addScaledVector(dir, 2).addScaledVector(side, -1.5); fill.target.position.copy(target);
+  rim.position.copy(target).addScaledVector(dir, -2).add(new THREE.Vector3(0, 1.2, 0)).addScaledVector(side, -0.6); rim.target.position.copy(target);
+  controls.update();
+
+  // ---- labels (atlas plain names) ----
+  const labelsEl = document.getElementById('labels'); const labelItems = [];
+  if (q.get('labels') === '1') for (const o of muscleMeshes) if (o.visible) {
+    const s = atlasById.get(o.name); if (!s) continue;
+    for (const sx of [1]) { const el = document.createElement('div'); el.textContent = s.name; labelsEl.appendChild(el); labelItems.push({ el, p: new THREE.Vector3(Math.abs(s.center[0]) * sx, s.center[1], s.center[2]) }); }
+  }
+  const placeLabels = () => { for (const it of labelItems) { const v = it.p.clone().project(camera); it.el.style.left = `${(v.x * 0.5 + 0.5) * innerWidth}px`; it.el.style.top = `${(-v.y * 0.5 + 0.5) * innerHeight}px`; it.el.style.display = v.z < 1 ? '' : 'none'; } };
+
+  statsEl.textContent = `${Object.keys(info.meshes).length} meshes · ${(info.tris / 1000).toFixed(0)}k triangles · skin ${skinMode} · ${focus}/${view}`;
+  window.__detail = { info, camera: camera.position.toArray(), target: target.toArray() };
+  let frames = 0;
+  renderer.setAnimationLoop(() => { controls.update(); renderer.render(scene, camera); placeLabels(); if (++frames === 3) document.body.dataset.ready = '1'; });
+} catch (e) {
+  document.getElementById('err').textContent = `Failed to load: ${e.message}`;
+  console.error(e);
+}
+addEventListener('resize', () => { camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight); });
+</script>
+</body>
+</html>

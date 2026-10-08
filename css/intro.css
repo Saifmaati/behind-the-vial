@@ -1,4 +1,4 @@
-/* Behind the Vial: intro overlay (intro). Refines the :where() baseline in app.css.
+/* PeptideScope: intro overlay (intro). Refines the :where() baseline in app.css.
    Always dark, whatever the site theme. Markup: index.html #intro. Classes set by js/intro.js:
      .intro--js        module mounted            .intro--seq      text waits for the 3D clock
      .intro--s-<name>  stage reached (hud, kicker, title, sub, actions, note, idle)

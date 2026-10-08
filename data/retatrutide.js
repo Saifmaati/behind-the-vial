@@ -1,4 +1,4 @@
-// Behind the Vial: retatrutide, the full first entry.
+// PeptideScope: retatrutide, the full first entry.
 //
 // SAMPLE FILE. Schema-complete placeholder content so every renderer, the 3D
 // body and the timeline can be built before the verified research lands. The

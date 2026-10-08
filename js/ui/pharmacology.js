@@ -1,4 +1,4 @@
-// Behind the Vial: #pharmacology: onset / peak / clearance tiles, absorption
+// PeptideScope: #pharmacology: onset / peak / clearance tiles, absorption
 // sequence, and how the three studied areas compare. Times only, never amounts.
 import { html, fmtDays, SITES } from './util.js';
 import { bodyGlyph } from './icons.js';

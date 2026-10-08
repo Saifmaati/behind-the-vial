@@ -1,4 +1,4 @@
-// Behind the Vial: screen-space callouts anchored to 3D points (body3d).
+// PeptideScope: screen-space callouts anchored to 3D points (body3d).
 // Labels live in #callout-layer as real HTML (focusable buttons for organs), positioned every frame
 // with stage.project, hidden when their anchor is off-screen, with a thin elbow leader line to a
 // small anchor dot, and a simple per-side vertical relaxation so labels never pile up.

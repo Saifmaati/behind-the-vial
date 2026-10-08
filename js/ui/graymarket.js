@@ -1,4 +1,4 @@
-// Behind the Vial: #gray-market: independent tests of vials bought online, and
+// PeptideScope: #gray-market: independent tests of vials bought online, and
 // enforcement numbers. Core message: you cannot know how much you are getting.
 // The label amount in mg is never shown; only "% of what the label claims".
 import { html, raw, uid, plural } from './util.js';

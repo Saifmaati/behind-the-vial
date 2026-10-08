@@ -1,4 +1,4 @@
-// Behind the Vial: #overview: status, what it is, how it works.
+// PeptideScope: #overview: status, what it is, how it works.
 import { html, organLabel, uid } from './util.js';
 import { statusPill } from './picker.js';
 import { icon } from './icons.js';

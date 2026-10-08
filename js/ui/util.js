@@ -1,4 +1,4 @@
-// Behind the Vial: small shared helpers for the content UI.
+// PeptideScope: small shared helpers for the content UI.
 // Safe HTML templating (auto-escapes every interpolated value), the organ
 // vocabulary, status / severity / verdict vocabularies and formatters.
 

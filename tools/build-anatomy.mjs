@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Behind the Vial: anatomy asset pipeline (dev-only, Node 20).
+// PeptideScope: anatomy asset pipeline (dev-only, Node 20).
 //
 //   cd tools && npm install          # dev dependencies only
 //   node tools/build-anatomy.mjs     # downloads sources (first run), builds assets/anatomy/{body.glb,landmarks.json}
@@ -307,7 +307,7 @@ for (const it of items) report.meshes[it.name] = { triangles: M.triCount(it.mesh
 const glbPath = join(OUT, 'body.glb');
 await writeGLB(glbPath, items, {
   compress: true,
-  copyright: 'Anatomy: HRA 3D Reference Organs (NIH HuBMAP, CC BY 4.0); VOXEL-MAN Segmented Internal Organs of the Visible Human Male (CC BY 4.0); BodyParts3D (DBCLS, CC BY 4.0). Adapted for Behind the Vial.',
+  copyright: 'Anatomy: HRA 3D Reference Organs (NIH HuBMAP, CC BY 4.0); VOXEL-MAN Segmented Internal Organs of the Visible Human Male (CC BY 4.0); BodyParts3D (DBCLS, CC BY 4.0). Adapted for PeptideScope.',
   extras: { frame: report.frame, license: 'CC BY 4.0 (adapted material; see assets/anatomy/LICENSE.md)', vesselClassification: 'by blood oxygenation: pulmonary arteries are in "veins", pulmonary veins in "arteries"' },
 });
 report.glbBytes = statSync(glbPath).size;

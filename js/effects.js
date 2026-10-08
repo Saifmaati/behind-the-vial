@@ -1,4 +1,4 @@
-// Behind the Vial: timeline time → side effects active at that moment.
+// PeptideScope: timeline time → side effects active at that moment.
 //
 // Listens to time:change from js/timeline.js, works out which of the entry's
 // side effects are typically present at that point, renders compact cards

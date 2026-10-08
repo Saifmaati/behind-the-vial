@@ -1,4 +1,4 @@
-// Behind the Vial: cinematic landing (intro).
+// PeptideScope: cinematic landing (intro).
 //
 // export function mountIntro(host /* #intro */, { reducedMotion, onEnter, onFacts }) → { dispose() }
 //

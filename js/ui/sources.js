@@ -1,4 +1,4 @@
-// Behind the Vial: #sources: every cited source, numbered by first citation.
+// PeptideScope: #sources: every cited source, numbered by first citation.
 // Sources we could not confirm yet are listed separately under "Not yet confirmed".
 import { html, fmtDate } from './util.js';
 import { icon } from './icons.js';

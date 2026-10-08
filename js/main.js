@@ -1,4 +1,4 @@
-// Behind the Vial: boot, theme, motion, routing, lazy loading and wiring (foundation).
+// PeptideScope: boot, theme, motion, routing, lazy loading and wiring (foundation).
 //
 // Every other module is loaded with a guarded dynamic import, so a missing or failing module only
 // shows a small notice in its own host and never blanks the page. See docs/ARCHITECTURE.md.
@@ -15,7 +15,7 @@ const DEFAULT_PEPTIDE = 'retatrutide';
 const STATUS_SHORT = { approved: 'Approved', 'in-trials': 'In trials', 'research-only': 'Research chemical' };
 const ANATOMY_URL = new URL('../assets/anatomy/body.glb', import.meta.url).href;
 // The in-stage CC BY credit links to the rendered asset register (a raw .md on Pages is not readable).
-const ASSETS_HREF = 'https://github.com/Saifmaati/behind-the-vial/blob/main/ASSETS.md#anatomy';
+const ASSETS_HREF = 'https://github.com/Saifmaati/peptidescope/blob/main/ASSETS.md#anatomy';
 
 // Plain-language narration for each step of the injection sequence. The injection module may send
 // its own short `label`; it becomes the headline and this text explains it.
@@ -516,7 +516,7 @@ function renderPeptideMeta(p) {
     el('span', { class: `badge badge--${level}`, 'data-status': level }, STATUS_SHORT[level]),
     p.statusLabel ? el('span', { class: 'explorer-peptide-status' }, p.statusLabel) : null,
   );
-  document.title = `${p.name} inside the body · Behind the Vial`;
+  document.title = `${p.name} inside the body · PeptideScope`;
 }
 
 function fallbackPicker(host, selectedId) {

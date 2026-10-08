@@ -1,4 +1,4 @@
-// Behind the Vial: #dose-facts: FIXED, cited results from the studied trial
+// PeptideScope: #dose-facts: FIXED, cited results from the studied trial
 // groups. Static tables and static SVG bars only. There is deliberately no
 // control of any kind here (no sliders, toggles, tabs or inputs).
 import { html, raw, numberIn, uid } from './util.js';

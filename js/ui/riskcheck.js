@@ -1,4 +1,4 @@
-// Behind the Vial: #risk-check: WARNINGS ONLY.
+// PeptideScope: #risk-check: WARNINGS ONLY.
 //
 // The visitor ticks parts of their history; we show only the warnings our
 // sources list for the selected peptide. It never says someone is safe or

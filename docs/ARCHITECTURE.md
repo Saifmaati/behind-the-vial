@@ -1,4 +1,4 @@
-# Behind the Vial: architecture and module contract
+# PeptideScope: architecture and module contract
 
 This file is the shared contract every module is built against. If you change a
 public API or DOM id listed here, update this file in the same commit.
@@ -36,7 +36,7 @@ every source.
 ## Stack
 
 - Static site on GitHub Pages, served from the repo root of `main`
-  (`.nojekyll`). URL: https://saifmaati.github.io/behind-the-vial/
+  (`.nojekyll`). URL: https://saifmaati.github.io/peptidescope/
 - Vanilla ES modules, no bundler, no runtime npm dependencies.
 - three.js r185.1 vendored in `vendor/three/` (MIT). Import map in
   `index.html`:
@@ -50,7 +50,7 @@ every source.
   SMAAShader}, environments/RoomEnvironment, geometries/RoundedBoxGeometry.
   Need another? Copy it from `tools/.cache/three/package/examples/jsm/`
   keeping its path, and list it in `ASSETS.md`.
-- All paths relative (the site lives under `/behind-the-vial/`).
+- All paths relative (the site lives under `/peptidescope/`).
 - Dev-only tooling lives in `tools/` (own package.json, never shipped).
 
 ## Dev loop
@@ -106,7 +106,7 @@ tests/                     node --test suites
 ```
 #intro                     full-screen intro overlay (role="dialog" aria-modal="false", aria-labelledby="intro-title")
   #intro-canvas-host       container for intro WebGL canvas
-  #intro-title             h1 "Behind the Vial"
+  #intro-title             h1 "PeptideScope"
   #intro-enter             primary button → app
   #intro-skip              "Skip intro" button (visible from first frame)
 #disclaimer                persistent slim bar (always visible, role="note")
@@ -493,3 +493,28 @@ values. See `research/LEDGER.md`. `data/sources.js` is generated.
 
 `motion:change { reducedMotion }` (main.js), `body:change {...}` (body
 editor). Bus extras: `once`, `off`, `last(type)`.
+
+---
+
+# v3 additions: lifelike anatomy (owner, 2026-10-08)
+
+Owner: "I want the body to feel more real and replicate the exact human body and
+be able to zoom in very closely and see the skin of the human and be able to
+genuinely tell the anatomy of the human body so it's very lifelike."
+
+- **Detail assets** (lazy-loaded): `assets/anatomy/detail-male.glb` (and later
+  `detail-female.glb`) with `skin_hi` (~300k tris), `eyes`, named muscles
+  `muscle_<slug>`, optional `skeleton_hi`; `assets/anatomy/atlas-<sex>.json`
+  lists every named structure `{ id, name, plain, system, center, file }`.
+- **Lifelike skin**: opaque skin material with warm tone, soft subsurface feel
+  (wrap lighting / thickness approximation), sheen, and procedural micro-detail
+  (triplanar pore/fine-wrinkle normal noise in the shader; no image textures
+  needed); skin tone is an appearance-only option in the body editor.
+- **Anatomy layers**: Skin · Muscles · Skeleton · Organs · Vessels toggles plus a
+  glass/X-ray blend; the injection sequence and timeline keep working in any
+  layer mode (they switch to the glass view while the drug travels).
+- **Deep zoom**: zoom to cursor, pan when zoomed, double-click/tap to focus a
+  point, near plane ~1 mm, swap to `skin_hi` when the camera is close.
+- **Labels**: hover (desktop) or tap (touch) a structure → label with its
+  anatomical name and plain-language name from the atlas; keyboard users get
+  a structure list in the layers panel.

@@ -1,4 +1,4 @@
-// Behind the Vial: #evidence: the four-rung ladder of human evidence, with the
+// PeptideScope: #evidence: the four-rung ladder of human evidence, with the
 // entry's level highlighted, and what we still don't know.
 import { html, EVIDENCE_LEVELS } from './util.js';
 import { icon } from './icons.js';

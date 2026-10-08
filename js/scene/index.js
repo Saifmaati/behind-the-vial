@@ -1,4 +1,4 @@
-// Behind the Vial: the only 3D entry point main.js uses (body3d).
+// PeptideScope: the only 3D entry point main.js uses (body3d).
 //
 //   const body = await mountBody(host /* #stage-host */, { reducedMotion, theme });
 //   body.dispose();

@@ -1,5 +1,5 @@
 {
-  "name": "behind-the-vial",
+  "name": "peptidescope",
   "private": true,
   "type": "module",
   "description": "Static site. No runtime dependencies; three.js is vendored in vendor/three.",

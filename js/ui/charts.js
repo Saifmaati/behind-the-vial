@@ -1,4 +1,4 @@
-// Behind the Vial: static, theme-aware SVG charts for the content sections.
+// PeptideScope: static, theme-aware SVG charts for the content sections.
 //
 // Charts are drawn as SVG strings at the container's real pixel width (so text
 // stays crisp and readable at 360 px), first at a nominal width during render,

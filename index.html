@@ -3,17 +3,17 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>Behind the Vial · What a trending peptide does inside the body</title>
+  <title>PeptideScope · What a trending peptide does inside the body</title>
   <meta name="description" content="An education-only, interactive look at what happens inside the body after a viral peptide like retatrutide is injected: how it travels, when it peaks, its side effects, red flags, and what the evidence really says. Not medical advice. No dosing guidance.">
   <meta name="color-scheme" content="dark light">
   <meta name="theme-color" content="#05080c" media="(prefers-color-scheme: dark)">
   <meta name="theme-color" content="#f3f6f9" media="(prefers-color-scheme: light)">
-  <link rel="canonical" href="https://saifmaati.github.io/behind-the-vial/">
+  <link rel="canonical" href="https://saifmaati.github.io/peptidescope/">
   <meta property="og:type" content="website">
-  <meta property="og:site_name" content="Behind the Vial">
-  <meta property="og:title" content="Behind the Vial: what a trending peptide does inside the body">
+  <meta property="og:site_name" content="PeptideScope">
+  <meta property="og:title" content="PeptideScope: what a trending peptide does inside the body">
   <meta property="og:description" content="Follow one injection through a see-through 3D body, from under the skin to the organs it acts on. Side effects, red flags, gray-market lab tests, and every source. Education only.">
-  <meta property="og:url" content="https://saifmaati.github.io/behind-the-vial/">
+  <meta property="og:url" content="https://saifmaati.github.io/peptidescope/">
   <meta name="twitter:card" content="summary">
   <link rel="icon" href="./favicon.svg" type="image/svg+xml">
   <link rel="preload" href="./assets/fonts/InterVariable-latin.woff2" as="font" type="font/woff2" crossorigin>
@@ -53,6 +53,7 @@
   <link rel="stylesheet" href="./css/stage.css">
   <link rel="stylesheet" href="./css/timeline.css">
   <link rel="stylesheet" href="./css/content.css">
+  <link rel="stylesheet" href="./css/brand.css">
 
   <link rel="modulepreload" href="./js/bus.js">
   <script type="module" src="./js/main.js"></script>
@@ -114,8 +115,9 @@
     <div class="intro-backdrop" aria-hidden="true"></div>
     <button id="intro-skip" class="intro-skip" type="button">Skip intro</button>
     <div class="intro-content">
-      <p class="intro-kicker">An educational visualization</p>
-      <h1 id="intro-title" class="intro-title">Behind the Vial</h1>
+      <p class="intro-kicker">Independent education · Not a seller</p>
+      <h1 id="intro-title" class="intro-title">PeptideScope</h1>
+      <p class="intro-tagline brand-tagline">See what viral peptides really do inside your body.</p>
       <p id="intro-sub" class="intro-sub">What actually happens inside the body after injecting a peptide that is trending online, and what the evidence really says.</p>
       <div class="intro-actions">
         <button id="intro-enter" class="btn btn--primary btn--lg" type="button">
@@ -124,16 +126,16 @@
         </button>
         <button id="intro-facts" class="btn btn--ghost btn--lg" type="button">Read the facts first</button>
       </div>
-      <p class="intro-note"><span>Education only</span> · <span>Not medical advice</span> · <span>No dosing guidance</span></p>
+      <p class="intro-note"><span>Education only</span> · <span>Nothing for sale</span> · <span>Not medical advice</span> · <span>No dosing guidance</span></p>
     </div>
   </div>
 
   <!-- ===================== Header ===================== -->
   <header id="site-header" class="site-header">
     <div class="header-inner">
-      <a class="brand" href="#explorer" aria-label="Behind the Vial: go to the interactive body">
+      <a class="brand" href="#explorer" aria-label="PeptideScope: go to the interactive body">
         <svg class="brand-mark" aria-hidden="true" focusable="false"><use href="#i-vial"/></svg>
-        <span class="brand-word">Behind <span class="brand-the">the</span> Vial</span>
+        <span class="brand-text"><span class="brand-word">Peptide<span class="brand-the">Scope</span></span><span class="brand-tagline">See what viral peptides really do inside your body.</span></span>
       </a>
       <nav class="site-nav" aria-label="Page sections">
         <ul class="nav-list">
@@ -352,11 +354,11 @@
   <footer id="site-footer" class="site-footer">
     <div class="footer-inner">
       <div class="footer-main">
-        <a class="brand brand--footer" href="#explorer" aria-label="Behind the Vial: back to the interactive body">
+        <a class="brand brand--footer" href="#explorer" aria-label="PeptideScope: back to the interactive body">
           <svg class="brand-mark" aria-hidden="true" focusable="false"><use href="#i-vial"/></svg>
-          <span class="brand-word">Behind <span class="brand-the">the</span> Vial</span>
+          <span class="brand-text"><span class="brand-word">Peptide<span class="brand-the">Scope</span></span><span class="brand-tagline">See what viral peptides really do inside your body.</span></span>
         </a>
-        <p class="footer-disclaimer">Behind the Vial is for education only. It is not medical advice, and it does not diagnose, treat, or recommend anything. It never gives dosing, mixing, or injection instructions. Peptides sold online as “research chemicals” are not approved for use in people, and what is actually inside the vial cannot be verified. Talk to a licensed clinician before you start, stop, or change any medicine.</p>
+        <p class="footer-disclaimer">PeptideScope is for education only. It is not medical advice, and it does not diagnose, treat, or recommend anything. It never gives dosing, mixing, or injection instructions. Peptides sold online as “research chemicals” are not approved for use in people, and what is actually inside the vial cannot be verified. Talk to a licensed clinician before you start, stop, or change any medicine.</p>
         <p class="footer-emergency">
           <svg class="footer-emergency-icon" aria-hidden="true" focusable="false"><use href="#i-alert"/></svg>
           <span>In the US, call <a href="tel:911">911</a> in an emergency, or Poison Control at <a href="tel:+18002221222">1-800-222-1222</a>.</span>
@@ -369,9 +371,9 @@
         </p>
         <ul class="footer-links">
           <li><a href="#sources">Sources</a></li>
-          <li><a href="https://github.com/Saifmaati/behind-the-vial/blob/main/ASSETS.md" rel="noopener">Asset licenses<svg class="link-ext" aria-hidden="true" focusable="false"><use href="#i-external"/></svg></a></li>
-          <li><a href="https://github.com/Saifmaati/behind-the-vial/blob/main/DECISIONS.md" rel="noopener">Decisions log<svg class="link-ext" aria-hidden="true" focusable="false"><use href="#i-external"/></svg></a></li>
-          <li><a href="https://github.com/Saifmaati/behind-the-vial" rel="noopener">Source code<svg class="link-ext" aria-hidden="true" focusable="false"><use href="#i-external"/></svg></a></li>
+          <li><a href="https://github.com/Saifmaati/peptidescope/blob/main/ASSETS.md" rel="noopener">Asset licenses<svg class="link-ext" aria-hidden="true" focusable="false"><use href="#i-external"/></svg></a></li>
+          <li><a href="https://github.com/Saifmaati/peptidescope/blob/main/DECISIONS.md" rel="noopener">Decisions log<svg class="link-ext" aria-hidden="true" focusable="false"><use href="#i-external"/></svg></a></li>
+          <li><a href="https://github.com/Saifmaati/peptidescope" rel="noopener">Source code<svg class="link-ext" aria-hidden="true" focusable="false"><use href="#i-external"/></svg></a></li>
         </ul>
         <p class="footer-fineprint">Anatomy adapted from the HRA 3D Reference Organs (NIH HuBMAP, Visible Human Project data, CC BY 4.0), the VOXEL-MAN Segmented Internal Organs of the Visible Human Male (Höhne et al., CC BY 4.0) and BodyParts3D (© The Database Center for Life Science, CC BY 4.0). Modified: merged, re-meshed, aligned, simplified.</p>
         <p class="footer-fineprint">Not affiliated with Eli Lilly or any manufacturer.</p>

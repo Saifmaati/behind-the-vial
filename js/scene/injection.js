@@ -1,4 +1,4 @@
-// Behind the Vial: the injection sequence (body3d).
+// PeptideScope: the injection sequence (body3d).
 // syringe → depot under the skin → slow absorption into capillaries → bloodstream → organs.
 //
 //   const injection = createInjection(stage, anatomy, vessels, { emit, callouts });

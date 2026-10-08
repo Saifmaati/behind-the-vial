@@ -1,4 +1,4 @@
-// Behind the Vial: guarded access to the shared event bus (js/bus.js, owned by
+// PeptideScope: guarded access to the shared event bus (js/bus.js, owned by
 // foundation). If it is missing or fails to load (modules are built in
 // parallel), fall back to a tiny compatible bus shared on globalThis so every
 // content module still talks to the same instance.

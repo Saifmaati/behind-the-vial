@@ -1,4 +1,4 @@
-// Behind the Vial: scrubbable level-over-time timeline.
+// PeptideScope: scrubbable level-over-time timeline.
 //
 // An SVG chart of the NORMALIZED level in the body (% of the peak after one
 // shot) from js/pk.js, with phase markers (injection, onset, peak, half-life

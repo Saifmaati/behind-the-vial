@@ -1,4 +1,4 @@
-// Behind the Vial: pure pharmacokinetic math (no DOM, no side effects).
+// PeptideScope: pure pharmacokinetic math (no DOM, no side effects).
 //
 // Model: one compartment with first-order absorption from the depot under the
 // skin and first-order elimination (the Bateman function). Everything here is

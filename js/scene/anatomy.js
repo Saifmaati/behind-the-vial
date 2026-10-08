@@ -1,21 +1,38 @@
-// Behind the Vial: anatomy (body3d).
-// Loads assets/anatomy/body.glb + landmarks.json (GLTFLoader + MeshoptDecoder). Until those files
-// exist it builds a procedural placeholder with the SAME API: a smooth mannequin (signed-distance
-// field meshed with surface nets), organs at anatomically sensible positions, a vessel tree, a faint
-// skeleton, and placeholder landmarks (organ centres, injection sites, flow paths).
+// PeptideScope: anatomy (body3d).
+// Loads assets/anatomy/body.glb + landmarks.json (GLTFLoader + MeshoptDecoder); the female variant
+// loads body-female.glb + landmarks-female.json (same names and frame). Until those files exist it
+// builds a procedural placeholder with the SAME API: a smooth mannequin (signed-distance field meshed
+// with surface nets), organs at anatomically sensible positions, a vessel tree, a faint skeleton, and
+// placeholder landmarks (organ centres, injection sites, flow paths).
 //
-//   const anatomy = await loadAnatomy(stage, { source: 'auto' | 'placeholder' | 'glb', base? });
+//   const anatomy = await loadAnatomy(stage, { source: 'auto' | 'placeholder' | 'glb', base?, variant: 'male' | 'female' });
 //   (base: optional asset folder URL, a dev/test hook; defaults to assets/anatomy/ next to the site)
 //   anatomy.landmarks; anatomy.meshes[organId]; anatomy.siteHotspots
 //   anatomy.highlight(organId, { color, intensity, pulse, channel }); anatomy.unhighlight(organId, { channel })
-//   anatomy.clearHighlights(channel?); anatomy.setFocus(organId | null); anatomy.organCenter(organId) → Vector3
+//   anatomy.clearHighlights(channel?); anatomy.setFocus(organId | null); anatomy.organCenter(organId, out?) → Vector3
 //   anatomy.selectSite(site | null); anatomy.siteFrame(site) → { point, normal, tangent, bitangent }
 //   anatomy.setSkinCut(center | null, radius, amount, planeNormal?) — section window for the injection
 //   close-up (skin and vessel walls on the camera side of the plane fade, with a contour line)
 //   anatomy.setIsolate(bool); anatomy.setHotspotsVisible(bool); anatomy.setHoverSite(site | null)
 //
-// Highlight channels, strongest first: risk > effect > focus > arrival > default; 'drug' is a cyan
-// underlay that the other channels sit on top of.
+// Editable body (appearance only; v2). The whole anatomy group scales uniformly about the feet
+// (height), and the skin is displaced along its normals in the vertex shader by a per-vertex regional
+// weight (aMorph: x = subcutaneous fat share, y = central/abdominal share, z = limb share), so weight
+// thickens the belly, hips, thighs, upper arms and back far more than the face, hands, feet and shins.
+// Organs and vessels never change shape. Nothing here is ever shown as a number.
+//   anatomy.setBody({ scale, fat, age }, { instant }) — targets; tweened per frame (instant under
+//     reduced motion). scale: uniform (1 = the model's own height); fat: skin offset in metres at
+//     weight 1 (model units, may be slightly negative); age: central-fat shift in metres.
+//   anatomy.onBodyChange(fn(body)) → off — called on every tween step (positions already updated)
+//   anatomy.body → { scale, fat, age } current; anatomy.modelHeight (m, before scale); anatomy.variant
+//   anatomy.toWorld(v) (model → world, in place); anatomy.siteOffset(site) → model-space Vector3 (the
+//     skin offset at the site, reused object); anatomy.siteTissue(site) → { fatScale } (subcutaneous
+//     fat thickness under the site relative to the default body)
+//   World-space getters (organCenter, organAnchor, organRadius, siteFrame) already include the body
+//   scale and the skin offset; siteFrame objects are updated in place, so references stay valid.
+//
+// Highlight channels, strongest first: risk > effect > focus > arrival > default; 'drug' is a
+// champagne underlay that the other channels sit on top of.
 //
 // World frame: meters, Y up, feet at y = 0, faces +Z, the person's left is +X.
 import * as THREE from 'three';
@@ -34,38 +51,44 @@ export const ORGAN_LABELS = {
   large_intestine: 'Large intestine', kidneys: 'Kidneys', bladder: 'Bladder', skin: 'Skin', fat: 'Fat tissue',
   injection_site: 'Injection site', muscle: 'Muscle', eyes: 'Eyes', blood: 'Bloodstream',
 };
-// Restrained anatomical tints (sRGB hex). Never a "safe" green.
+// Muted, desaturated natural tints (sRGB hex), like an anatomical plate under warm light. Never a
+// "safe" green: the gallbladder is a muted ochre rather than bile green.
 export const ORGAN_COLORS = {
-  heart: 0xa8243a, liver: 0x8a3b2c, stomach: 0xd98f8c, small_intestine: 0xe0a094, large_intestine: 0xcf8f80,
-  pancreas: 0xe8cf8e, kidneys: 0x80283a, brain: 0xc4a2aa, lungs: 0xd48f9b, thyroid: 0xb93441,
-  gallbladder: 0x8a8448, spleen: 0x6e3266, bladder: 0xdcb895,
+  heart: 0x8f3b3e, liver: 0x7c4636, stomach: 0xbf958b, small_intestine: 0xc8a395, large_intestine: 0xb28c7d,
+  pancreas: 0xcdb88f, kidneys: 0x7d3d44, brain: 0xc2aea7, lungs: 0xbd989c, thyroid: 0xa0494c,
+  gallbladder: 0x9a8152, spleen: 0x6f3c50, bladder: 0xcab395,
 };
 const CHANNELS = ['risk', 'effect', 'focus', 'arrival', 'default'];
 const SITES = ['abdomen', 'thigh', 'arm'];
 const SITE_LABELS = { abdomen: 'Abdomen', thigh: 'Thigh', arm: 'Upper arm' };
 
+// Luxury palette (docs/ARCHITECTURE.md, v2): obsidian + ivory + champagne; oxblood arteries, sapphire
+// veins. Dark: glass skin with a champagne fresnel rim and engraved contour hairlines. Light: ivory
+// ground with ink linework.
 const THEME = {
   dark: {
-    skin: { core: 0x14566e, rim: 0x8fe8ff, coreAlpha: 0.03, rimAlpha: 0.78, rimPower: 2.3, intensity: 1.7, scan: 0xa6f3ff, scanAmt: 1, contour: 0.16, additive: true, cutLine: 0xd6fbff },
-    artery: { core: 0xff5a55, rim: 0xff8c80, coreAlpha: 0.24, rimAlpha: 0.7, rimPower: 1.7, intensity: 1.2, additive: true },
-    vein: { core: 0x4d72ff, rim: 0x93acff, coreAlpha: 0.24, rimAlpha: 0.7, rimPower: 1.7, intensity: 1.15, additive: true },
-    bone: { core: 0xd9d2c0, rim: 0xf2ecdc, coreAlpha: 0.012, rimAlpha: 0.2, rimPower: 2.2, intensity: 0.9, additive: true },
-    organ: { opacity: 0.8, emissiveBase: 0.025, rim: 0.42, rimPower: 2.6, roughness: 0.45, env: 0.55 },
-    highlightGain: 0.8,
-    tintGain: 0.55, tintMax: 0.6,
-    hotspot: 0x6fe6ff,
+    skin: { core: 0x2b2216, rim: 0xe6d3a3, coreAlpha: 0.022, rimAlpha: 0.6, rimPower: 2.5, intensity: 1.08, scan: 0xf1dda8, scanAmt: 0.5, contour: 0.1, additive: true, cutLine: 0xf1dda8 },
+    artery: { core: 0x6a1f1b, rim: 0xc4524a, coreAlpha: 0.3, rimAlpha: 0.6, rimPower: 1.6, intensity: 1.0, additive: true },
+    vein: { core: 0x1c2a4e, rim: 0x5b7db8, coreAlpha: 0.32, rimAlpha: 0.6, rimPower: 1.6, intensity: 1.0, additive: true },
+    bone: { core: 0xe8dcc4, rim: 0xf3eee6, coreAlpha: 0.008, rimAlpha: 0.15, rimPower: 2.2, intensity: 0.75, additive: true },
+    organ: { opacity: 0.8, emissiveBase: 0.03, rim: 0.3, rimPower: 2.6, roughness: 0.52, env: 0.42, rimTint: 0xf1e4c4 },
+    highlightGain: 0.72,
+    tintGain: 0.5, tintMax: 0.55,
+    hotspot: 0xe6d3a3,
     anchorAdditive: true,
+    drug: 0xf1dda8,
   },
   light: {
-    skin: { core: 0x5d8599, rim: 0x0a3046, coreAlpha: 0.035, rimAlpha: 0.85, rimPower: 2.5, intensity: 1.0, scan: 0x0a6f82, scanAmt: 0.55, contour: 0.14, additive: false, cutLine: 0x063a52 },
-    artery: { core: 0xc8323e, rim: 0x8e1a26, coreAlpha: 0.55, rimAlpha: 0.55, rimPower: 1.4, intensity: 1.0, additive: false },
-    vein: { core: 0x3159d0, rim: 0x1c3a96, coreAlpha: 0.5, rimAlpha: 0.55, rimPower: 1.4, intensity: 1.0, additive: false },
-    bone: { core: 0x8d8473, rim: 0x5c5546, coreAlpha: 0.02, rimAlpha: 0.2, rimPower: 2.0, intensity: 1.0, additive: false },
-    organ: { opacity: 0.9, emissiveBase: 0.0, rim: 0.22, rimPower: 2.2, roughness: 0.48, env: 1.0 },
+    skin: { core: 0xd9ccb2, rim: 0x2e2920, coreAlpha: 0.035, rimAlpha: 0.74, rimPower: 2.6, intensity: 1.0, scan: 0x7a5c28, scanAmt: 0.32, contour: 0.09, additive: false, cutLine: 0x7a5c28 },
+    artery: { core: 0xa63a33, rim: 0x7a2420, coreAlpha: 0.55, rimAlpha: 0.5, rimPower: 1.4, intensity: 1.0, additive: false },
+    vein: { core: 0x3a5a92, rim: 0x22406e, coreAlpha: 0.5, rimAlpha: 0.5, rimPower: 1.4, intensity: 1.0, additive: false },
+    bone: { core: 0x8a7f6c, rim: 0x5a5244, coreAlpha: 0.02, rimAlpha: 0.18, rimPower: 2.0, intensity: 1.0, additive: false },
+    organ: { opacity: 0.9, emissiveBase: 0.0, rim: 0.16, rimPower: 2.2, roughness: 0.56, env: 0.9, rimTint: 0xfffdf8 },
     highlightGain: 0.55,
-    tintGain: 0.6, tintMax: 0.7,
-    hotspot: 0x0a6f82,
+    tintGain: 0.58, tintMax: 0.66,
+    hotspot: 0x7a5c28,
     anchorAdditive: false,
+    drug: 0x8f6c2c,
   },
 };
 
@@ -75,8 +98,17 @@ const THEME = {
 const FRESNEL_VERT = /* glsl */`
   varying vec3 vWorld;
   varying vec3 vNormalW;
+  #ifdef MORPH
+  // editable body (appearance only): skin offset along the normal, weighted per region
+  attribute vec3 aMorph;
+  uniform float uFat; uniform float uAge;
+  #endif
   void main() {
-    vec4 wp = modelMatrix * vec4(position, 1.0);
+    vec3 p = position;
+    #ifdef MORPH
+    p += normal * (aMorph.x * uFat + (aMorph.y - 0.35 * aMorph.z) * uAge);
+    #endif
+    vec4 wp = modelMatrix * vec4(p, 1.0);
     vWorld = wp.xyz;
     vNormalW = normalize(mat3(modelMatrix) * normal);
     gl_Position = projectionMatrix * viewMatrix * wp;
@@ -147,6 +179,7 @@ function makeFresnelMaterial() {
       uOpacity: { value: 1 }, uScanY: { value: -1 }, uScanAmt: { value: 0 }, uContour: { value: 0 },
       uCut: { value: new THREE.Vector4(0, -10, 0, 0.05) }, uCutAmt: { value: 0 },
       uCutN: { value: new THREE.Vector3() }, uCutLine: { value: new THREE.Color() }, uCutLineAmt: { value: 0 },
+      uFat: { value: 0 }, uAge: { value: 0 },
     },
     vertexShader: FRESNEL_VERT,
     fragmentShader: FRESNEL_FRAG,
@@ -174,8 +207,8 @@ function makeOrganMaterial(hex) {
   const color = new THREE.Color(hex);
   const mat = new THREE.MeshPhysicalMaterial({
     color, roughness: 0.42, metalness: 0, transparent: true, opacity: 0.8,
-    clearcoat: 0.35, clearcoatRoughness: 0.4, sheen: 0.4, sheenRoughness: 0.6,
-    sheenColor: color.clone().lerp(new THREE.Color(1, 1, 1), 0.4),
+    clearcoat: 0.28, clearcoatRoughness: 0.45, sheen: 0.35, sheenRoughness: 0.65,
+    sheenColor: color.clone().lerp(new THREE.Color(0xf1e4c4), 0.4),
     emissive: color.clone(), emissiveIntensity: 1, envMapIntensity: 0.9, depthWrite: true,
   });
   const rim = { uRimColor: { value: color.clone().lerp(new THREE.Color(1, 1, 1), 0.35) }, uRimStrength: { value: 0.6 }, uRimPower: { value: 2.4 } };
@@ -778,31 +811,158 @@ function placeholderLandmarks() {
 }
 
 // =====================================================================================
+// Editable body: per-vertex regional weights for the skin offset (computed once per skin mesh)
+// =====================================================================================
+// Region axes for a 1.75 m reference body in the HRA Visible Human frame (arms abducted, hands at about
+// x = ±0.44, y = 0.85). Positions are normalised to that height first, so other heights and the female
+// model map onto the same proportions. Limb axes are for the person's left (+X); |x| mirrors them.
+// Weights follow where subcutaneous fat actually collects: most on the abdomen, flanks, hips, buttocks,
+// thighs, upper arms and back; little on the face, forearms and shins; almost none on hands and feet.
+const MORPH_REF_H = 1.75;
+const MORPH_BLEND = 0.016; // m: regions blend over a few centimetres, so the offset has no seams
+const MORPH_LIMBS = [
+  // [id, a, b, radius]
+  ['neck', [0, 1.44, -0.01], [0, 1.55, 0.015], 0.055],
+  ['head', [0, 1.585, 0.02], [0, 1.68, 0.0], 0.085],
+  ['upperArm', [0.19, 1.4, -0.015], [0.285, 1.12, -0.015], 0.045],
+  ['forearm', [0.285, 1.12, -0.015], [0.39, 0.99, 0.0], 0.036],
+  ['hand', [0.4, 0.98, 0.01], [0.445, 0.82, 0.035], 0.03],
+  ['thigh', [0.1, 0.86, 0.0], [0.135, 0.5, 0.0], 0.085],
+  ['shin', [0.135, 0.5, 0.0], [0.185, 0.1, -0.085], 0.05],
+  ['foot', [0.19, 0.05, -0.11], [0.21, 0.025, 0.06], 0.035],
+].map(([id, a, b, r]) => {
+  const d = [b[0] - a[0], b[1] - a[1], b[2] - a[2]];
+  const l2 = d[0] * d[0] + d[1] * d[1] + d[2] * d[2];
+  return { id, a, d, l2, r };
+});
+const sstep = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
+
+// → Float32Array(n * 3): x = fat share, y = central (abdominal) share, z = limb share.
+function morphWeights(pos, { height = MORPH_REF_H, female = false } = {}) {
+  const n = pos.count;
+  const out = new Float32Array(n * 3);
+  const k = MORPH_REF_H / (height || MORPH_REF_H);
+  const nR = MORPH_LIMBS.length + 1;
+  const dist = new Float64Array(nR), fat = new Float64Array(nR), cen = new Float64Array(nR), limb = new Float64Array(nR);
+  for (let i = 0; i < n; i++) {
+    const x = Math.abs(pos.getX(i)) * k, y = pos.getY(i) * k, z = pos.getZ(i) * k;
+    // trunk: an elliptic capsule along the body axis (wider than deep)
+    const ty = Math.min(1.44, Math.max(0.84, y));
+    const zc = 0.01 - 0.02 * (ty - 0.84) / 0.6;
+    const ex = x / 1.18, ez = z - zc, ey = y - ty;
+    const rho = Math.hypot(ex, ez);
+    dist[0] = Math.hypot(rho, ey) - 0.13;
+    const front = 0.5 + 0.5 * (rho > 1e-6 ? ez / rho : 0); // 1 at the front, 0 at the back
+    const abd = sstep(0.84, 0.97, y) * (1 - sstep(1.08, 1.26, y));
+    const chest = sstep(1.12, 1.24, y) * (1 - sstep(1.36, 1.46, y));
+    const hip = sstep(0.78, 0.86, y) * (1 - sstep(0.95, 1.04, y));
+    const top = 0.38 - 0.08 * sstep(1.4, 1.46, y);
+    fat[0] = Math.max(top,
+      abd * (0.6 + 0.4 * front) * (female ? 0.88 : 1),
+      chest * (female ? 0.42 + 0.3 * front : 0.4 + 0.12 * front),
+      hip * ((female ? 1.02 : 0.92) - 0.3 * front));
+    cen[0] = abd * (0.55 + 0.45 * front);
+    limb[0] = 0;
+    for (let j = 0; j < MORPH_LIMBS.length; j++) {
+      const L = MORPH_LIMBS[j];
+      const px = x - L.a[0], py = y - L.a[1], pz = z - L.a[2];
+      const t = Math.min(1, Math.max(0, (px * L.d[0] + py * L.d[1] + pz * L.d[2]) / L.l2));
+      const qx = px - L.d[0] * t, qy = py - L.d[1] * t, qz = pz - L.d[2] * t;
+      const r = j + 1;
+      dist[r] = Math.hypot(qx, qy, qz) - L.r;
+      const fz = Math.min(1, Math.max(-1, qz / L.r)); // +1 = front of this limb
+      let f = 0, c = 0, l = 0;
+      switch (L.id) {
+        case 'neck': f = 0.3 + 0.1 * Math.max(0, fz); break;
+        case 'head': f = 0.04 + 0.13 * Math.max(0, fz) * (1 - sstep(1.6, 1.66, y)); break;
+        case 'upperArm': f = 0.52 - 0.1 * t + 0.06 * Math.max(0, -fz); l = 1; break;
+        case 'forearm': f = 0.22 - 0.1 * t; l = 0.6; break;
+        case 'hand': f = 0.05; break;
+        case 'thigh': f = (female ? 0.9 : 0.8) - 0.38 * t; l = 1; break;
+        case 'shin': f = 0.18 - 0.06 * t + 0.06 * Math.max(0, -fz); l = 0.5; break;
+        case 'foot': f = 0.04; break;
+        default: break;
+      }
+      fat[r] = f; cen[r] = c; limb[r] = l;
+    }
+    let dmin = Infinity;
+    for (let r = 0; r < nR; r++) if (dist[r] < dmin) dmin = dist[r];
+    let sw = 0, sf = 0, sc = 0, sl = 0;
+    for (let r = 0; r < nR; r++) {
+      const w = Math.exp(-(dist[r] - dmin) / MORPH_BLEND);
+      sw += w; sf += fat[r] * w; sc += cen[r] * w; sl += limb[r] * w;
+    }
+    out[i * 3] = sf / sw; out[i * 3 + 1] = sc / sw; out[i * 3 + 2] = sl / sw;
+  }
+  return out;
+}
+
+// The weights at a surface point: a distance-weighted mean over skin vertices within 2.5 cm.
+function morphAt(pos, w, p, out) {
+  let sx = 0, sy = 0, sz = 0, sw = 0, best = -1, bd = Infinity;
+  for (let i = 0; i < pos.count; i++) {
+    const d = Math.hypot(pos.getX(i) - p.x, pos.getY(i) - p.y, pos.getZ(i) - p.z);
+    if (d < bd) { bd = d; best = i; }
+    if (d < 0.025) { const k = 1 - d / 0.025; sx += w[i * 3] * k; sy += w[i * 3 + 1] * k; sz += w[i * 3 + 2] * k; sw += k; }
+  }
+  if (sw > 0) out.set(sx / sw, sy / sw, sz / sw);
+  else if (best >= 0) out.set(w[best * 3], w[best * 3 + 1], w[best * 3 + 2]);
+  else out.set(0.5, 0, 0);
+  return out;
+}
+
+// Body description → scene parameters (appearance only). Used by index.js for body:change.
+//   heightCm, weightKg, age, sex → { scale, fat, age, variant }
+// Weight is read against a height-based reference so that the default body (male 175 cm / 75 kg,
+// female 162 cm / 65 kg, 35 years) shows the model exactly as built. Nothing here is ever displayed.
+export const BODY_DEFAULTS = {
+  male: { sex: 'male', heightCm: 175, weightKg: 75, age: 35 },
+  female: { sex: 'female', heightCm: 162, weightKg: 65, age: 35 },
+};
+export function bodyParams({ sex = 'male', heightCm, weightKg, age } = {}, modelHeight = 1.75) {
+  const D = BODY_DEFAULTS[sex === 'female' ? 'female' : 'male'];
+  const h = Math.min(205, Math.max(145, Number(heightCm) || D.heightCm));
+  const wt = Math.min(160, Math.max(40, Number(weightKg) || D.weightKg));
+  const a = Math.min(90, Math.max(18, Number(age) || D.age));
+  const ref = D.weightKg * (h / D.heightCm) ** 2;
+  const r = wt / ref;
+  // offset at full regional weight (metres): generous above the reference, small below it
+  const fat = r >= 1 ? (0.088 * (r - 1)) / (1 + 0.15 * (r - 1)) : Math.max(-0.016, 0.034 * (r - 1));
+  // age: a slight stature loss after about 60 and a mild shift of fat toward the abdomen
+  const stature = 1 - 0.0007 * Math.max(0, a - 60);
+  const ageShift = 0.012 * Math.min(1.2, Math.max(-0.4, (a - 35) / 45));
+  return { scale: ((h / 100) / (modelHeight || 1.75)) * stature, fat, age: ageShift, variant: sex === 'female' ? 'female' : 'male' };
+}
+
+// =====================================================================================
 // Hotspots (injection-site rings)
 // =====================================================================================
+// Fine champagne rings, like the chapter ring of a watch dial: a hairline ring, a small centre point,
+// four index ticks, a slow expanding hairline (off under reduced motion) and, once selected, an outer
+// hairline with sixty minute ticks. No filled disc, so nothing blooms over the organs behind it.
 const HOTSPOT_FRAG = /* glsl */`
   uniform vec3 uColor; uniform float uTime; uniform float uSel; uniform float uAnim; uniform float uOpacity; uniform float uHover;
   varying vec2 vUv; varying float vFacing;
-  float ring(float r, float rad, float w, float px) { return 1.0 - smoothstep(w, w + px * 1.5, abs(r - rad)); }
+  float ring(float r, float rad, float w, float px) { return 1.0 - smoothstep(w, w + px * 1.25, abs(r - rad)); }
   void main() {
     vec2 p = (vUv - 0.5) * 2.0;
     float r = length(p);
     float px = max(fwidth(r), 1e-4);
-    float breathe = mix(1.0, 0.82 + 0.18 * sin(uTime * 2.2), uAnim);
-    float a = ring(r, 0.34, 0.03, px) * (0.75 + 0.25 * uSel) * breathe;
-    a += (1.0 - smoothstep(0.085 - px, 0.085 + px, r)) * 0.95;
-    float ph = fract(uTime * 0.42);
-    a += ring(r, mix(0.36, 0.92, ph), 0.018, px) * (1.0 - ph) * 0.65 * uAnim;
-    a += ring(r, 0.58, 0.01, px) * uSel * 0.9;
+    float breathe = mix(1.0, 0.86 + 0.14 * sin(uTime * 1.6), uAnim);
+    float a = ring(r, 0.34, 0.006, px) * (0.82 + 0.18 * uSel) * breathe;
+    a += (1.0 - smoothstep(0.045 - px, 0.045 + px, r)) * 0.95;
+    float ph = fract(uTime * 0.26);
+    a += ring(r, mix(0.36, 0.84, ph), 0.004, px) * (1.0 - ph) * (1.0 - ph) * 0.55 * uAnim;
+    a += ring(r, 0.6, 0.004, px) * uSel * 0.8;
     float ang = atan(p.y, p.x);
-    float tick = step(0.985, abs(cos(ang * 2.0))) * step(0.6, r) * (1.0 - step(0.74, r));
-    a += tick * uSel * 0.9;
-    // soft fill: the selected site keeps only a faint one, so the reticle stays crisp instead of
-    // blooming into a white disc over the organs behind it (integration fix)
-    a += exp(-r * r * 9.0) * (0.14 * (1.0 - 0.65 * uSel) + 0.16 * uHover);
+    float idx = step(0.9975, abs(cos(ang * 2.0))) * step(0.42, r) * (1.0 - step(0.52, r));
+    a += idx * (0.55 + 0.4 * uSel);
+    float minute = step(0.93, abs(cos(ang * 30.0))) * step(0.64, r) * (1.0 - step(0.685, r));
+    a += minute * uSel * 0.5;
+    a += exp(-r * r * 10.0) * (0.04 + 0.12 * uHover);
     // seen through the translucent body when it faces away; gone once it is on the far side
     a *= smoothstep(-0.6, 0.1, vFacing) * uOpacity * (1.0 - smoothstep(0.92, 1.0, r));
-    gl_FragColor = vec4(uColor * (1.0 + uSel * 0.08 + uHover * 0.25), clamp(a, 0.0, 1.0) * (1.0 - 0.25 * uSel));
+    gl_FragColor = vec4(uColor * (1.0 + uHover * 0.2), clamp(a, 0.0, 1.0));
   }`;
 const HOTSPOT_VERT = /* glsl */`
   varying vec2 vUv; varying float vFacing;
@@ -877,8 +1037,12 @@ function dequantize(geo) {
   return geo;
 }
 
-async function tryLoadGLB(base = ASSET_BASE) {
-  const lmRes = await fetch(new URL('landmarks.json', base), { cache: 'no-cache' }).catch(() => null);
+const VARIANT_FILES = {
+  male: { glb: 'body.glb', landmarks: 'landmarks.json' },
+  female: { glb: 'body-female.glb', landmarks: 'landmarks-female.json' },
+};
+async function tryLoadGLB(base = ASSET_BASE, files = VARIANT_FILES.male) {
+  const lmRes = await fetch(new URL(files.landmarks, base), { cache: 'no-cache' }).catch(() => null);
   if (!lmRes || !lmRes.ok) return null;
   const landmarks = await lmRes.json();
   const [{ GLTFLoader }, { MeshoptDecoder }] = await Promise.all([
@@ -887,27 +1051,42 @@ async function tryLoadGLB(base = ASSET_BASE) {
   ]);
   const loader = new GLTFLoader();
   loader.setMeshoptDecoder(MeshoptDecoder);
-  const gltf = await loader.loadAsync(new URL('body.glb', base).href);
+  const gltf = await loader.loadAsync(new URL(files.glb, base).href);
   return { landmarks, gltf };
 }
 
-export async function loadAnatomy(stage, { source = 'auto', base } = {}) {
+// Is the female anatomy published? (HEAD requests; both files must exist.)
+export async function hasVariant(variant, base) {
+  const files = VARIANT_FILES[variant];
+  if (!files) return false;
+  const b = base ? new URL(base, document.baseURI) : ASSET_BASE;
+  try {
+    const rs = await Promise.all([files.glb, files.landmarks].map((f) => fetch(new URL(f, b), { method: 'HEAD', cache: 'no-cache' })));
+    return rs.every((r) => r.ok);
+  } catch { return false; }
+}
+
+export async function loadAnatomy(stage, { source = 'auto', base, variant = 'male' } = {}) {
   const { scene } = stage;
+  const female = variant === 'female';
   const root = new THREE.Group();
   root.name = 'anatomy';
-  scene.add(root);
 
   let landmarks = null;
   let gltf = null;
   if (source !== 'placeholder') {
     try {
-      const r = await tryLoadGLB(base ? new URL(base, document.baseURI) : ASSET_BASE);
+      const r = await tryLoadGLB(base ? new URL(base, document.baseURI) : ASSET_BASE, VARIANT_FILES[female ? 'female' : 'male']);
       if (r) { landmarks = r.landmarks; gltf = r.gltf; }
     } catch (e) {
+      if (female) throw e;
       console.warn('[anatomy] body.glb could not be loaded; using the procedural placeholder.', e);
       landmarks = null; gltf = null;
     }
+    // the female body is only shown from real anatomy; the caller keeps the current body otherwise
+    if (female && !gltf) throw new Error('female anatomy unavailable');
   }
+  scene.add(root);
   const placeholderLM = placeholderLandmarks();
   const usingGLB = !!gltf;
   if (landmarks) {
@@ -926,6 +1105,7 @@ export async function loadAnatomy(stage, { source = 'auto', base } = {}) {
   const organMats = {};
   let skinMesh = null, arteryMesh = null, veinMesh = null, boneMesh = null;
   const skinMat = makeFresnelMaterial();
+  skinMat.defines = { MORPH: '' };
   const arteryMat = makeFresnelMaterial();
   const veinMat = makeFresnelMaterial();
   const boneMat = makeFresnelMaterial();
@@ -981,10 +1161,19 @@ export async function loadAnatomy(stage, { source = 'auto', base } = {}) {
   if (!boneMesh && !usingGLB) boneMesh = new THREE.Mesh(buildSkeleton(), boneMat);
 
   skinMesh.name = 'skin'; skinMesh.renderOrder = 10;
+  // the skin is displaced in the vertex shader, so its stored bounds no longer hold
+  skinMesh.frustumCulled = false;
   arteryMesh.name = 'arteries'; arteryMesh.renderOrder = 2;
   veinMesh.name = 'veins'; veinMesh.renderOrder = 2;
   root.add(skinMesh, arteryMesh, veinMesh);
   if (boneMesh) { boneMesh.name = 'skeleton'; boneMesh.renderOrder = 1; root.add(boneMesh); }
+
+  // model height (before the body scale): the landmarks say it; else the skin's bounds
+  let modelHeight = Number(landmarks.height);
+  if (!(modelHeight > 0.5)) { skinMesh.geometry.computeBoundingBox(); modelHeight = skinMesh.geometry.boundingBox.max.y || 1.75; }
+  const skinPos = skinMesh.geometry.attributes.position;
+  const skinMorph = morphWeights(skinPos, { height: modelHeight, female });
+  skinMesh.geometry.setAttribute('aMorph', new THREE.BufferAttribute(skinMorph, 3));
 
   // ---------------------------------------------------------------- organ state + anchors
   const tmpC = new THREE.Color();
@@ -1016,13 +1205,21 @@ export async function loadAnatomy(stage, { source = 'auto', base } = {}) {
   anchorPoints.renderOrder = 12;
   root.add(anchorPoints);
 
+  // ---------------------------------------------------------------- body state (appearance only)
+  const body = { scale: 1, fat: 0, age: 0 };
+  const bodyTarget = { scale: 1, fat: 0, age: 0 };
+  const bodyFns = [];
+
   // ---------------------------------------------------------------- sites + hotspots
+  // siteBase: the landmark (model space) and the skin's regional weights there; siteFrames: world
+  // space, updated in place whenever the body changes.
+  const siteBase = {};
   const siteFrames = {};
-  const UP = new THREE.Vector3(0, 1, 0);
+  const siteOff = {};
   for (const s of SITES) {
     const def = landmarks.sites[s];
     if (!def) continue;
-    const point = V(def.point);
+    const point0 = V(def.point);
     const normal = V(def.normal || [0, 0, 1]).normalize();
     const t = new THREE.Vector3(normal.z, 0, -normal.x);
     if (t.lengthSq() < 1e-6) t.set(1, 0, 0);
@@ -1031,8 +1228,14 @@ export async function loadAnatomy(stage, { source = 'auto', base } = {}) {
     const camDir = normal.clone().multiplyScalar(0.55).addScaledVector(t, 0.8);
     if (camDir.z < 0.1) t.negate();
     const b = new THREE.Vector3().crossVectors(normal, t).normalize();
-    siteFrames[s] = { point, normal, tangent: t, bitangent: b, label: def.label || SITE_LABELS[s] };
+    siteBase[s] = { point0, w: morphAt(skinPos, skinMorph, point0, new THREE.Vector3()) };
+    siteOff[s] = new THREE.Vector3();
+    siteFrames[s] = { point: point0.clone(), normal, tangent: t, bitangent: b, label: def.label || SITE_LABELS[s] };
   }
+  const siteDisp = (s) => {
+    const w = siteBase[s]?.w;
+    return w ? w.x * body.fat + (w.y - 0.35 * w.z) * body.age : 0;
+  };
 
   const siteHotspots = {};
   const hotspotTargets = [];
@@ -1044,7 +1247,7 @@ export async function loadAnatomy(stage, { source = 'auto', base } = {}) {
     if (!f) continue;
     const g = new THREE.Group();
     g.name = `hotspot:${s}`;
-    g.position.copy(f.point).addScaledVector(f.normal, 0.0025);
+    g.position.copy(siteBase[s].point0).addScaledVector(f.normal, 0.0025);
     g.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), f.normal);
     const mat = new THREE.ShaderMaterial({
       uniforms: {
@@ -1070,43 +1273,101 @@ export async function loadAnatomy(stage, { source = 'auto', base } = {}) {
   let hotspotFade = 1;
 
   // ---------------------------------------------------------------- landmarks helpers
+  // Internally everything is model space (the anatomy group carries the body scale); the public
+  // getters return world space.
   const centerCache = {};
   const fatRoute = usingGLB ? landmarks.paths?.to_fat : null;
-  function organCenter(id) {
+  const fatRouteEnd = fatRoute?.length ? V(fatRoute[fatRoute.length - 1]) : null;
+  const _m = new THREE.Vector3();
+  function modelCenter(id, out) {
     // 'fat' on the real anatomy is where its artery route ends (subcutaneous fat of the lower belly),
     // so the arrival glow and the label sit where the drug particles stop.
-    if (id === 'fat' && fatRoute?.length) return V(fatRoute[fatRoute.length - 1]);
+    if (id === 'fat' && fatRouteEnd) return out.copy(fatRouteEnd);
     if (id === 'injection_site' || id === 'fat') {
-      const f = siteFrames[selectedSite || 'abdomen'] || siteFrames.abdomen;
-      if (f) return f.point.clone().addScaledVector(f.normal, id === 'fat' ? -0.011 : -0.004);
+      const s = siteBase[selectedSite || 'abdomen'] ? (selectedSite || 'abdomen') : null;
+      if (s) return out.copy(siteBase[s].point0).add(siteOff[s]).addScaledVector(siteFrames[s].normal, id === 'fat' ? -0.011 : -0.004);
     }
-    if (!centerCache[id]) {
+    let c = centerCache[id];
+    if (!c) {
       const o = landmarks.organs?.[id];
-      if (o?.center) centerCache[id] = V(o.center);
-      else if (meshes[id]) centerCache[id] = new THREE.Box3().setFromObject(meshes[id]).getCenter(new THREE.Vector3());
-      else centerCache[id] = new THREE.Vector3(0, 1.1, 0);
+      if (o?.center) c = V(o.center);
+      else if (meshes[id]) { root.updateMatrixWorld(true); c = new THREE.Box3().setFromObject(meshes[id]).getCenter(new THREE.Vector3()).divideScalar(root.scale.x || 1); }
+      else c = new THREE.Vector3(0, 1.1, 0);
+      centerCache[id] = c;
     }
-    return centerCache[id].clone();
+    return out.copy(c);
   }
-  function organAnchor(id) {
+  function organCenter(id, out = new THREE.Vector3()) {
+    return modelCenter(id, out).multiplyScalar(body.scale);
+  }
+  function organAnchor(id, out = new THREE.Vector3()) {
     const a = landmarks.anchors?.[id];
-    return a ? V(a) : organCenter(id);
+    return a ? out.set(a[0], a[1], a[2]).multiplyScalar(body.scale) : organCenter(id, out);
   }
+  const radiusCache = {};
   function organRadius(id) {
-    const o = landmarks.organs?.[id];
-    if (o?.radius) return o.radius;
-    if (meshes[id]) { const sp = new THREE.Box3().setFromObject(meshes[id]).getBoundingSphere(new THREE.Sphere()); return sp.radius; }
-    return 0.05;
+    if (radiusCache[id] == null) {
+      const o = landmarks.organs?.[id];
+      if (o?.radius) radiusCache[id] = o.radius;
+      else if (meshes[id]) {
+        root.updateMatrixWorld(true);
+        radiusCache[id] = new THREE.Box3().setFromObject(meshes[id]).getBoundingSphere(new THREE.Sphere()).radius / (root.scale.x || 1);
+      } else radiusCache[id] = 0.05;
+    }
+    return radiusCache[id] * body.scale;
   }
+  const eyeOff = [0, 0, 0, 0.032, -0.032, 0, 0];
   function updateAnchorPositions() {
     for (let i = 0; i < anchorIds.length; i++) {
-      const id = anchorIds[i];
-      let p;
-      if (id === 'eyes') p = organCenter('eyes').add(new THREE.Vector3(i === 3 ? 0.032 : -0.032, 0, -0.005));
-      else p = organCenter(id);
-      aPos[i * 3] = p.x; aPos[i * 3 + 1] = p.y; aPos[i * 3 + 2] = p.z;
+      modelCenter(anchorIds[i], _m);
+      if (anchorIds[i] === 'eyes') { _m.x += eyeOff[i]; _m.z -= 0.005; }
+      aPos[i * 3] = _m.x; aPos[i * 3 + 1] = _m.y; aPos[i * 3 + 2] = _m.z;
     }
     anchorGeo.attributes.position.needsUpdate = true;
+  }
+
+  // Apply the current body: group scale, skin offset uniforms, sites, hotspots, anchors. No allocation.
+  function applyBody() {
+    root.scale.setScalar(body.scale);
+    skinMat.uniforms.uFat.value = body.fat;
+    skinMat.uniforms.uAge.value = body.age;
+    for (const s of SITES) {
+      const f = siteFrames[s];
+      if (!f) continue;
+      const d = siteDisp(s);
+      siteOff[s].copy(f.normal).multiplyScalar(d);
+      f.point.copy(siteBase[s].point0).add(siteOff[s]).multiplyScalar(body.scale);
+      siteHotspots[s]?.position.copy(siteBase[s].point0).addScaledVector(f.normal, d + 0.0025);
+    }
+    updateAnchorPositions();
+    for (let i = 0; i < bodyFns.length; i++) {
+      try { bodyFns[i](body); } catch (e) { console.error('[anatomy] body listener failed', e); }
+    }
+  }
+  function setBody(next = {}, { instant = false } = {}) {
+    if (Number.isFinite(next.scale)) bodyTarget.scale = Math.min(1.6, Math.max(0.6, next.scale));
+    if (Number.isFinite(next.fat)) bodyTarget.fat = Math.min(0.15, Math.max(-0.03, next.fat));
+    if (Number.isFinite(next.age)) bodyTarget.age = Math.min(0.03, Math.max(-0.03, next.age));
+    if (instant || stage.reducedMotion) {
+      body.scale = bodyTarget.scale; body.fat = bodyTarget.fat; body.age = bodyTarget.age;
+      applyBody();
+    }
+  }
+  function stepBody(dt) {
+    const ds = bodyTarget.scale - body.scale, df = bodyTarget.fat - body.fat, da = bodyTarget.age - body.age;
+    if (Math.abs(ds) < 1e-5 && Math.abs(df) < 1e-5 && Math.abs(da) < 1e-5) {
+      if (ds || df || da) { body.scale = bodyTarget.scale; body.fat = bodyTarget.fat; body.age = bodyTarget.age; applyBody(); }
+      return;
+    }
+    const k = stage.reducedMotion ? 1 : 1 - Math.exp(-dt * 6.5);
+    body.scale += ds * k; body.fat += df * k; body.age += da * k;
+    applyBody();
+  }
+  // Subcutaneous fat thickness under a site relative to the default body (the tissue cross-section
+  // uses it): the same regional offset, read as extra (or less) fat under the skin.
+  function siteTissue(site) {
+    const d = siteBase[site] ? siteDisp(site) : 0;
+    return { fatScale: Math.min(3, Math.max(0.55, 1 + d / 0.05)) };
   }
   updateAnchorPositions();
 
@@ -1126,6 +1387,7 @@ export async function loadAnatomy(stage, { source = 'auto', base } = {}) {
       m.envMapIntensity = T.organ.env;
       m.userData.rim.uRimStrength.value = T.organ.rim;
       m.userData.rim.uRimPower.value = T.organ.rimPower;
+      m.userData.rim.uRimColor.value.copy(m.userData.baseColor).lerp(tmpC.setHex(T.organ.rimTint ?? 0xffffff), 0.4);
     }
     anchorMat.blending = T.anchorAdditive ? THREE.AdditiveBlending : THREE.NormalBlending;
     anchorMat.needsUpdate = true;
@@ -1151,7 +1413,7 @@ export async function loadAnatomy(stage, { source = 'auto', base } = {}) {
     if (!st) return;
     const slot = channel === 'drug' ? st.drug : st.slots[channel] || st.slots.default;
     slot.on = intensity > 0;
-    slot.color.copy(toColor(color, channel === 'drug' ? 0x9ff4ff : 0x6fe6ff));
+    slot.color.copy(toColor(color, channel === 'drug' ? T.drug : T.hotspot));
     slot.intensity = intensity;
     slot.pulse = pulse === true ? 0.9 : Number(pulse) || 0;
   }
@@ -1214,12 +1476,13 @@ export async function loadAnatomy(stage, { source = 'auto', base } = {}) {
   };
   function update(dt, t) {
     const rm = stage.reducedMotion;
+    stepBody(dt);
     // scan band (off under reduced motion)
     const su = skinMat.uniforms;
     if (rm) su.uScanAmt.value = 0;
     else {
       const ph = (t % scanPeriod) / scanPeriod;
-      su.uScanY.value = -0.15 + ph * 2.1;
+      su.uScanY.value = (-0.15 + ph * 2.1) * body.scale;
       su.uScanAmt.value = (skinMat.userData.scanAmt ?? 1) * smoothstep(0, 0.08, ph) * smoothstep(1, 0.85, ph);
     }
     // dimming (focus)
@@ -1359,6 +1622,16 @@ export async function loadAnatomy(stage, { source = 'auto', base } = {}) {
     highlight, unhighlight, clearHighlights,
     setFocus, get focus() { return focusId; }, setIsolate,
     organCenter, organAnchor, organRadius,
+    // editable body (appearance only)
+    variant: female ? 'female' : 'male',
+    modelHeight,
+    setBody,
+    get body() { return { scale: body.scale, fat: body.fat, age: body.age }; },
+    get bodyScale() { return body.scale; },
+    onBodyChange(fn) { bodyFns.push(fn); return () => { const i = bodyFns.indexOf(fn); if (i >= 0) bodyFns.splice(i, 1); }; },
+    toWorld: (v) => v.multiplyScalar(body.scale),
+    siteOffset: (site) => siteOff[site] || null,
+    siteTissue,
     selectSite, get selectedSite() { return selectedSite; },
     setHoverSite, setHotspotsVisible,
     siteFrame: (s) => siteFrames[s] || null,
@@ -1368,4 +1641,4 @@ export async function loadAnatomy(stage, { source = 'auto', base } = {}) {
 }
 
 // Internal builders, exported for dev tooling (profiling and tests) only.
-export const _internals = { buildMannequin, buildOrgans, buildVesselTree, buildSkeleton, placeholderLandmarks, bodySDF };
+export const _internals = { buildMannequin, buildOrgans, buildVesselTree, buildSkeleton, placeholderLandmarks, bodySDF, morphWeights };

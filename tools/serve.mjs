@@ -20,7 +20,7 @@ createServer(async (req, res) => {
   try {
     let path = decodeURIComponent(new URL(req.url, 'http://x').pathname);
     // Mirror GitHub Pages project-site prefix so absolute links behave the same locally.
-    if (path.startsWith('/behind-the-vial/')) path = path.slice('/behind-the-vial'.length);
+    if (path.startsWith('/peptidescope/')) path = path.slice('/peptidescope'.length);
     let file = normalize(join(ROOT, path));
     if (!file.startsWith(ROOT)) { res.writeHead(403).end(); return; }
     let s = await stat(file).catch(() => null);

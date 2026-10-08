@@ -1,4 +1,4 @@
-// Behind the Vial: tiny inline stroke icons drawn for this project (no third-party set).
+// PeptideScope: tiny inline stroke icons drawn for this project (no third-party set).
 // 24×24 grid, 1.6 px stroke, currentColor. Always decorative (aria-hidden).
 import { raw } from './util.js';
 

@@ -1,4 +1,4 @@
-// Behind the Vial: peptide picker and injection-site picker.
+// PeptideScope: peptide picker and injection-site picker.
 // Both are ARIA radiogroups with roving tabindex (one tab stop; arrows, Home and
 // End move and select). Pickers only EMIT selections; main.js loads content.
 import { bus } from './busref.js';

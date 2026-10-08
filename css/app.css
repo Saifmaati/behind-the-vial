@@ -1,4 +1,4 @@
-/* Behind the Vial: layout, header, explorer, stage frame, panels, footer, disclaimer (foundation).
+/* PeptideScope: layout, header, explorer, stage frame, panels, footer, disclaimer (foundation).
    Other modules: intro.css (#intro internals), stage.css (#stage-host internals), timeline.css,
    content.css. Anything here that those files may want to restyle is wrapped in :where() so it has
    zero specificity and is easy to override. */

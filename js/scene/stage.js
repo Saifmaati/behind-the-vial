@@ -1,4 +1,4 @@
-// Behind the Vial: 3D stage (body3d).
+// PeptideScope: 3D stage (body3d).
 // Renderer, camera, orbit controls, environment lighting, post-processing, render loop.
 //
 //   const stage = await createStage(host /* #stage-host */, { reducedMotion, theme });

@@ -37,7 +37,7 @@ One line each: decision, then why.
 27. **On desktop the peptide picker scrolls inside the rail (`max-height: clamp(140px, 100vh - 724px, 440px)`, with fade masks)**, so step 3 "Inject" stays in the first viewport at 1440×900 even with 20 coming-soon chips.
 28. **Section anchors use a negative `scroll-margin-top`** so nav jumps land just above the eyebrow instead of on 128 px of empty section padding.
 29. **Nav labels are short ("Timing", "Trial data")** so all 12 links fit inline at 1440 px; below that the nav becomes a horizontal scroll strip with edge fades, and below 720 px the wordmark collapses to the vial glyph.
-30. **`404.html` is self-contained with absolute `/behind-the-vial/` links**, because GitHub Pages serves it at arbitrary depths where relative paths break.
+30. **`404.html` is self-contained with absolute `/peptidescope/` links**, because GitHub Pages serves it at arbitrary depths where relative paths break.
 
 ## Verification tooling
 31. **`tools/sandbox/foundation.html`** is a token/component gallery with live contrast ratios and a bus self-test (8 checks); **`tools/sandbox/foundation-flow.mjs`** drives `main.js` end to end with mock `intro.js` / `scene/index.js` served by request interception (24 checks: intro, inert, focus, replay of missed state, Inject states, theme/motion events, coming-soon handling).

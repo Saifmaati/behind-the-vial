@@ -2,7 +2,7 @@
 
 Judgment calls made while building without check-ins. Newest last.
 
-1. **Name kept as "Behind the Vial"**; repo `Saifmaati/behind-the-vial`, GitHub Pages from `main` root (no build step, `.nojekyll`).
+1. **Repo `Saifmaati/peptidescope`, GitHub Pages from `main` root** (no build step, `.nojekyll`). The project started under a working title; see decision 12.
 2. **Stack: vanilla ES modules + three.js r185.1 vendored** (MIT) with an import map. No bundler, no runtime npm dependencies; dev tools live in `tools/` only. Picked 0.185.1 rather than the newest 0.186.x because it has had three months of patch fixes.
 3. **Commit identity uses the GitHub noreply address** for the Saifmaati account, so no personal email lands in public history.
 4. **Research before copy.** Every number shown in the app comes from a claims ledger built by independent researcher agents and then re-checked by separate adversarial fact-checker agents who re-open each source (research/). Claims that fail verification are dropped or shown with an "Unverified" chip.
@@ -13,3 +13,5 @@ Judgment calls made while building without check-ins. Newest last.
 9. **Scroll-driven film intro instead of a timed one** (owner asked for a "video scrolling introduction"). Rendered live in WebGL and scrubbed by scroll rather than an actual video file: sharper on every screen, a fraction of the download, and it can use the real anatomy.
 10. **The intro shows a lifelike peptide vial and syringe but never a how-to.** No mg amount on the label, no mixing, drawing up, measuring, volumes or needle angles; the syringe ticks carry no numbers.
 11. **Editable body (sex, height, weight, age) is appearance-only.** The brief bans "enter weight/gender to get a dose". The owner's later request for an editable body is met with a hard separation: `body:change` reaches only the 3D scene, never the timeline, PK model, effects, risk check or content; the panel says so; tests enforce it. Adults only (18–90).
+12. **Renamed to PeptideScope** (owner request, 2026-10-08), tagline "See what viral peptides really do inside your body." shown under the name in the intro, header and footer. GitHub repo renamed with `gh repo rename` (GitHub redirects the old repo URL; the old Pages path stops serving, which is fine for a first draft nobody has been sent yet). Every trace of the working title was replaced, including code identifiers and storage keys, and `tests/name.test.mjs` keeps it that way.
+13. **Because "PeptideScope" alone could read like a peptide shop, the safety purpose shows from the first frame**: the intro opens with "Independent education · Not a seller" and "Education only · Nothing for sale · Not medical advice · No dosing guidance". `tests/commerce.test.mjs` bans prices, buy/shop/discount language, seller names and any link that is not a cited authoritative source or a project page.

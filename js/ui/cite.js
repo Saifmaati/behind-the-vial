@@ -1,4 +1,4 @@
-// Behind the Vial: citation registry.
+// PeptideScope: citation registry.
 //
 // One context per rendered entry. Sources are numbered by FIRST use, in the
 // order renderers call cite() (renderEntry walks sections in reading order),

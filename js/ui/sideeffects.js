@@ -1,4 +1,4 @@
-// Behind the Vial: #side-effects: cards grouped by the organ they come from.
+// PeptideScope: #side-effects: cards grouped by the organ they come from.
 import { html, organLabel, organOrder, SEVERITY, uid, plural } from './util.js';
 import { icon } from './icons.js';
 

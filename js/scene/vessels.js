@@ -1,4 +1,4 @@
-// Behind the Vial: circulation (body3d).
+// PeptideScope: circulation (body3d).
 // Flow routes from anatomy.landmarks.paths (Catmull-Rom curves), faint glowing flow lines, blood
 // cells animated entirely on the GPU (pulsatile ~1 Hz in arteries, slow and steady in veins), and
 // luminous drug particles that travel site → heart → lungs → heart → aorta → target organs.
@@ -12,6 +12,10 @@
 //   vessels.trace({ site, targets, segments: [0 venous, 1 lungs, 2 arterial], opacity }) → handle
 //   vessels.setDrugLevel(0..1)    drug glow in the blood, the flow lines and the target organs
 //   vessels.setDrugTargets([organIds])
+// The group lives inside the anatomy group, so routes and particles are in the anatomy's model space
+// and follow the editable body's scale. When the skin is offset (weight), drug particles leave from the
+// displaced skin point and merge into the vein within the first few centimetres of the route.
+// Luxury palette: oxblood arterial blood, wine venous blood, the drug as luminous champagne light.
 import * as THREE from 'three';
 
 const S = 256; // samples per route in the path texture
@@ -24,9 +28,10 @@ const ORGAN_PATH = {
 const MIRRORED = ['abdomen_to_heart', 'thigh_to_heart', 'arm_to_heart', 'heart_to_lungs', 'lungs_to_heart',
   'to_kidneys', 'to_muscle', 'to_fat', 'to_skin'];
 const COLORS = {
-  dark: { oxy: 0xff3a3a, deoxy: 0xa61d3c, drug: 0xc6fbff, organDrug: 0x2fcbe6, lineArt: 0xff6b6b, lineVein: 0x6e93ff, lineDrug: 0x9ff4ff, cellAlpha: 0.95, additive: true },
-  light: { oxy: 0xd42a35, deoxy: 0x9a2a48, drug: 0x0a8fa6, organDrug: 0x0a8fa6, lineArt: 0xc22f3c, lineVein: 0x2a56d6, lineDrug: 0x0a8fa6, cellAlpha: 0.72, additive: false },
+  dark: { oxy: 0xc4524a, deoxy: 0x8a2f45, drug: 0xf1dda8, organDrug: 0xe2be72, lineArt: 0xc4524a, lineVein: 0x5b7db8, lineDrug: 0xf1dda8, cellAlpha: 0.9, additive: true },
+  light: { oxy: 0xa83a33, deoxy: 0x7a2a40, drug: 0x8f6c2c, organDrug: 0x8f6c2c, lineArt: 0x9c2f2a, lineVein: 0x2f4f86, lineDrug: 0x8f6c2c, cellAlpha: 0.72, additive: false },
 };
+const LEAD_IN = 0.07; // m along the venous route over which the skin offset blends into the vein
 
 // Arterial velocity waveform: a sharp systolic surge then a slow diastolic run-off, mean ≈ 1.
 function pulseWave(t) {
@@ -132,7 +137,7 @@ export function createVessels(stage, anatomy) {
   const P = L.paths || {};
   const group = new THREE.Group();
   group.name = 'vessels';
-  scene.add(group);
+  (anatomy.root || scene).add(group);
 
   // ---------------------------------------------------------------- routes
   const routes = [];
@@ -313,6 +318,15 @@ export function createVessels(stage, anatomy) {
     return out;
   }
   const _p = { x: 0, y: 0, z: 0 };
+  // samplePos plus the skin offset at the start of the venous segment (no allocation)
+  function sampleSeg(sg, f, out, lead) {
+    samplePos(sg.r, f, out);
+    if (lead && sg.kind === 0) {
+      const k = 1 - Math.min(1, Math.max(0, f) * sg.r.length / LEAD_IN);
+      if (k > 0) { const e = k * k * (3 - 2 * k); out.x += lead.x * e; out.y += lead.y * e; out.z += lead.z * e; }
+    }
+    return out;
+  }
   const segActiveCount = new Float32Array(Math.max(1, rows));
 
   function clearStream() {
@@ -335,6 +349,7 @@ export function createVessels(stage, anatomy) {
     const promise = new Promise((res) => { resolve = res; });
     const s = {
       mode, T, onArrive, arrived, opacity, segments, resolve, n, done: false,
+      lead: anatomy.siteOffset?.(site) || null,
       cancel() { if (s.done) return; s.done = true; clearStream(); resolve(); },
       finish() {
         if (s.done) return;
@@ -391,7 +406,7 @@ export function createVessels(stage, anatomy) {
       if (!jr || !jr.segs.length) { p.live = false; continue; }
       if (p.still) {
         const sg = jr.segs[p.seg];
-        samplePos(sg.r, p.f, _p);
+        sampleSeg(sg, p.f, _p, s.lead);
         dPos[base * 3] = _p.x + p.jx; dPos[base * 3 + 1] = _p.y + p.jy; dPos[base * 3 + 2] = _p.z + p.jz;
         dAlpha[base] = 0.5 * s.opacity;
         for (let k = 1; k < TRAIL; k++) dAlpha[base + k] = 0;
@@ -422,7 +437,8 @@ export function createVessels(stage, anatomy) {
         p.linger += dt;
         const spread = Math.min(1, p.linger / 1.1);
         const e = 1 - (1 - spread) * (1 - spread);
-        const rad = (anatomy.organRadius?.(jr.organ) || 0.05) * 0.45;
+        // organRadius is in world units; particles live in the anatomy's model space
+        const rad = ((anatomy.organRadius?.(jr.organ) || 0.05) / (anatomy.bodyScale || 1)) * 0.45;
         samplePos(sg.r, 1, _p);
         dPos[base * 3] = _p.x + p.lx * rad * e; dPos[base * 3 + 1] = _p.y + p.ly * rad * e; dPos[base * 3 + 2] = _p.z + p.lz * rad * e;
         const a = (1 - Math.min(1, Math.max(0, (p.linger - 0.25) / 1.4))) * s.opacity;
@@ -432,13 +448,13 @@ export function createVessels(stage, anatomy) {
         alive++;
         continue;
       }
-      samplePos(sg.r, p.f, _p);
+      sampleSeg(sg, p.f, _p, s.lead);
       dPos[base * 3] = _p.x + p.jx; dPos[base * 3 + 1] = _p.y + p.jy; dPos[base * 3 + 2] = _p.z + p.jz;
       const fadeIn = Math.min(1, (p.seg === 0 ? p.f * 8 : 1));
       dAlpha[base] = fadeIn * s.opacity;
       const step = 0.009 / Math.max(0.05, sg.r.length);
       for (let k = 1; k < TRAIL; k++) {
-        samplePos(sg.r, p.f - step * k, _p);
+        sampleSeg(sg, p.f - step * k, _p, s.lead);
         const o = (base + k) * 3;
         dPos[o] = _p.x + p.jx; dPos[o + 1] = _p.y + p.jy; dPos[o + 2] = _p.z + p.jz;
         dAlpha[base + k] = fadeIn * s.opacity * (0.55 - k * 0.14);
@@ -541,7 +557,7 @@ export function createVessels(stage, anatomy) {
     setDrugLevel,
     setDrugTargets,
     get drugLevel() { return drugLevel; },
-    routeStart(name) { const r = byName[name]; return r ? r.curve.getPointAt(0) : null; },
+    routeStart(name) { const r = byName[name]; return r ? r.curve.getPointAt(0) : null; }, // model space
     dispose() {
       offFrame(); offTheme();
       stream?.cancel();

@@ -1,4 +1,4 @@
-/* Behind the Vial: #stage-host internals (body3d).
+/* PeptideScope: #stage-host internals (body3d).
    Canvas, callout labels in #callout-layer, the small 3D toolbar, the skip button, the colour key and
    the zoom hint. The frame itself (size, background, HUD, loading, fallback) belongs to app.css.
    Colours come from tokens.css with fallbacks so the sandbox works without it. */

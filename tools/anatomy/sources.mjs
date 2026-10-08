@@ -50,7 +50,7 @@ const hashFile = (file, algo) => createHash(algo).update(readFileSync(file)).dig
 async function download(url, file, log) {
   mkdirSync(dirname(file), { recursive: true });
   log(`  downloading ${url}`);
-  const res = await fetch(url, { redirect: 'follow', headers: { 'user-agent': 'behind-the-vial anatomy pipeline (dev tooling)' } });
+  const res = await fetch(url, { redirect: 'follow', headers: { 'user-agent': 'peptidescope anatomy pipeline (dev tooling)' } });
   if (!res.ok) throw new Error(`download failed ${res.status} ${url}`);
   await pipeline(Readable.fromWeb(res.body), createWriteStream(file));
 }

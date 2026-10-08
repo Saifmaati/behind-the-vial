@@ -1,4 +1,4 @@
-// Behind the Vial: the content UI's public API (the only content entry point main.js uses).
+// PeptideScope: the content UI's public API (the only content entry point main.js uses).
 //
 //   mountPicker(host, peptides, { selectedId })   → { select(id), selected, destroy() }   emits peptide:select
 //   mountSitePicker(host, { selected })            → { select(site), selected, destroy() } emits site:select, reflects site:select

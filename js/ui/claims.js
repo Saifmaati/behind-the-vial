@@ -1,4 +1,4 @@
-// Behind the Vial: #claims: what creators say vs what the evidence shows.
+// PeptideScope: #claims: what creators say vs what the evidence shows.
 // Verdict chips: Supported / Partly true / Not supported / Unknown (never green).
 import { html, VERDICT, uid } from './util.js';
 import { icon } from './icons.js';
