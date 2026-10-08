@@ -7,16 +7,14 @@
 // vialTests[].pctOfLabel: measured amount as a % of what the label claims;
 //   null means none of the labeled drug was found. Label amounts in mg are
 //   deliberately left out: the UI only ever shows "% of the label".
-//   vialTests[].id is drawn as the chart's column tick (first three letters,
-//   upper-cased), so the study vials keep the paper's own sample numbers.
-// contamination[]: { id, title, text, sources, ledger } (needs a renderer
-//   block in js/ui/graymarket.js; not rendered yet).
+//   The study vials are numbered as in the paper (its samples 1, 2 and 3).
+// contamination[]: { id, title, text, sources, ledger }, rendered as cards by
+//   js/ui/graymarket.js.
+// Wording: neutral, never commercial (tests/commerce.test.mjs), and no citation
+//   of a source whose title or URL names a seller (docs/decisions/data-wording.md).
 
 // Source ids (see data/sources.js)
 const FDA_WL_INDEX = 'u-s-2026-fda-warning-letters-index';
-const FDA_WL_LOVEGA = 'u-s-2026-warning-letter-lovega-llc';
-const FDA_WL_AUG2026 = 'u-s-2026-warning-letter-peptide-partners';
-const FDA_WL_TELEHEALTH = 'u-s-2025-warning-letter-genlabmeds-marcs';
 const FDA_CONCERNS = 'u-s-2026-fda-s-concerns-unapproved';
 const OPENFDA = 'u-s-2026-openfda-drug-adverse-event';
 const OPENFDA_NOTE = 'u-s-2026-openfda-drug-adverse-event-2';
@@ -35,8 +33,6 @@ const DAR_STUDY = 'wiley-drug-2026-composition-labelling-accuracy-products';
 const JMIR_SEMA = 'journal-medical-2024-multifactor-quality-safety-analysis';
 const FINNRICK = 'finnrick-2026-retatrutide-safety-testing-results';
 const FINNRICK_METHOD = 'finnrick-2026-methodology';
-const FINNRICK_UNDER = 'finnrick-2026-retatrutide-lab-test-certificate';
-const FINNRICK_OVER = 'finnrick-2026-retatrutide-lab-test-certificate-2';
 
 export const GRAY = {
   headline: 'With these products, you cannot know how much you are actually getting.',
@@ -55,20 +51,20 @@ export const GRAY = {
       id: 'public-citizen-letters',
       value: '14',
       text: 'FDA warning letters to retatrutide sellers, as counted by the consumer group Public Citizen in its June 2026 report. It said the warnings were not stopping sales: by May 2026, 11 of the 14 sellers still advertised retatrutide or other unapproved peptide drugs, and 8 were still selling retatrutide itself. The FDA sent 5 more letters to sellers in August 2026, after this count.',
-      sources: [PUBLIC_CITIZEN, FDA_WL_AUG2026],
-      ledger: ['gray-fda-letters-14-public-citizen', 'gray-fda-letters-ignored-pc', 'gray-fda-letters-aug2026'],
+      sources: [PUBLIC_CITIZEN, FDA_WL_INDEX],
+      ledger: ['gray-fda-letters-14-public-citizen', 'gray-fda-letters-ignored-pc', 'gray-fda-letters-21-total'],
     },
     {
       id: 'no-compounding',
       value: 'None approved',
-      text: 'There is no FDA-approved version of retatrutide, and US law does not allow pharmacies to "compound" (custom-mix) it. The FDA says it is not part of any approved medicine and has not been found safe and effective for any condition. In September 2025 the FDA warned six online and telehealth businesses that were selling "compounded" retatrutide to the public.',
-      sources: [FDA_CONCERNS, FDA_WL_TELEHEALTH],
-      ledger: ['gray-fda-cannot-compound', 'gray-fda-letters-sep2025-telehealth'],
+      text: 'There is no FDA-approved version of retatrutide, and US law does not allow pharmacies to "compound" (custom-mix) it. The FDA says it is not part of any approved medicine and has not been found safe and effective for any condition.',
+      sources: [FDA_CONCERNS],
+      ledger: ['gray-fda-cannot-compound'],
     },
     {
       id: 'pc-companies',
       value: '100+',
-      text: 'Companies that appear to be selling retatrutide openly, according to Public Citizen\'s June 2026 report. It said the FDA had mostly sent only warning letters. In February 2026 the government charged a Florida man with selling retatrutide, and in April 2026 prosecutors in Utah charged a doctor who had ordered peptides from China, retatrutide among them. A charge is an accusation, not proof of guilt.',
+      text: 'Companies that appear to be selling retatrutide openly, according to Public Citizen\'s June 2026 report. It said the FDA had mostly sent only warning letters. In February 2026 the government charged a Florida man with selling retatrutide, and in April 2026 prosecutors in Utah charged a doctor who had obtained peptides from China, retatrutide among them. A charge is an accusation, not proof of guilt.',
       sources: [PUBLIC_CITIZEN],
       ledger: ['gray-pc-100-companies'],
     },
@@ -130,16 +126,16 @@ export const GRAY = {
     {
       id: 'finnrick-identity',
       value: '31 of 194',
-      text: 'Vials where the lab could not find the labeled drug at all. These come from the 200 most recent retatrutide tests (September 15–25, 2026) logged by Finnrick, an independent testing company; 6 of the 200 were incomplete. In all, 63 of the 200 vials failed Finnrick\'s quality checks. Vials are sent in by sellers and buyers, so they are not a random sample of what is sold.',
+      text: 'Vials where the lab could not find the labeled drug at all. These come from the 200 most recent retatrutide tests (September 15–25, 2026) logged by Finnrick, an independent testing company; 6 of the 200 were incomplete. In all, 63 of the 200 vials failed Finnrick\'s quality checks. Vials come from sellers and from people who mail them in for testing, so they are not a random sample of what is sold.',
       sources: [FINNRICK],
       ledger: ['gray-finnrick-recent-200', 'gray-finnrick-scale'],
     },
     {
       id: 'finnrick-range',
       value: '−76% to +45%',
-      text: 'How far the amount of drug was from the label, in the 163 of those vials where it was measured: from 76% less than the label to 45% more. More than half (98 of the 163) were within 10% of the label either way. Two vials tested on September 23, 2026 were both 99.9% pure, yet one held 76% less drug than its label said and the other held 45% more. A pure vial can still hold the wrong amount.',
-      sources: [FINNRICK, FINNRICK_UNDER, FINNRICK_OVER],
-      ledger: ['gray-finnrick-recent-200', 'gray-finnrick-vial-underfill', 'gray-finnrick-vial-overfill'],
+      text: 'How far the amount of drug was from the label, in the 163 of those vials where it was measured: from 76% less than the label to 45% more. More than half (98 of the 163) were within 10% of the label either way. So even a vial that holds the right drug can hold much less or much more than its label says.',
+      sources: [FINNRICK],
+      ledger: ['gray-finnrick-recent-200'],
     },
   ],
 
@@ -159,7 +155,7 @@ export const GRAY = {
     },
     {
       id: 's1',
-      label: 'Australian study, sample 1',
+      label: 'Australian study, vial 1',
       pctOfLabel: 51.3,
       identity: 'pass',
       note: 'Held about half the amount on its label. Lab tests found retatrutide in it (the molecule\'s weight matched the real drug), so the problem was the amount, not a swapped drug. A match like this cannot rule out other substances in the vial. From a journal study that tested only three vials, which may not reflect every product sold.',
@@ -172,7 +168,7 @@ export const GRAY = {
     },
     {
       id: 's3',
-      label: 'Australian study, sample 3',
+      label: 'Australian study, vial 3',
       pctOfLabel: 165.0,
       identity: 'pass',
       note: 'Held about 1.65 times the amount on its label. Lab tests found retatrutide in it.',
@@ -181,7 +177,7 @@ export const GRAY = {
     },
     {
       id: 's2',
-      label: 'Australian study, sample 2',
+      label: 'Australian study, vial 2',
       pctOfLabel: 190.0,
       identity: 'pass',
       note: 'Held almost double the amount on its label (1.9 times). Lab tests found retatrutide in it.',
@@ -194,7 +190,7 @@ export const GRAY = {
     {
       id: 'not-tested',
       title: 'Germs and bacterial toxins are mostly not tested',
-      text: 'Most lab test panels for these vials do not check for endotoxin, a toxin left behind by bacteria that can cause dangerous reactions when injected. Finnrick\'s public results table has no column for sterility (being free of germs) or endotoxin; those are optional paid extra tests. The Australian journal study did not test for either. No peer-reviewed study has yet published sterility or endotoxin results for gray-market retatrutide. So a "pass" does not mean a vial is clean.',
+      text: 'Most lab test panels for these vials do not check for endotoxin, a toxin left behind by bacteria that can cause dangerous reactions when injected. Finnrick\'s public results table has no column for sterility (being free of germs) or endotoxin; those are optional add-on tests. The Australian journal study did not test for either. No peer-reviewed study has yet published sterility or endotoxin results for gray-market retatrutide. So a "pass" does not mean a vial is clean.',
       sources: [FINNRICK_METHOD, FINNRICK, DAR_STUDY],
       ledger: [
         'gray-finnrick-endotoxin-not-required',
@@ -220,13 +216,6 @@ export const GRAY = {
         'gap-gray-contaminant-sterility-data-tga-nonsterile-infection-anaphylaxis',
         'gap-gray-contaminant-sterility-data-tga-harms-reported',
       ],
-    },
-    {
-      id: 'injection-bypass',
-      title: 'Injecting skips some of the body\'s defenses',
-      text: 'The FDA warns that injected products skip some of the body\'s key defenses against germs and toxins. Anything dirty inside a vial goes straight in, and the FDA says that can lead to serious and life-threatening conditions.',
-      sources: [FDA_WL_LOVEGA],
-      ledger: ['gray-fda-injectable-danger'],
     },
     {
       id: 'liver-cluster',

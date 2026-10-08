@@ -14,16 +14,24 @@
 // skin by region and thickens or thins the fat layer of the injection cross-section, age adds a slight
 // stature loss and shifts fat toward the abdomen, and Female swaps in body-female.glb when published.
 // It never touches the timeline, the effects, the risk check or any content. Locked while the
-// injection sequence plays.
+// injection sequence plays. Skin tone (appearance only) colours the lifelike skin.
 //
-// Extra options (optional, for tests and the sandbox): { bus, anatomy: 'auto' | 'placeholder' | 'glb', assetBase }.
+// Lifelike anatomy (v3): the "Layers" button opens the layers panel (Skin · Muscles when the detail
+// asset exists · Skeleton · Organs · Vessels, and the skin look from lifelike to glass). Pointing at a
+// structure names it (hover on desktop, tap on touch); the wheel and pinch zoom toward the surface under
+// the pointer; double-click or double-tap flies to that spot. While the drug travels (bloodstream and
+// distribution) the scene switches to the glass view with organs and vessels shown, then restores the
+// visitor's choice. The detail asset (close-up skin, muscles, atlas names) loads lazily when named.
+//
+// Extra options (optional, for tests and the sandbox): { bus, anatomy: 'auto' | 'procedural' | 'glb', assetBase,
+//   detail: { glb, atlas } (detail asset paths relative to the asset folder), quality: 'auto' | 'high' | 'low' }.
 import * as THREE from 'three';
 import { createStage } from './stage.js';
 import { loadAnatomy, ORGAN_LABELS, bodyParams, hasVariant } from './anatomy.js';
 import { createVessels } from './vessels.js';
 import { createInjection } from './injection.js';
 import { createCallouts } from './callouts.js';
-import { mountBodyEditor, normalizeBody, BODY_EDITOR_DEFAULTS } from '../ui/bodyeditor.js';
+import { mountBodyEditor, mountLayersPanel, normalizeBody, BODY_EDITOR_DEFAULTS } from '../ui/bodyeditor.js';
 
 const SITE_LABELS = { abdomen: 'Abdomen', thigh: 'Thigh', arm: 'Upper arm' };
 const SEVERITY = { common: 1, notable: 2, serious: 3 };
@@ -89,13 +97,17 @@ export async function mountBody(host, opts = {}) {
     throw new Error('WebGL 2 unavailable');
   }
 
-  const stage = await createStage(host, { reducedMotion: reducedMotionInit, theme: themeInit });
+  // The injection module's events pass through here first (the scene reacts to its phases), then the bus.
+  let onSeqEvent = null;
+  const seqEmit = (t, d) => { try { onSeqEvent?.(t, d); } catch (e) { console.error(e); } bus.emit(t, d); };
+
+  const stage = await createStage(host, { reducedMotion: reducedMotionInit, theme: themeInit, quality: opts.quality || 'auto' });
   let anatomy, vessels, callouts, injection;
   try {
-    anatomy = await loadAnatomy(stage, { source: opts.anatomy || 'auto', base: opts.assetBase });
+    anatomy = await loadAnatomy(stage, { source: opts.anatomy || 'auto', base: opts.assetBase, detail: opts.detail || null });
     vessels = createVessels(stage, anatomy);
     callouts = createCallouts(stage, layer, { onSelect: (organ) => bus.emit('organ:focus', { organ }) });
-    injection = createInjection(stage, anatomy, vessels, { emit: (t, d) => bus.emit(t, d), callouts });
+    injection = createInjection(stage, anatomy, vessels, { emit: seqEmit, callouts });
   } catch (e) {
     stage.dispose();
     for (const el of added) el.remove();
@@ -133,8 +145,11 @@ export async function mountBody(host, opts = {}) {
   const credit = document.createElement('p');
   credit.className = 'stage-credit';
   credit.innerHTML = `Anatomy: <a href="${opts.creditHref || './ASSETS.md'}" target="_blank" rel="noopener" aria-label="Anatomy: CC BY 4.0, from HRA, VOXEL-MAN and BodyParts3D. Asset licences (opens in a new tab)"><span class="stage-credit__long">CC BY 4.0 (HRA, VOXEL-MAN, BodyParts3D)</span><span class="stage-credit__short">CC BY 4.0</span></a>`;
-  host.append(tools, skipBtn, legend, credit);
-  added.push(tools, skipBtn, legend, credit);
+  // "Layers" and "Body" sit together in the top-right corner
+  const panelBtns = document.createElement('div');
+  panelBtns.className = 'stage-panel-btns';
+  host.append(tools, skipBtn, legend, credit, panelBtns);
+  added.push(tools, skipBtn, legend, credit, panelBtns);
   host.classList.add('has-body3d');
 
   let disposed = false;
@@ -167,6 +182,11 @@ export async function mountBody(host, opts = {}) {
     else if (!node) hudModel.append(document.createTextNode(text));
   }
   // Labels keep clear of the open panel: a side panel on wide stages, a bottom sheet on narrow ones.
+  // Only one of the two panels is open at a time.
+  function panelToggled(which, open, panel) {
+    if (open) (which === 'body' ? layersUI : editor)?.close({ restoreFocus: false });
+    editorInsets(open, panel);
+  }
   function editorInsets(open, panel) {
     if (!open || !panel) { callouts.setInsets(state.playing ? { right: 0 } : { right: 0, bottom: 0 }); return; }
     const hr = host.getBoundingClientRect(), pr = panel.getBoundingClientRect();
@@ -177,12 +197,50 @@ export async function mountBody(host, opts = {}) {
     initial: bodyDesc,
     femaleAvailable: false,
     onChange: (d) => bus.emit('body:change', d),
-    onToggle: editorInsets,
+    onToggle: (open, panel) => panelToggled('body', open, panel),
     onOpen: () => { if (!femaleOk) checkFemale(); },
+    buttonHost: panelBtns,
   });
   added.push(editor.elements.toggle, editor.elements.panel);
+
+  // ---------------------------------------------------------------- anatomy layers + skin look (view only)
+  // view = what the visitor chose; while the drug travels the sequence borrows the glass view.
+  const view = { layers: { ...anatomy.layers }, xray: anatomy.xray };
+  let seqGlass = false;
+  function applyView({ instant = false } = {}) {
+    if (state.playing) {
+      // the sequence needs the organs and vessels; the glass look once the drug is travelling
+      anatomy.setLayers({ ...view.layers, organs: true, vessels: true });
+      anatomy.setXray(seqGlass ? 1 : view.xray, { instant });
+    } else {
+      anatomy.setLayers(view.layers);
+      anatomy.setXray(view.xray, { instant });
+    }
+  }
+  const layersUI = mountLayersPanel(host, {
+    initial: view,
+    muscles: anatomy.hasMuscles,
+    structures: anatomy.structures(),
+    onChange: (v) => { view.layers = { ...v.layers }; view.xray = v.xray; applyView(); },
+    onFocus: (organ) => bus.emit('organ:focus', { organ }),
+    onToggle: (open, panel) => panelToggled('layers', open, panel),
+    buttonHost: panelBtns,
+  });
+  panelBtns.prepend(layersUI.elements.toggle);
+  added.push(layersUI.elements.toggle, layersUI.elements.panel);
+  function loadDetailLater() {
+    const a = anatomy;
+    if (!a.detailInfo) return;
+    const go = () => a.loadDetail().then((ok) => {
+      if (!ok || disposed || a !== anatomy) return;
+      layersUI.setMuscles(a.hasMuscles);
+      layersUI.setStructures(a.structures());
+      applyView({ instant: true });
+    });
+    if (typeof requestIdleCallback === 'function') requestIdleCallback(go, { timeout: 2500 }); else setTimeout(go, 1200);
+  }
   function checkFemale() {
-    if (opts.anatomy === 'placeholder') return Promise.resolve(false);
+    if (opts.anatomy === 'procedural') return Promise.resolve(false);
     return hasVariant('female', opts.assetBase).then((ok) => {
       if (disposed) return false;
       femaleOk = ok;
@@ -208,6 +266,8 @@ export async function mountBody(host, opts = {}) {
     if (state.playing) { pendingBody = bodyDesc; return; } // the sequence owns the body until it ends
     if (anatomy.variant !== bodyDesc.sex) { swapVariant(bodyDesc.sex); return; }
     anatomy.setBody(bodyParams(bodyDesc, anatomy.modelHeight), { instant });
+    anatomy.setSkinTone(bodyDesc.skinTone);
+    anatomy.setSkinAge(bodyDesc.age);
     updateHud();
   }
   async function swapVariant(variant) {
@@ -245,8 +305,12 @@ export async function mountBody(host, opts = {}) {
     for (const k of Object.keys(normalCache)) delete normalCache[k];
     anatomy = next;
     vessels = createVessels(stage, anatomy);
-    injection = createInjection(stage, anatomy, vessels, { emit: (t, d) => bus.emit(t, d), callouts });
+    injection = createInjection(stage, anatomy, vessels, { emit: seqEmit, callouts });
     offBodyStep = anatomy.onBodyChange(onBodyStep);
+    applyView({ instant: true });
+    layersUI.setMuscles(anatomy.hasMuscles);
+    layersUI.setStructures(anatomy.structures());
+    loadDetailLater();
     host.dataset.anatomy = anatomy.source;
     host.dataset.variant = anatomy.variant;
     // restore what the scene was showing
@@ -385,6 +449,14 @@ export async function mountBody(host, opts = {}) {
     state.playing = on;
     skipBtn.hidden = !on;
     editor.setLocked(on);
+    layersUI.setLocked(on);
+    stage.autoCenter = !on;
+    if (on !== was) {
+      seqGlass = false;
+      clearPin();
+      callouts.remove('hover');
+      applyView();
+    }
     host.classList.toggle('is-sequence-playing', on);
     for (const g of ['effects', 'risk', 'focus']) callouts.setGroupVisible(g, !on);
     // keep labels clear of the skip button while it shows (it sits higher on wide stages; see stage.css)
@@ -399,6 +471,13 @@ export async function mountBody(host, opts = {}) {
     renderSiteLabels();
     if (!on && pendingBody) { const b = pendingBody; pendingBody = null; applyBody(b); }
   }
+
+  // The drug travels from the bloodstream phase on: glass view until the sequence ends.
+  onSeqEvent = (t, d) => {
+    if (t !== 'sequence:phase' || !state.playing) return;
+    const travel = d?.phase === 'bloodstream' || d?.phase === 'distribution';
+    if (travel !== seqGlass) { seqGlass = travel; applyView(); }
+  };
 
   // ---------------------------------------------------------------- bus wiring
   const offs = [];
@@ -475,23 +554,49 @@ export async function mountBody(host, opts = {}) {
     if (state.focus) anatomy.highlight(state.focus, { channel: 'focus', color: HC.focus, intensity: 0.16, pulse: 0 });
   });
 
-  // ---------------------------------------------------------------- pointer: hotspots + organs
+  // ---------------------------------------------------------------- pointer: hotspots, structures, deep zoom
+  // Hover (mouse) names the structure under the pointer; a tap names it on touch (an organ also gets
+  // the organ focus, as before); double-click / double-tap flies to the spot. Labels sit on the point
+  // that was picked, so they stay on screen when zoomed in close.
   const canvas = stage.canvas;
   const camRel = new THREE.Vector3();
   let down = null;
   const finePointer = !!globalThis.matchMedia?.('(hover: hover) and (pointer: fine)').matches;
-  function pickAt(x, y) {
-    if (!state.playing) {
-      const h = stage.pick(x, y, anatomy.hotspotTargets);
-      const site = h?.object?.userData?.site;
-      const f = site && anatomy.siteFrame(site);
-      // not a hotspot on the far side of the body (the same limit the site labels and rings use)
-      if (f && f.normal.dot(camRel.subVectors(stage.camera.position, f.point)) > -0.45 * camRel.length()) return { site };
-    }
-    const o = stage.pick(x, y, anatomy.pickables);
-    if (o?.object?.userData?.organId) return { organ: o.object.userData.organId };
-    return null;
+  stage.surfacePicker = (x, y) => anatomy.pickStructure(x, y)?.point || null;
+  function pickSite(x, y) {
+    if (state.playing) return null;
+    const h = stage.pick(x, y, anatomy.hotspotTargets);
+    const site = h?.object?.userData?.site;
+    if (site && !anatomy.siteHotspots[site]?.visible) return null; // rings step aside in a close-up
+    const f = site && anatomy.siteFrame(site);
+    // not a hotspot on the far side of the body (the same limit the site labels and rings use)
+    return f && f.normal.dot(camRel.subVectors(stage.camera.position, f.point)) > -0.45 * camRel.length() ? site : null;
   }
+  const hoverAnchor = new THREE.Vector3();
+  const pinAnchor = new THREE.Vector3();
+  function structureLabel(id, info, anchor) {
+    anchor.copy(info.point);
+    callouts.set(id, { anchor, title: info.title, text: info.text, tone: 'info', group: 'hover', interactive: false, organ: info.organ || undefined });
+  }
+  function clearPin() { callouts.remove('pin'); }
+  function focusAt(x, y) {
+    if (state.playing) return;
+    const info = anatomy.pickStructure(x, y);
+    if (!info) return;
+    callouts.clear('hover');
+    structureLabel('pin', info, pinAnchor);
+    stage.focusPoint(info.point);
+  }
+  function tapAt(x, y) {
+    const site = pickSite(x, y);
+    if (site) { bus.emit('site:select', { site }); return; }
+    const info = anatomy.pickStructure(x, y);
+    if (info?.organ && !state.playing) { clearPin(); bus.emit('organ:focus', { organ: info.organ }); return; }
+    if (info && !state.playing) { structureLabel('pin', info, pinAnchor); return; }
+    clearPin();
+    if (state.focus) setFocus(null);
+  }
+  let lastTap = null, tapTimer = 0;
   const onDown = (e) => { down = { x: e.clientX, y: e.clientY, t: performance.now() }; };
   const onUp = (e) => {
     if (!down) return;
@@ -499,12 +604,21 @@ export async function mountBody(host, opts = {}) {
     const quick = performance.now() - down.t < 600;
     down = null;
     if (moved > 6 || !quick) return;
-    const hit = pickAt(e.clientX, e.clientY);
-    if (hit?.site) bus.emit('site:select', { site: hit.site });
-    else if (hit?.organ && !state.playing) bus.emit('organ:focus', { organ: hit.organ });
-    else if (state.focus) setFocus(null);
+    if (e.pointerType === 'touch') {
+      // a second tap close by within 300 ms is a double-tap (fly to the spot); otherwise a tap
+      const now = performance.now();
+      if (lastTap && now - lastTap.t < 300 && Math.hypot(e.clientX - lastTap.x, e.clientY - lastTap.y) < 30) {
+        clearTimeout(tapTimer); lastTap = null; focusAt(e.clientX, e.clientY); return;
+      }
+      lastTap = { t: now, x: e.clientX, y: e.clientY };
+      clearTimeout(tapTimer);
+      tapTimer = setTimeout(() => { lastTap = null; tapAt(e.clientX, e.clientY); }, 260);
+      return;
+    }
+    tapAt(e.clientX, e.clientY);
   };
-  let hoverRaf = 0, hoverEv = null;
+  const onDbl = (e) => { if (e.target === canvas) { e.preventDefault(); focusAt(e.clientX, e.clientY); } };
+  let hoverRaf = 0, hoverEv = null, hoverAt = 0;
   const onMove = (e) => {
     if (!finePointer || e.pointerType !== 'mouse' || down) return;
     hoverEv = e;
@@ -513,22 +627,29 @@ export async function mountBody(host, opts = {}) {
       hoverRaf = 0;
       const ev = hoverEv;
       if (!ev) return;
-      const hit = pickAt(ev.clientX, ev.clientY);
-      anatomy.setHoverSite(hit?.site || null);
-      canvas.style.cursor = hit ? 'pointer' : '';
-      if (hit?.organ && !state.playing && hit.organ !== state.focus && !callouts.has(`effect:${hit.organ}`) && !callouts.has(`risk:${hit.organ}`)) {
-        callouts.set('hover', { anchor: anchorOf(hit.organ), title: label(hit.organ), text: '', tone: 'info', group: 'hover', interactive: false });
-      } else callouts.clear('hover');
+      const now = performance.now();
+      if (now - hoverAt < 50) { hoverRaf = requestAnimationFrame(() => { hoverRaf = 0; onMove(ev); }); return; }
+      hoverAt = now;
+      const site = pickSite(ev.clientX, ev.clientY);
+      anatomy.setHoverSite(site);
+      const info = site || state.playing ? null : anatomy.pickStructure(ev.clientX, ev.clientY);
+      canvas.style.cursor = site || info?.organ ? 'pointer' : '';
+      const taken = info?.organ && (info.organ === state.focus || callouts.has(`effect:${info.organ}`) || callouts.has(`risk:${info.organ}`));
+      if (info && !taken) structureLabel('hover', info, hoverAnchor);
+      else callouts.remove('hover');
     });
   };
-  const onLeave = () => { anatomy.setHoverSite(null); callouts.clear('hover'); canvas.style.cursor = ''; };
+  const onLeave = () => { anatomy.setHoverSite(null); callouts.remove('hover'); canvas.style.cursor = ''; };
   const onKey = (e) => {
-    if (e.key === 'Escape' && state.focus) { setFocus(null); stage.homeView(); e.preventDefault(); }
+    if (e.key !== 'Escape') return;
+    if (callouts.has('pin')) { clearPin(); e.preventDefault(); }
+    if (state.focus) { setFocus(null); stage.homeView(); e.preventDefault(); }
   };
   canvas.addEventListener('pointerdown', onDown);
   canvas.addEventListener('pointerup', onUp);
   canvas.addEventListener('pointermove', onMove);
   canvas.addEventListener('pointerleave', onLeave);
+  canvas.addEventListener('dblclick', onDbl);
   canvas.addEventListener('keydown', onKey);
 
   tools.addEventListener('click', (e) => {
@@ -537,16 +658,23 @@ export async function mountBody(host, opts = {}) {
     const act = b.dataset.act;
     if (act === 'in') stage.zoom(1.25);
     else if (act === 'out') stage.zoom(0.8);
-    else if (act === 'reset') { if (state.focus) setFocus(null); stage.homeView(); }
+    else if (act === 'reset') { if (state.focus) setFocus(null); clearPin(); stage.homeView(); }
   });
   skipBtn.addEventListener('click', () => { injection.skip(); });
 
   renderSiteLabels();
+  // site labels step aside in a close-up (the rings do too, in anatomy.js)
+  let sitesShown = true;
+  const offSitesFrame = stage.onFrame(() => {
+    const show = stage.camera.position.distanceTo(stage.controls.target) > 0.3;
+    if (show !== sitesShown) { sitesShown = show; callouts.setGroupVisible('sites', show); }
+  });
 
   // ---------------------------------------------------------------- ready
   host.dataset.anatomy = anatomy.source;
   host.dataset.variant = anatomy.variant;
   checkFemale();
+  loadDetailLater();
   // a body set before the scene mounted (sandbox, tests) is applied at once
   { const last = bus.last?.('body:change'); if (last) applyBody(last, { instant: true }); else updateHud(); }
   try { bus.emit('stage:ready', { anatomy: anatomy.source }); } catch (e) { console.error(e); }
@@ -555,6 +683,7 @@ export async function mountBody(host, opts = {}) {
     // getters: the anatomy, vessels and injection are rebuilt when the body editor swaps Male / Female
     get stage() { return stage; }, get anatomy() { return anatomy; }, get vessels() { return vessels; },
     get injection() { return injection; }, get callouts() { return callouts; }, get editor() { return editor; },
+    get layers() { return layersUI; }, get view() { return { layers: { ...view.layers }, xray: view.xray }; },
     get body() { return { ...bodyDesc }; },
     get state() { return { ...state }; },
     dispose() {
@@ -565,6 +694,11 @@ export async function mountBody(host, opts = {}) {
       editor.dispose();
       for (const off of offs) { try { off(); } catch { /* ignore */ } }
       cancelAnimationFrame(hoverRaf);
+      clearTimeout(tapTimer);
+      offSitesFrame();
+      stage.surfacePicker = null;
+      layersUI.dispose();
+      canvas.removeEventListener('dblclick', onDbl);
       canvas.removeEventListener('pointerdown', onDown);
       canvas.removeEventListener('pointerup', onUp);
       canvas.removeEventListener('pointermove', onMove);

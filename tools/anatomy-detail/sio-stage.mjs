@@ -36,11 +36,16 @@ export function openSIO(labelDir, xlsx, regB, { log = () => {} } = {}) {
     for (let z = z0; z <= z1; z++) for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) if (lut[vol[(z * H + y) * W + x]]) data[(x - x0 + pad) + nx * ((y - y0 + pad) + ny * (z - z0 + pad))] = 1;
     return { data, nx, ny, nz, origin: [x0 - pad, y0 - pad, z0 - pad], h: 1 };
   }
-  /** Smooth closed surface of a label set, in the HRA frame. keep = number of largest components to keep (0 = all). */
-  function labelMesh(labels, { blurPasses = 1, iterations = 10, keep = 0 } = {}) {
-    let g = cropGrid(labels); if (!g) return null;
+  /**
+   * Smooth closed surface of a label set, in the HRA frame. keep = number of largest components to keep (0 = all);
+   * close = morphological closing radius in voxels (bridges 1-2 mm slice-to-slice gaps of hand segmentation);
+   * iso < 0.5 keeps 1-3 voxel thin sheets from breaking up after the blur.
+   */
+  function labelMesh(labels, { blurPasses = 1, iterations = 10, keep = 0, close = 0, iso = 0.5 } = {}) {
+    let g = cropGrid(labels, 2 + close); if (!g) return null;
+    if (close) g = V.erode(V.dilate(g, close), close);
     if (keep) g = V.largestComponent(g, keep);
-    const m = V.surfaceNets(V.blur(g, blurPasses), 0.5);
+    const m = V.surfaceNets(V.blur(g, blurPasses), iso);
     return M.orientOutward(M.taubin(M.mapVertices(m, (x, y, z) => sim.apply([x, y, z])), { iterations }));
   }
   return { sio, LT, L, sim, inv, cropGrid, labelMesh };

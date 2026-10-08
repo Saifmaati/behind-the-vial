@@ -24,7 +24,7 @@ export function comingSoonCard(p, ctx) {
         <h3 class="c-soon__name">${p.name}</h3>
         ${p.aka?.length ? html`<p class="c-soon__aka">Also called ${p.aka.join(', ')}</p>` : ''}
       </div>
-      <div class="c-soon__status">${statusPill(p.status, { small: false })}</div>
+      <div class="c-soon__status">${statusPill(p.status, { small: false, statusLabel: p.statusLabel })}</div>
     </div>
     ${p.statusLabel ? html`<p class="c-soon__label">${p.statusLabel}</p>` : ''}
     ${p.oneLine ? html`<p class="c-soon__line">${p.oneLine}${ctx.mark(p)}</p>` : ''}
@@ -38,7 +38,7 @@ export function comingSoonSection(key, p) {
   return html`
   <div class="c-soon c-soon--compact">
     <p class="c-soon__progress">${icon('progress', { size: 18 })}<span><strong>${TOPIC[key] || 'This section'} for ${p.name}: in progress.</strong> Full visual entry in progress.</span></p>
-    ${statusPill(p.status)}
+    ${statusPill(p.status, { statusLabel: p.statusLabel })}
   </div>
   ${key === 'red-flags' || key === 'too-much' ? html`
   <p class="c-note">Whatever the product: for trouble breathing, chest pain, fainting or a seizure, call 911.</p>

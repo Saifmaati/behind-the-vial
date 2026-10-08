@@ -7,7 +7,8 @@ import { graySummary } from './graymarket.js';
 
 export function renderTooMuch(entry, ctx, { gray } = {}) {
   const tm = entry.tooMuch || {};
-  const g = gray ? graySummary(gray) : null;
+  const n = gray?.vialTests?.length || 0;
+  const g = gray ? graySummary(gray, { lead: `In the ${n === 1 ? 'vial test' : `${n} vial tests`} on this page` }) : null;
   return html`
   <div class="c-toomuch">
     ${tm.intro ? html`<p class="c-prose c-intro">${tm.intro}${ctx.cite(tm.sources)}</p>` : ''}
@@ -27,8 +28,8 @@ export function renderTooMuch(entry, ctx, { gray } = {}) {
       <span class="c-callout__icon">${icon('vial', { size: 22 })}</span>
       <div>
         <h3 class="c-callout__title">Why no one can say how much is "too much" from an online vial</h3>
-        <p>${gray.headline}${g?.sentence ? html` ${g.sentence}` : ''}${ctx.cite(gray.sources)}</p>
-        <p><a class="c-link" href="#gray-market">See the vial tests ${icon('arrow', { size: 14 })}</a></p>
+        <p>${gray.headline}${g?.sentence ? html` ${g.sentence}` : ''}${ctx.cite([...(gray.sources || []), ...(gray.vialTests || []).flatMap((t) => t.sources || [])])}</p>
+        <p><a class="c-link" href="#gray-market">See what labs found inside the vials ${icon('arrow', { size: 14 })}</a></p>
       </div>
     </aside>` : ''}
   </div>`;

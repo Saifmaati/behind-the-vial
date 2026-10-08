@@ -29,13 +29,13 @@ export function renderEvidence(entry, ctx) {
         return html`
       <li class="c-rung${reached ? ' c-rung--reached' : ' c-rung--ahead'}${isCurrent ? ' c-rung--current' : ''}"${isCurrent ? html` aria-current="step"` : ''}>
         <div class="c-rung__meter" aria-hidden="true">${EVIDENCE_LEVELS.map((_, k) => html`<span class="${k <= i ? 'on' : ''}"></span>`)}</div>
-        <p class="c-rung__step">Level ${i + 1} of 4</p>
+        <p class="c-rung__step">Rung ${i + 1} of ${EVIDENCE_LEVELS.length}</p>
         <h3 class="c-rung__name">${meta.name}</h3>
         <p class="c-rung__what">${meta.what}</p>
         ${isCurrent ? html`<p class="c-rung__badge">${entry.name} is here<span class="c-sr"> (the strongest level reached so far)</span></p>` : ''}
         ${items.length
           ? items.map((r) => html`<p class="c-rung__here">${r.text}${ctx.mark(r)}</p>`)
-          : html`<p class="c-rung__none">${reached ? 'Nothing listed at this level in our sources.' : 'Not reached yet.'}</p>`}
+          : html`<p class="c-rung__none">${reached ? 'Nothing listed on this rung in our sources.' : 'Not reached yet.'}</p>`}
       </li>`;
       })}
     </ol>

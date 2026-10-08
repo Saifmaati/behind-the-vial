@@ -16,6 +16,9 @@
 // and follow the editable body's scale. When the skin is offset (weight), drug particles leave from the
 // displaced skin point and merge into the vein within the first few centimetres of the route.
 // Luxury palette: oxblood arterial blood, wine venous blood, the drug as luminous champagne light.
+// The ambient blood cells and flow lines follow the anatomy's Vessels layer (anatomy.layerFade.vessels);
+// the drug stream always shows. Phones and low-end devices (stage.quality 'low') get half the cells and
+// fewer drug particles.
 import * as THREE from 'three';
 
 const S = 256; // samples per route in the path texture
@@ -220,9 +223,10 @@ export function createVessels(stage, anatomy) {
   lineProto.dispose();
 
   // ---------------------------------------------------------------- blood cells (GPU)
+  const low = stage.quality === 'low';
   const cells = [];
   for (const r of routes) {
-    const density = r.pulse ? 150 : 115;
+    const density = (r.pulse ? 150 : 115) * (low ? 0.5 : 1);
     const count = Math.max(6, Math.round(r.length * density));
     for (let i = 0; i < count; i++) cells.push(r);
   }
@@ -262,7 +266,7 @@ export function createVessels(stage, anatomy) {
   group.add(cellPoints);
 
   // ---------------------------------------------------------------- drug stream (CPU)
-  const MAXP = 240, TRAIL = 4, NP = MAXP * TRAIL;
+  const MAXP = low ? 150 : 240, TRAIL = 4, NP = MAXP * TRAIL;
   const dGeo = new THREE.BufferGeometry();
   const dPos = new Float32Array(NP * 3);
   const dAlpha = new Float32Array(NP);
@@ -525,9 +529,10 @@ export function createVessels(stage, anatomy) {
     }
     flowVis += ((flowOn ? 1 : 0) - flowVis) * (rm ? 1 : 1 - Math.exp(-dt * 4));
     dim += (dimTarget - dim) * (rm ? 1 : 1 - Math.exp(-dt * 6));
-    cMat.uniforms.uOpacity.value = flowVis * dim;
-    cellPoints.visible = flowVis * dim > 0.01;
-    lineGroup.visible = dim > 0.01;
+    const vis = dim * (anatomy.layerFade?.vessels ?? 1) * (anatomy.layerFade?.inside ?? 1);
+    cMat.uniforms.uOpacity.value = flowVis * vis;
+    cellPoints.visible = flowVis * vis > 0.01;
+    lineGroup.visible = dim > 0.01; // routes the drug is on stay lit even with the layer off
     uScale.value = stage.viewScale || 500;
     updateStream(dt, t);
     const k = rm ? 1 : 1 - Math.exp(-dt * 5);
@@ -536,7 +541,7 @@ export function createVessels(stage, anatomy) {
       r.active += (r.activeTarget - r.active) * k;
       r.mat.uniforms.uActive.value = r.active;
       r.mat.uniforms.uDrug.value = drugLevel * 0.55;
-      r.mat.uniforms.uOpacity.value = dim;
+      r.mat.uniforms.uOpacity.value = Math.max(vis, r.active * dim);
     }
   }
   const offFrame = stage.onFrame(update);

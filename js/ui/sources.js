@@ -1,6 +1,6 @@
 // PeptideScope: #sources: every cited source, numbered by first citation.
 // Sources we could not confirm yet are listed separately under "Not yet confirmed".
-import { html, fmtDate } from './util.js';
+import { html, fmtSourceDate } from './util.js';
 import { icon } from './icons.js';
 
 const TYPE_LABEL = {
@@ -16,7 +16,8 @@ const TYPE_LABEL = {
 };
 
 function item({ id, n, source: s }) {
-  const date = fmtDate(s.date);
+  // dateNote qualifies the date ("accessed", "data last updated; accessed 2026-10-08").
+  const date = fmtSourceDate(s.date, s.dateNote);
   return html`
   <li class="c-src" id="src-${id}" value="${n}" tabindex="-1">
     <span class="c-src__n" aria-hidden="true">${n}</span>

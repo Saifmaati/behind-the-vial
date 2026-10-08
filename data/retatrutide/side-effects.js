@@ -1,4 +1,4 @@
-// Behind the Vial: retatrutide side effects (data/retatrutide/side-effects.js).
+// PeptideScope: retatrutide side effects (data/retatrutide/side-effects.js).
 // Shape: docs/ARCHITECTURE.md "Data contract" (sideEffects[]). Rendered by js/ui/sideeffects.js
 // (cards by organ) and js/effects.js (cards that follow the timeline).
 //
@@ -423,7 +423,7 @@ export default [
       ledger: ["gap-phase3-serious-ae-rates-and-heart-rate-t1-pancreatitis", "gap-phase3-serious-ae-rates-and-heart-rate-t1-pancreatitis-too-few", "trials-ph2-pancreatitis"],
     },
     why: {
-      text: "The sources we use do not explain why these drugs might inflame the pancreas. Pancreatitis has happened with drugs in this family, and some cases reported after those drugs went on sale ended in death. In TRIUMPH-1, lipase, an enzyme made by the pancreas, rose by 27.5% to 31.1% on retatrutide by week 80, versus 6.2% on placebo. A higher enzyme level on its own does not mean someone has pancreatitis.",
+      text: "The sources we use do not explain why these drugs might inflame the pancreas. Pancreatitis has happened with drugs in this family, and some cases reported after those drugs were approved ended in death. In TRIUMPH-1, lipase, an enzyme made by the pancreas, rose by 27.5% to 31.1% on retatrutide by week 80, versus 6.2% on placebo. A higher enzyme level on its own does not mean someone has pancreatitis.",
       sources: ["eli-lilly-2026-zepbound-tirzepatide-injection", "new-england-2026-supplementary-appendix-retatrutide-triple"],
       ledger: ["safety-pancreatitis-label", "gap-phase3-serious-ae-rates-and-heart-rate-t1-lipase-rise"],
     },

@@ -6,11 +6,13 @@
 <link rel="icon" href="data:,">
 <title>Body3D Sandbox</title>
 <!-- Dev-only harness for js/scene/* (body3d). Simulates the bus: sites, sequence, time, effects, risk, focus, theme.
-     Query: ?anatomy=placeholder|auto  ?theme=light|dark  ?site=abdomen|thigh|arm  ?rm=1 (reduced motion)
+     Query: ?anatomy=procedural|auto  ?theme=light|dark  ?site=abdomen|thigh|arm  ?rm=1 (reduced motion)
             ?speed=N (scales scene time; headless SwiftShader renders at a few fps and dt is clamped)
             ?assets=/tools/.cache/body3d-glbtest/ (load body.glb + landmarks.json from another folder)
-            Editable body (appearance only): ?sex=male|female&h=<cm>&w=<kg>&age=<years> (applied before mount),
-            and the "Body" button in the stage. -->
+            Editable body (appearance only): ?sex=male|female&h=<cm>&w=<kg>&age=<years>&tone=tone-1..6 (applied before mount),
+            and the "Body" button in the stage.
+            Lifelike view (v3): ?xray=0..1 (0 lifelike, 1 glass)  ?detail=<detail glb path>  ?atlas=<atlas json path>
+            ?quality=high|low  ?poster=1 (hides the harness bars for the fallback still) -->
 <script type="importmap">
 { "imports": { "three": "/vendor/three/three.module.min.js", "three/addons/": "/vendor/three/addons/" } }
 </script>
@@ -20,6 +22,7 @@
     var t = q.get('theme') || (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
     document.documentElement.dataset.theme = t;
     if (q.get('rm') === '1') document.documentElement.dataset.motion = 'reduce';
+    if (q.get('poster') === '1') document.documentElement.classList.add('poster');
   })();
 </script>
 <link rel="stylesheet" href="/css/tokens.css">
@@ -35,6 +38,9 @@
   .sb-bar input[type=range] { width: 200px; }
   .sb-log { font: 0.72rem/1.4 var(--font-mono); color: var(--muted); min-height: 1.4em; }
   #stage-host { height: min(76vh, 760px); }
+  html.poster .sb-bar, html.poster .sb-log { display: none; }
+  html.poster .sb { padding: 0; max-width: none; }
+  html.poster #stage-host { height: 100vh; border-radius: 0; }
   @media (max-width: 600px) { .sb { padding: 8px 12px 12px; } #stage-host { height: 62vh; } .sb-bar button { padding: 5px 8px; } }
 </style>
 </head>
@@ -51,6 +57,13 @@
     <button data-body='{"sex":"male","heightCm":152,"weightKg":46,"age":24}'>Short / light</button>
     <button data-body='{"sex":"male","heightCm":175,"weightKg":75,"age":84}'>Older</button>
     <button data-body='{"sex":"female","heightCm":162,"weightKg":65,"age":35}'>Female</button>
+  </div>
+  <div class="sb-bar"><b>View (test)</b>
+    <button data-view='{"xray":0}'>Lifelike</button>
+    <button data-view='{"xray":0.5}'>Half</button>
+    <button data-view='{"xray":1}'>Glass</button>
+    <button data-view='{"layers":{"skin":false,"organs":true,"vessels":true,"skeleton":true}}'>No skin</button>
+    <button data-view='{"layers":{"skin":true,"organs":true,"vessels":true,"skeleton":true}}'>All layers</button>
   </div>
   <div class="sb-bar"><b>Time (test)</b><input id="time" type="range" min="0" max="22" step="0.05" value="0" aria-label="Time since injection, days (test harness)"><span id="time-out">0 d</span>
     <button id="fx">Effects</button><button id="risk">Risk</button><button id="focus">Focus liver</button><button id="clear">Clear</button>
@@ -83,14 +96,24 @@
   let entry = null;
   try { entry = (await import('/data/retatrutide.js')).default; } catch (e) { console.warn('no data', e); }
   // a body set before the scene mounts is replayed by mountBody (bus.last)
-  if (q.get('sex') || q.get('h') || q.get('w') || q.get('age')) {
-    bus.emit('body:change', { sex: q.get('sex') || 'male', heightCm: Number(q.get('h')) || undefined, weightKg: Number(q.get('w')) || undefined, age: Number(q.get('age')) || undefined });
+  if (q.get('sex') || q.get('h') || q.get('w') || q.get('age') || q.get('tone')) {
+    bus.emit('body:change', { sex: q.get('sex') || 'male', heightCm: Number(q.get('h')) || undefined, weightKg: Number(q.get('w')) || undefined, age: Number(q.get('age')) || undefined, skinTone: q.get('tone') || undefined });
   }
   const t0 = performance.now();
   const body = await mountBody(host, {
     bus, theme: html.dataset.theme, reducedMotion: html.dataset.motion === 'reduce' || matchMedia('(prefers-reduced-motion: reduce)').matches,
     anatomy: q.get('anatomy') || 'auto', assetBase: q.get('assets') || undefined, creditHref: '/ASSETS.md',
+    detail: q.get('detail') || q.get('atlas') ? { glb: q.get('detail') || undefined, atlas: q.get('atlas') || undefined } : undefined,
+    quality: q.get('quality') || undefined,
   });
+  // the view as a visitor would set it in the Layers panel (sync the panel too)
+  const setView = (v) => {
+    const cur = body.view;
+    const next = { layers: { ...cur.layers, ...(v.layers || {}) }, xray: Number.isFinite(v.xray) ? v.xray : cur.xray };
+    body.layers.sync(next);
+    body.layers.elements.panel.querySelector('input[type=range]').dispatchEvent(new Event('change'));
+  };
+  if (q.get('xray') != null) setView({ xray: Number(q.get('xray')) });
   if (q.get('speed')) body.stage.timeScale = Number(q.get('speed')) || 1;
   host.dataset.state = 'ready';
   $('#stage-loading').hidden = true;
@@ -110,6 +133,7 @@
   let site = q.get('site');
   bus.on('site:select', (d) => { site = d.site; });
   for (const b of document.querySelectorAll('[data-body]')) b.addEventListener('click', () => bus.emit('body:change', JSON.parse(b.dataset.body)));
+  for (const b of document.querySelectorAll('[data-view]')) b.addEventListener('click', () => setView(JSON.parse(b.dataset.view)));
   $('#inject').addEventListener('click', () => bus.emit('sequence:start', { site: site || 'abdomen', peptideId: entry?.id }));
   $('#skip').addEventListener('click', () => body.injection.skip());
   $('#theme').addEventListener('click', () => {
@@ -152,7 +176,7 @@
     bus.emit('effects:active', { ids: [], items: [] }); bus.emit('risk:change', { items: [], warnings: [] });
     body.stage.homeView();
   });
-  window.__sb = { bus, body, entry, setTime, mountMs, emit: (t, d) => bus.emit(t, d) };
+  window.__sb = { bus, body, entry, setTime, mountMs, setView, emit: (t, d) => bus.emit(t, d) };
   if (site) bus.emit('site:select', { site });
   html.classList.add('sb-ready');
   log(`ready · anatomy: ${body.anatomy.source} · mount ${mountMs} ms`);

@@ -16,6 +16,11 @@ const STATUS_SHORT = { approved: 'Approved', 'in-trials': 'In trials', 'research
 const ANATOMY_URL = new URL('../assets/anatomy/body.glb', import.meta.url).href;
 // The in-stage CC BY credit links to the rendered asset register (a raw .md on Pages is not readable).
 const ASSETS_HREF = 'https://github.com/Saifmaati/peptidescope/blob/main/ASSETS.md#anatomy';
+// Browsers block ES modules on file:// pages; if this module runs anyway (some browsers allow it),
+// the 3D body still cannot load its anatomy, so the stage shows the "open it from a server" notice.
+const IS_FILE = location.protocol === 'file:';
+// Storage keys (the inline boot script in index.html reads the same ones before first paint).
+const KEY = { theme: 'peptidescope.theme', motion: 'peptidescope.motion', introSeen: 'peptidescope.introSeen' };
 
 // Plain-language narration for each step of the injection sequence. The injection module may send
 // its own short `label`; it becomes the headline and this text explains it.
@@ -25,9 +30,11 @@ const PHASES = {
   absorption: { title: 'Slow absorption', text: 'Over hours to days, the drug seeps out of the depot into tiny blood vessels and lymph channels nearby.' },
   bloodstream: { title: 'Into the bloodstream', text: 'Once in the blood, it is carried to the heart and pumped around the whole body.' },
   distribution: { title: 'Reaching the organs', text: 'It reaches the organs it acts on and attaches to their receptors. That is where its effects, and its side effects, come from.' },
-  done: { title: 'One injection, start to finish', text: 'Now move along the timeline to see how the level rises, peaks and fades, and which side effects tend to show up along the way.' },
+  done: { title: 'One injection, start to finish', text: 'Now move along the timeline to see when it starts working, when it peaks and when it has mostly cleared, and which side effects tend to show up along the way.' },
 };
 const PHASE_ORDER = ['syringe', 'depot', 'absorption', 'bloodstream', 'distribution'];
+// What each sped-up step of the animation stands for in real time (matches the narration above).
+const SEQ_TIME = { syringe: 'Just injected', depot: 'Just injected', absorption: 'Hours to days', bloodstream: 'Hours to days', distribution: 'Hours to days' };
 
 const store = {
   get(kind, key) { try { return window[kind].getItem(key); } catch { return null; } },
@@ -180,7 +187,7 @@ function crossFadeTheme(apply) {
 function applyTheme(theme, { persist = false, emit = true } = {}) {
   state.theme = theme === 'light' ? 'light' : 'dark';
   html.dataset.theme = state.theme;
-  if (persist) store.set('localStorage', 'btv.theme', state.theme);
+  if (persist) store.set('localStorage', KEY.theme, state.theme);
   const next = state.theme === 'dark' ? 'light' : 'dark';
   const btn = $('#theme-toggle');
   if (btn) {
@@ -193,8 +200,8 @@ function applyTheme(theme, { persist = false, emit = true } = {}) {
 
 function applyMotion(reduce, { persist = false, emit = true } = {}) {
   state.reducedMotion = !!reduce;
-  if (persist) store.set('localStorage', 'btv.motion', reduce ? 'reduce' : 'full');
-  const stored = store.get('localStorage', 'btv.motion');
+  if (persist) store.set('localStorage', KEY.motion, reduce ? 'reduce' : 'full');
+  const stored = store.get('localStorage', KEY.motion);
   if (reduce) html.dataset.motion = 'reduce';
   else if (stored === 'full') html.dataset.motion = 'full';
   else delete html.dataset.motion;
@@ -214,11 +221,11 @@ function initPreferences() {
   $('#theme-toggle')?.addEventListener('click', () => crossFadeTheme(() => applyTheme(state.theme === 'dark' ? 'light' : 'dark', { persist: true })));
   $('#motion-toggle')?.addEventListener('click', () => applyMotion(!state.reducedMotion, { persist: true }));
   media('(prefers-color-scheme: light)')?.addEventListener?.('change', (e) => {
-    const stored = store.get('localStorage', 'btv.theme');
+    const stored = store.get('localStorage', KEY.theme);
     if (stored !== 'light' && stored !== 'dark') applyTheme(e.matches ? 'light' : 'dark');
   });
   media('(prefers-reduced-motion: reduce)')?.addEventListener?.('change', (e) => {
-    const stored = store.get('localStorage', 'btv.motion');
+    const stored = store.get('localStorage', KEY.motion);
     if (stored !== 'reduce' && stored !== 'full') applyMotion(e.matches);
   });
 }
@@ -229,7 +236,11 @@ function initLayoutMetrics() {
   const header = $('#site-header');
   const bar = $('#disclaimer');
   const set = () => {
-    if (header) html.style.setProperty('--header-h', `${Math.round(header.getBoundingClientRect().height)}px`);
+    // The part of the header that stays on screen: on phones its top row scrolls away (negative top).
+    if (header) {
+      const top = parseFloat(getComputedStyle(header).top) || 0;
+      html.style.setProperty('--header-h', `${Math.round(header.getBoundingClientRect().height + Math.min(0, top))}px`);
+    }
     if (bar) html.style.setProperty('--disclaimer-h', `${Math.ceil(bar.getBoundingClientRect().height)}px`);
   };
   set();
@@ -237,9 +248,8 @@ function initLayoutMetrics() {
     const ro = new ResizeObserver(set);
     header && ro.observe(header);
     bar && ro.observe(bar);
-  } else {
-    addEventListener('resize', set, { passive: true });
   }
+  addEventListener('resize', set, { passive: true }); // the phone layout changes the header's top
 }
 
 // Vertical scroll containers marked [data-scroll-fade] get top/bottom fade flags for CSS masks.
@@ -339,35 +349,23 @@ function composeExplorer({ delay = 0 } = {}) {
   else go();
 }
 
-// Preloader: obsidian, the wordmark and one champagne line that follows real progress: the fonts,
-// three.js (only when WebGL 2 exists) and the anatomy as it streams. It leaves as soon as the fonts
-// and three.js are in (giving the anatomy a short grace period), and never later than PRELOAD_CAP_MS.
+// Preloader: obsidian, the wordmark, the "independent education, not a seller" line and one fine
+// champagne line that follows real progress: the fonts, three.js (only when WebGL 2 exists) and the
+// anatomy as it streams. It leaves as soon as the fonts and three.js are in (giving the anatomy a short
+// grace period), and never later than PRELOAD_CAP_MS, so it never holds the content back for long.
 // The boot script never shows it under reduced motion; app.css hides it after 8 s whatever happens.
-const PRELOAD_CAP_MS = 3200;
-const PRELOAD_GLB_GRACE_MS = 900;
+const PRELOAD_CAP_MS = 2600;
+const PRELOAD_GLB_GRACE_MS = 700;
 let finishPreloaderNow = null;
-let preloadSettled = html.dataset.preload !== 'show';
-const preloadListeners = [];
-function onPreloadSettled(fn) {
-  if (preloadSettled) fn();
-  else preloadListeners.push(fn);
-}
-function settlePreload() {
-  if (preloadSettled) return;
-  preloadSettled = true;
-  for (const fn of preloadListeners.splice(0)) {
-    try { fn(); } catch (err) { console.error('[main] preload listener failed', err); }
-  }
-}
 
 function initPreloader() {
-  if (html.dataset.preload !== 'show') {
-    settlePreload();
-    return;
-  }
+  if (html.dataset.preload !== 'show') return;
   const bar = $('.preloader-bar');
   const covered = !state.introOpen; // with the intro open, the preloader reveals the intro instead
-  if (covered && !state.reducedMotion) html.dataset.compose = 'pending'; // composes in as the cover lifts
+  if (covered && !state.reducedMotion) {
+    html.dataset.compose = 'pending'; // composes in as the cover lifts
+    composeBusyUntil = Infinity; // the body mounts after that motion (composeExplorer sets the real time)
+  }
   const parts = { fonts: { w: 0.3, p: 0 }, three: { w: 0.3, p: 0 }, glb: { w: 0.4, p: 0 } };
   let shown = 0;
   let raf = 0;
@@ -391,15 +389,11 @@ function initPreloader() {
     const leave = () => {
       html.dataset.preload = 'leaving';
       if (covered) composeExplorer({ delay: 140 });
-      setTimeout(() => {
-        delete html.dataset.preload;
-        settlePreload();
-      }, 700);
+      setTimeout(() => { delete html.dataset.preload; }, 700);
     };
     if (state.reducedMotion) {
       delete html.dataset.preload;
       if (covered) composeExplorer();
-      settlePreload();
     } else setTimeout(leave, 300); // let the line arrive
   };
   const check = () => {
@@ -430,31 +424,15 @@ function initPreloader() {
 
   // three.js and the anatomy only matter when the 3D view can run
   const webgl = hasWebGL2();
-  if (webgl) import('three').catch(() => {}).finally(() => set('three', 1));
+  if (webgl) loadEngine().finally(() => set('three', 1));
   else set('three', 1);
 
-  if (!webgl || lowData() || prefetched || typeof fetch !== 'function') {
+  const stream = webgl ? streamAnatomy() : null;
+  if (!stream?.streamed) {
     set('glb', 1);
     return;
   }
-  prefetched = true; // this stream warms the HTTP cache for the scene's own request
-  fetch(ANATOMY_URL, { credentials: 'same-origin' }).then(async (res) => {
-    const size = Number(res.headers.get('content-length')) || 0;
-    if (!res.ok || !res.body?.getReader) {
-      await res.arrayBuffer?.().catch(() => {});
-      set('glb', 1);
-      return;
-    }
-    const reader = res.body.getReader();
-    let got = 0;
-    for (;;) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      got += value?.byteLength || 0;
-      set('glb', size ? got / size : Math.min(0.9, got / 3.5e6));
-    }
-    set('glb', 1);
-  }).catch(() => set('glb', 1));
+  stream.onProgress((p, done) => set('glb', done ? 1 : p));
 }
 
 // Header: transparent over the page at the top, an obsidian (or ivory) glass bar once scrolled.
@@ -584,17 +562,14 @@ function setBackgroundInert(on) {
   }
 }
 
-let prefetched = false; // the preloader may already be streaming the anatomy (see initPreloader)
 function lowData() {
   const c = navigator.connection;
   return !!(c && (c.saveData || /(^|-)2g$/.test(c.effectiveType || '')));
 }
+// While the intro plays, the anatomy streams in the background (shared with the preloader and the
+// stage progress), so the body is ready the moment the visitor enters.
 function prefetchAnatomy() {
-  if (prefetched) return;
-  prefetched = true;
-  if (lowData()) return;
-  const link = el('link', { rel: 'prefetch', href: ANATOMY_URL, as: 'fetch', crossorigin: 'anonymous' });
-  document.head.append(link);
+  if (!IS_FILE && hasWebGL2()) streamAnatomy();
 }
 
 function onIntroKey(e) {
@@ -649,7 +624,7 @@ function closeIntro(kind = 'enter') {
   state.introOpen = false;
   clearTimeout(introWatchdog);
   document.removeEventListener('keydown', onIntroKey);
-  store.set('sessionStorage', 'btv.introSeen', '1');
+  store.set('sessionStorage', KEY.introSeen, '1');
   setBackgroundInert(false);
   prefetchAnatomy();
 
@@ -685,36 +660,187 @@ function initRouting() {
 }
 
 // ------------------------------------------------------------------ 3D stage
+// Boot: right after first paint (whether or not the stage is on screen yet) main.js starts the engine
+// (three.js + js/scene/*) and streams the anatomy, showing real progress in #stage-loading. The scene
+// mounts as soon as its modules are in and no intro WebGL context is alive (if the explorer is still
+// composing in, once that motion settles). Without WebGL 2, when a module fails to load or when
+// mountBody() throws, #stage-fallback explains why and shows a still image of the body if
+// assets/img/body-poster.webp exists. Opened as a file, the fallback says to use a web address.
 
-function setStageState(s, message) {
+const FALLBACK = {
+  webgl: {
+    title: 'The 3D view isn’t available here',
+    text: 'This browser or device couldn’t start 3D graphics (WebGL 2). Everything else still works: the timeline, the side effects, and every cited fact below.',
+  },
+  load: {
+    title: 'The 3D body didn’t load',
+    text: 'Part of the 3D view couldn’t be downloaded right now. Refresh to try again. Everything else still works: the timeline, the side effects, and every cited fact below.',
+  },
+  start: {
+    title: 'The 3D body couldn’t start',
+    text: 'This device couldn’t start the 3D view. Everything else still works: the timeline, the side effects, and every cited fact below.',
+  },
+  file: {
+    title: 'Open this page from its web address',
+    text: '',
+  },
+};
+
+function setStageState(s, reason) {
   state.stage = s;
   const host = $('#stage-host');
   if (host) host.dataset.state = s;
   const loading = $('#stage-loading');
   const fallback = $('#stage-fallback');
   if (loading) loading.hidden = s !== 'loading';
-  if (fallback) fallback.hidden = s !== 'fallback';
-  if (s === 'fallback' && message) {
-    const t = $('#stage-fallback-text');
-    if (t) t.textContent = message;
+  if (fallback) {
+    fallback.hidden = s !== 'fallback';
+    if (s === 'fallback') {
+      const copy = FALLBACK[reason] || FALLBACK.start;
+      fallback.dataset.reason = reason in FALLBACK ? reason : 'start';
+      const title = $('#stage-fallback-title');
+      const text = $('#stage-fallback-text');
+      if (title) title.textContent = copy.title;
+      if (text && copy.text) text.textContent = copy.text;
+      showPoster(fallback);
+    }
   }
   updatePlay();
 }
 
+// A still image of the body for visitors without 3D. Another build step renders it; until that file
+// exists the request simply fails and the fallback card stays on its own.
+let posterTried = false;
+function showPoster(fallback) {
+  const src = fallback?.dataset.poster;
+  if (posterTried || !src || IS_FILE) return;
+  posterTried = true;
+  const img = new Image();
+  img.decoding = 'async';
+  img.className = 'stage-fallback-poster';
+  img.alt = 'A still picture of the see-through 3D body model';
+  img.addEventListener('load', () => {
+    fallback.prepend(img);
+    fallback.dataset.poster = 'shown';
+  }, { once: true });
+  img.addEventListener('error', () => { delete fallback.dataset.poster; }, { once: true });
+  img.src = src;
+}
+
+let webgl2 = null; // cached: every probe creates (and immediately loses) a throwaway context
 function hasWebGL2() {
-  if (new URLSearchParams(location.search).has('no3d')) return false; // test hook for the fallback
+  if (webgl2 !== null) return webgl2;
+  if (new URLSearchParams(location.search).has('no3d')) return (webgl2 = false); // test hook for the fallback
   try {
     const canvas = document.createElement('canvas');
     const gl = canvas.getContext('webgl2');
-    if (!gl) return false;
-    gl.getExtension('WEBGL_lose_context')?.loseContext();
-    return true;
+    webgl2 = !!gl;
+    gl?.getExtension('WEBGL_lose_context')?.loseContext();
   } catch {
-    return false;
+    webgl2 = false;
   }
+  return webgl2;
 }
 
-let stageNear = false;
+// Real loading progress for #stage-loading: the engine modules, the anatomy download (streamed, so
+// it has a byte count), then building the scene. The caption names the step still in progress.
+const stageProgress = (() => {
+  const parts = { engine: { w: 0.3, p: 0 }, anatomy: { w: 0.55, p: 0 }, build: { w: 0.15, p: 0 } };
+  const STEP = { engine: 'Loading the 3D engine', anatomy: 'Loading the anatomy', build: 'Building the scene' };
+  let raf = 0;
+  let shownPct = -1;
+  const paint = () => {
+    raf = 0;
+    const v = Object.values(parts).reduce((sum, x) => sum + x.w * x.p, 0);
+    const bar = $('#stage-loading .stage-progress');
+    if (bar) {
+      bar.style.setProperty('--progress', v.toFixed(3));
+      const pct = Math.round(v * 100);
+      if (pct !== shownPct) {
+        shownPct = pct;
+        bar.setAttribute('aria-valuenow', String(pct));
+      }
+    }
+    const step = Object.keys(parts).find((k) => parts[k].p < 1) || 'build';
+    const stepEl = $('#stage-loading-step');
+    if (stepEl && stepEl.textContent !== STEP[step]) stepEl.textContent = STEP[step];
+  };
+  return {
+    set(key, p) {
+      const part = parts[key];
+      if (!part || !(p > part.p)) return;
+      part.p = Math.min(1, p);
+      if (!raf) raf = requestAnimationFrame(paint);
+    },
+  };
+})();
+
+// One streamed download of the anatomy, shared by the preloader and the stage progress. It also warms
+// the HTTP cache for the scene's own request (GitHub Pages sends a max-age, and Chrome's cache lock
+// makes a concurrent request for the same URL wait for this one instead of downloading it twice).
+let anatomyStream = null;
+function streamAnatomy() {
+  if (anatomyStream) return anatomyStream;
+  const subs = new Set();
+  let progress = 0;
+  let done = false;
+  const report = (p, end = false) => {
+    progress = Math.max(progress, Math.min(1, p));
+    done ||= end;
+    for (const fn of subs) {
+      try { fn(progress, done); } catch (err) { console.error('[main] progress listener failed', err); }
+    }
+  };
+  anatomyStream = {
+    streamed: !(IS_FILE || lowData() || typeof fetch !== 'function'),
+    onProgress(fn) {
+      subs.add(fn);
+      fn(progress, done);
+      return () => subs.delete(fn);
+    },
+  };
+  if (!anatomyStream.streamed) return anatomyStream; // progress unknown: credited once the scene is built
+  fetch(ANATOMY_URL, { credentials: 'same-origin' }).then(async (res) => {
+    const size = Number(res.headers.get('content-length')) || 0;
+    if (!res.ok || !res.body?.getReader) {
+      await res.arrayBuffer?.().catch(() => {});
+      report(1, true);
+      return;
+    }
+    const reader = res.body.getReader();
+    let got = 0;
+    for (;;) {
+      const { done: end, value } = await reader.read();
+      if (end) break;
+      got += value?.byteLength || 0;
+      report(size ? got / size : Math.min(0.9, got / 3.5e6));
+    }
+    report(1, true);
+  }).catch(() => report(1, true));
+  return anatomyStream;
+}
+
+// The engine: three.js, then the scene modules (which import three.js themselves).
+let enginePromise = null;
+let scenePromise = null;
+function loadEngine() {
+  enginePromise ||= import('three').catch((err) => {
+    console.warn('[main] three.js could not load.', err);
+    return null;
+  });
+  return enginePromise;
+}
+function loadScene() {
+  scenePromise ||= (async () => {
+    await loadEngine();
+    stageProgress.set('engine', 0.55);
+    const mod = await safeImport('./scene/index.js', 'The 3D body');
+    stageProgress.set('engine', 1);
+    return mod;
+  })();
+  return scenePromise;
+}
+
 let bodyMounting = false;
 let bodyMountAt = Infinity;
 const lastAt = Object.create(null);
@@ -722,67 +848,80 @@ for (const t of ['peptide:loaded', 'site:select', 'time:change', 'effects:active
   bus.on(t, () => { lastAt[t] = performance.now(); });
 }
 
-function watchStage() {
-  const host = $('#stage-host');
-  if (!host) return;
-  if (!('IntersectionObserver' in window)) {
-    stageNear = true;
-    maybeMountBody();
+// Starts the 3D side right after first paint (double rAF: the first frame has been presented).
+let stageBooted = false;
+function boot3D() {
+  if (stageBooted) return;
+  stageBooted = true;
+  if (IS_FILE) {
+    setStageState('fallback', 'file');
     return;
   }
-  const io = new IntersectionObserver((entries) => {
-    if (entries.some((e) => e.isIntersecting)) {
-      stageNear = true;
-      io.disconnect();
-      maybeMountBody();
-    }
-  }, { rootMargin: '320px 0px' });
-  io.observe(host);
-}
-
-async function maybeMountBody() {
-  if (bodyMounting || state.introOpen || !introReleased || !stageNear) return;
-  // Presentation (theme agent): the scene's first frame is heavy, so it starts only once the
-  // preloader has lifted and the explorer has finished composing in.
-  if (state.stage === 'idle' && (!preloadSettled || composeBusyUntil > performance.now())) setStageState('loading');
-  if (!preloadSettled) {
-    onPreloadSettled(maybeMountBody);
-    return;
-  }
-  const settleIn = composeBusyUntil - performance.now();
-  if (settleIn > 16) {
-    setTimeout(maybeMountBody, settleIn);
-    return;
-  }
-  bodyMounting = true;
-  const host = $('#stage-host');
   if (!hasWebGL2()) {
-    setStageState('fallback', 'This browser or device couldn’t start 3D graphics (WebGL 2). Everything else still works: the timeline, the side effects, and every cited fact below.');
+    setStageState('fallback', 'webgl');
     return;
   }
   setStageState('loading');
-  const slow = setTimeout(() => {
+  const stream = streamAnatomy();
+  stream.onProgress((p, done) => {
+    if (stream.streamed) stageProgress.set('anatomy', done ? 1 : p);
+  });
+  if (!state.introOpen) stageVisibleAt = performance.now();
+  armSlowNotice(15000);
+  loadScene().then(maybeMountBody, (err) => console.error('[main] 3D boot failed', err));
+}
+
+// A slow connection gets a reassuring line, but only while the visitor can actually see the stage
+// (not while the intro is still up, which keeps the body waiting on purpose).
+let stageVisibleAt = 0; // when the stage could first be seen (boot, or when the intro was released)
+function armSlowNotice(ms) {
+  setTimeout(() => {
+    if (state.stage !== 'loading') return;
+    if (state.introOpen || !introReleased) return armSlowNotice(2000);
+    const waited = performance.now() - (stageVisibleAt || performance.now());
+    if (!stageVisibleAt) stageVisibleAt = performance.now();
+    if (waited < 15000) return armSlowNotice(15000 - waited + 50);
     const t = $('.stage-loading-text');
-    if (t && state.stage === 'loading') t.textContent = 'Still preparing the 3D body… You can keep reading below.';
-  }, 15000);
-  const offReady = bus.on('stage:ready', onStageReady);
-  bodyMountAt = performance.now();
-  const mod = await safeImport('./scene/index.js', 'The 3D body');
-  if (typeof mod?.mountBody !== 'function') {
-    clearTimeout(slow);
-    offReady();
-    setStageState('fallback', 'The 3D body couldn’t load right now. Everything else still works: the timeline, the side effects, and every cited fact below.');
+    if (t) t.textContent = 'Still preparing the 3D body. You can keep reading below.';
+  }, ms);
+}
+
+function afterFirstPaint(fn) {
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    try { fn(); } catch (err) { console.error('[main] 3D boot failed', err); }
+  }));
+}
+
+async function maybeMountBody() {
+  // Two WebGL contexts never coexist: the body mounts only once the intro has been disposed.
+  if (bodyMounting || state.stage === 'fallback' || state.stage === 'ready' || !stageBooted) return;
+  if (state.introOpen || !introReleased) return; // closeIntro() calls back once the intro is gone
+  const mod = await loadScene();
+  if (bodyMounting || state.stage === 'fallback' || state.stage === 'ready') return;
+  // The scene's first frame is heavy; let the explorer's compose-in motion finish first (≤ 1.6 s once
+  // it starts; while the preloader still covers the page its start time is not known yet).
+  const settleIn = composeBusyUntil - performance.now();
+  if (settleIn > 16) {
+    setTimeout(maybeMountBody, Number.isFinite(settleIn) ? settleIn : 150);
     return;
   }
+  bodyMounting = true;
+  if (typeof mod?.mountBody !== 'function') {
+    setStageState('fallback', 'load');
+    return;
+  }
+  const host = $('#stage-host');
+  const offReady = bus.on('stage:ready', onStageReady);
+  bodyMountAt = performance.now();
   try {
     state.body = await mod.mountBody(host, { reducedMotion: state.reducedMotion, theme: state.theme, creditHref: ASSETS_HREF });
+    stageProgress.set('anatomy', 1);
+    stageProgress.set('build', 1);
     onStageReady();
   } catch (err) {
     console.warn('[main] mountBody failed.', err);
     offReady();
-    setStageState('fallback', 'The 3D body couldn’t start on this device. Everything else still works: the timeline, the side effects, and every cited fact below.');
-  } finally {
-    clearTimeout(slow);
+    setStageState('fallback', hasWebGL2() ? 'start' : 'webgl');
   }
 }
 
@@ -926,13 +1065,15 @@ function loadOnce(key, path, label) {
   return moduleCache[key];
 }
 
-// The desktop layout sizes the stage so the timeline's head (and, on tall screens, its whole chart)
+// The desktop layout sizes the stage so the timeline's head (and, on tall screens, its whole core)
 // sits above the fixed disclaimer bar. The head wraps at narrower widths, so measure it.
 let tlMetricsRO = null;
 function watchTimelineMetrics(tHost) {
-  const tl = tHost?.querySelector('.tl');
-  const head = tl?.querySelector('.tl-head');
-  const foot = tl?.querySelector('.tl-scrub-foot') || tl?.querySelector('.tl-scrub') || tl?.querySelector('.tl-chart');
+  // Works with any timeline markup: the head is .tl-head (or the first block), the core ends at the
+  // scrubber's foot (or the end of the component).
+  const tl = tHost?.querySelector('.tl') || tHost?.firstElementChild;
+  const head = tl?.querySelector('.tl-head') || tl?.firstElementChild;
+  const foot = tl?.querySelector('.tl-scrub-foot') || tl?.querySelector('.tl-scrub') || tl;
   tlMetricsRO?.disconnect();
   if (!tl || !head) return;
   let last = '';
@@ -1234,18 +1375,36 @@ function narrateIdle() {
   }
 }
 
-function formatTime(tDays) {
-  if (!Number.isFinite(tDays)) return '–';
-  if (tDays < 1) {
-    const h = Math.max(0, Math.round(tDays * 24));
-    return `${h} hour${h === 1 ? '' : 's'}`;
+// Time since the injection, in words ("6 hours", "1½ days", "2 weeks and 3 days"). The narration
+// panel shows only this and the phase name: never a level, a percentage or a graph.
+const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
+function timeInWords(tDays) {
+  if (!Number.isFinite(tDays) || tDays < 0) return 'Not started';
+  const hours = tDays * 24;
+  if (hours < 0.5) return 'Just injected';
+  if (hours < 1.5) return 'About an hour';
+  if (hours < 23.5) return plural(Math.round(hours), 'hour');
+  if (tDays < 6.75) {
+    const half = Math.round(tDays * 2) / 2;
+    const whole = Math.floor(half);
+    return half % 1 ? `${whole}½ days` : plural(whole, 'day');
   }
-  if (tDays < 21) {
-    const d = tDays < 10 ? Math.round(tDays * 10) / 10 : Math.round(tDays);
-    return `${d} day${d === 1 ? '' : 's'}`;
-  }
-  const w = Math.round((tDays / 7) * 10) / 10;
-  return `${w} weeks`;
+  const days = Math.round(tDays);
+  const weeks = Math.floor(days / 7);
+  const rest = days % 7;
+  if (weeks < 4) return rest ? `${plural(weeks, 'week')} and ${plural(rest, 'day')}` : plural(weeks, 'week');
+  const halfWeeks = Math.round((tDays / 7) * 2) / 2;
+  return halfWeeks % 1 ? `${Math.floor(halfWeeks)}½ weeks` : plural(halfWeeks, 'week');
+}
+
+const READOUT_IDLE = { time: 'Not started', phase: 'Before the injection', label: 'Time since injection' };
+function setReadout({ time, phase, label }) {
+  const t = $('#readout-time');
+  const p = $('#readout-phase');
+  const l = $('#readout-time-label');
+  if (t && time != null && t.textContent !== time) t.textContent = time;
+  if (p && phase != null && p.textContent !== phase) p.textContent = phase;
+  if (l && label != null && l.textContent !== label) l.textContent = label;
 }
 
 function initNarration() {
@@ -1256,6 +1415,8 @@ function initNarration() {
     else state.sequence = 'playing';
     setPhaseTrack(phase);
     narrate(label || info.title, info.text);
+    // The animation is sped up: the readout names the step and, in words, the real time span it stands for.
+    if (phase in SEQ_TIME) setReadout({ time: SEQ_TIME[phase], phase: info.title, label: 'Time since injection' });
     updatePlay();
   });
   bus.on('sequence:done', () => {
@@ -1276,21 +1437,21 @@ function initNarration() {
     raf = 0;
     const d = pending;
     if (!d) return;
-    const time = $('#readout-time');
-    const level = $('#readout-level');
-    if (time) time.textContent = formatTime(d.tDays);
-    if (level) {
-      level.textContent = Number.isFinite(d.level)
-        ? `${Math.round(d.level * 100)}% of ${d.mode === 'weekly' ? 'first peak' : 'peak'}`
-        : '–';
-    }
     const id = d.phaseId ?? d.phaseLabel;
-    // The timeline reports t = 0 on mount; keep the idle instructions until time actually moves.
+    // The timeline reports t = 0 on mount; keep the idle instructions (and "Not started") until time
+    // actually moves or an injection has been played.
     const moved = Number.isFinite(d.tDays) && d.tDays > 0.001;
+    if (moved || state.sequence !== 'idle' || lastPhaseId !== null) {
+      setReadout({
+        time: timeInWords(d.tDays),
+        phase: d.phaseLabel || undefined,
+        label: d.mode === 'weekly' ? 'Since the first shot' : 'Time since injection',
+      });
+    }
     if (id && id !== lastPhaseId && state.sequence !== 'playing' && (moved || lastPhaseId !== null)) {
       lastPhaseId = id;
       const ph = state.entry?.pk?.phases?.find?.((x) => x.id === d.phaseId);
-      narrate(d.phaseLabel || ph?.label || 'Timeline', ph?.text || 'Drag along the timeline to see how the level in the blood changes over time.');
+      narrate(d.phaseLabel || ph?.label || 'Timeline', ph?.text || 'Move along the timeline to see when it starts working, when it peaks and when it has mostly cleared.');
     }
   };
   bus.on('time:change', (d = {}) => {
@@ -1299,10 +1460,8 @@ function initNarration() {
   });
   bus.on('peptide:loaded', () => {
     lastPhaseId = null;
-    const time = $('#readout-time');
-    const level = $('#readout-level');
-    if (time) time.textContent = '–';
-    if (level) level.textContent = '–';
+    pending = null;
+    setReadout(READOUT_IDLE);
   });
 }
 
@@ -1335,6 +1494,6 @@ step('hud', initHudHint);
 step('play', initPlay);
 step('narration', initNarration);
 step('intro', startIntro);
-step('stage', watchStage);
+step('stage', () => afterFirstPaint(boot3D));
 step('content', bootContent);
 html.classList.add('is-booted');

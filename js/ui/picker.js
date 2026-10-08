@@ -2,12 +2,17 @@
 // Both are ARIA radiogroups with roving tabindex (one tab stop; arrows, Home and
 // End move and select). Pickers only EMIT selections; main.js loads content.
 import { bus } from './busref.js';
-import { html, STATUS, SITES } from './util.js';
+import { html, STATUS, SITES, statusKey } from './util.js';
 import { bodyGlyph } from './icons.js';
 
-function statusPill(level, { small = true } = {}) {
-  const s = STATUS[level] || { label: 'Status unknown', tone: 'neutral' };
-  return html`<span class="c-status c-status--${level || 'unknown'}${small ? ' c-status--sm' : ''}"><span class="c-status__shape" aria-hidden="true"></span>${s.label}</span>`;
+/**
+ * Status badge. Pass the peptide's statusLabel so an approval that exists only outside the US
+ * reads "Approved outside the US" rather than a bare "Approved".
+ */
+function statusPill(level, { small = true, statusLabel = '' } = {}) {
+  const key = statusKey(level, statusLabel);
+  const s = STATUS[key] || { label: 'Status unknown', tone: 'neutral' };
+  return html`<span class="c-status c-status--${key || 'unknown'}${small ? ' c-status--sm' : ''}"><span class="c-status__shape" aria-hidden="true"></span>${s.label}</span>`;
 }
 export { statusPill };
 
@@ -59,9 +64,9 @@ export function mountPicker(host, peptides = [], { selectedId } = {}) {
       <span class="c-pchip__radio" aria-hidden="true"></span>
       <span class="c-pchip__text">${p.ready ? html`
         <span class="c-pchip__name">${p.name}</span>
-        <span class="c-pchip__meta">${statusPill(p.status)}<span class="c-pchip__tag">Full entry</span></span>` : html`
+        <span class="c-pchip__meta">${statusPill(p.status, { statusLabel: p.statusLabel })}<span class="c-pchip__tag">Full entry</span></span>` : html`
         <span class="c-pchip__row"><span class="c-pchip__name">${p.name}</span><span class="c-pchip__tag c-pchip__tag--soon">Coming soon</span></span>
-        <span class="c-pchip__meta">${statusPill(p.status)}</span>`}
+        <span class="c-pchip__meta">${statusPill(p.status, { statusLabel: p.statusLabel })}</span>`}
       </span>
     </button>`;
 

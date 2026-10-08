@@ -5,9 +5,6 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Sandbox · timeline + effects</title>
 <link rel="icon" href="data:,">
-<script type="importmap">
-{ "imports": { "three": "/vendor/three/three.module.min.js", "three/addons/": "/vendor/three/addons/" } }
-</script>
 <link rel="stylesheet" href="/css/tokens.css">
 <link rel="stylesheet" href="/css/timeline.css">
 <style>
@@ -15,12 +12,13 @@
   html { background: var(--bg); }
   body { margin: 0; background: var(--bg); color: var(--text); font-family: var(--font-sans); -webkit-font-smoothing: antialiased; }
   .sb { max-width: 1320px; margin: 0 auto; padding: 20px 16px 48px; }
-  .sb-bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 16px; font: 500 12px/1.4 var(--font-mono); color: var(--muted); }
+  .sb-bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 16px; font: 500 12px/1.4 var(--font-sans); color: var(--muted); }
   .sb-bar strong { color: var(--text-2); letter-spacing: .08em; text-transform: uppercase; margin-right: 8px; }
   .sb-bar button { font: inherit; color: var(--text-2); background: var(--surface-2); border: 1px solid var(--line); border-radius: 999px; padding: 5px 10px; cursor: pointer; }
   .sb-bar button:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
   .sb-grid { display: grid; gap: 16px; grid-template-columns: minmax(0, 1fr); align-items: start; }
   @media (min-width: 1100px) { .sb-grid { grid-template-columns: minmax(0, 1.65fr) minmax(0, 1fr); } }
+  .sb-log { margin-top: 16px; font: 12px/1.5 var(--font-code, ui-monospace, monospace); color: var(--muted); white-space: pre-wrap; }
   #sources { margin-top: 32px; color: var(--muted); font-size: 12px; }
   #sources li { margin: 2px 0; }
 </style>
@@ -28,84 +26,50 @@
 <body>
 <main class="sb">
   <div class="sb-bar" aria-label="Sandbox controls">
-    <strong>Sandbox · sample data, fake numbers</strong>
+    <strong>Sandbox · retatrutide entry from data/</strong>
     <button type="button" data-act="done">emit sequence:done</button>
-    <button type="button" data-act="null">peptide:loaded null</button>
-    <button type="button" data-act="entry">peptide:loaded sample</button>
+    <button type="button" data-act="null">peptide:loaded (coming soon)</button>
+    <button type="button" data-act="entry">peptide:loaded retatrutide</button>
+    <button type="button" data-act="weekly">setMode weekly / single</button>
+    <button type="button" data-act="motion">toggle reduced motion</button>
     <button type="button" data-act="theme">toggle theme</button>
   </div>
   <div class="sb-grid">
     <div id="timeline"></div>
     <div id="active-effects" aria-live="polite"></div>
   </div>
-  <ol id="sources" aria-label="Sample sources">
-    <li id="src-sb-pk">Sandbox sample: pharmacology placeholder</li>
-    <li id="src-sb-trial">Sandbox sample: trial placeholder</li>
-    <li id="src-sb-review">Sandbox sample: review placeholder</li>
-  </ol>
+  <p class="sb-log" id="sb-log" aria-live="off"></p>
+  <ol id="sources" aria-label="Sources"></ol>
 </main>
 <script type="module">
   import { bus } from '/js/bus.js';
   import { mountTimeline } from '/js/timeline.js';
   import { mountEffects } from '/js/effects.js';
+  import { SOURCES } from '/data/sources.js';
+  import retatrutide from '/data/retatrutide.js';
 
   const q = new URLSearchParams(location.search);
   if (q.get('theme')) document.documentElement.dataset.theme = q.get('theme');
 
-  // Local sample entry in the contract shape. Every number is an obvious fake;
-  // it only shapes the normalized curve for layout testing.
-  const S = { sample: true };
-  const SAMPLE = {
-    id: 'sandbox', name: 'Sandbox peptide', sample: true,
-    pk: {
-      halfLifeDays: 5.5, tmaxDays: 1.5, tmaxEstimate: true, intervalDays: 7, steadyStateDoses: 4,
-      phases: [
-        { id: 'onset', tDays: 0.4, label: 'Onset', display: '00 hours', text: 'Sandbox text. The drug first reaches the blood in a meaningful amount.', sources: ['sb-pk'], estimate: true, ...S },
-        { id: 'peak', tDays: 1.5, label: 'Peak', display: '00 days', text: 'Sandbox text. The highest level in the blood after one shot.', sources: ['sb-pk'], estimate: true, ...S },
-        { id: 'halfLife', tDays: 5.5, label: 'Half-life point', display: '00 days', text: 'Sandbox text. Half of the peak level is gone.', sources: ['sb-pk', 'sb-review'], ...S },
-        { id: 'clearance', tDays: 28, label: 'Mostly cleared', display: '00 weeks', text: 'Sandbox text. Almost all of one shot has left the body.', sources: ['sb-pk'], estimate: true, ...S },
-      ],
-      sources: ['sb-pk'],
-    },
-    sideEffects: [
-      { id: 'nausea', name: 'Nausea', organ: 'stomach', alsoOrgans: ['brain'], severity: 'common',
-        frequency: { text: 'About 00 in 100 people in trials (sandbox)', sources: ['sb-trial'] },
-        why: { text: 'Sandbox text. The stomach empties more slowly and fullness signals get louder.', sources: ['sb-review'] },
-        reduce: { text: 'Sandbox text. Often eases over the following weeks. Smaller meals may help.', sources: ['sb-trial'] },
-        timing: { fromDays: 0.3, toDays: 4, text: 'Sandbox window: the first days after a shot' } },
-      { id: 'injection-site', name: 'Redness or itching where the shot went in', organ: 'injection_site', alsoOrgans: ['skin'], severity: 'common',
-        frequency: { text: 'About 00 in 100 people (sandbox)', sources: ['sb-trial'], unverified: true },
-        why: { text: 'Sandbox text. A local reaction to the liquid under the skin.', sources: ['sb-review'] },
-        reduce: { text: 'Sandbox text. Usually fades within a day or two.', sources: ['sb-trial'] },
-        timing: { fromDays: 0, toDays: 2, text: 'Sandbox window: the first day or two' } },
-      { id: 'heart-rate', name: 'Faster resting heart rate', organ: 'heart', severity: 'notable',
-        frequency: { text: 'Reported in trials (sandbox)', sources: ['sb-trial'] },
-        why: { text: 'Sandbox text. Hormone receptors on the heart and nerves.', sources: ['sb-review'] },
-        reduce: { text: 'Sandbox text. A racing heart with chest pain needs urgent care.', sources: ['sb-trial'] },
-        timing: { fromDays: 0.8, toDays: 6, text: 'Sandbox window: while levels are high' } },
-      { id: 'constipation', name: 'Constipation', organ: 'large_intestine', severity: 'common',
-        frequency: { text: 'About 00 in 100 people (sandbox)', sources: ['sb-trial'] },
-        why: { text: 'Sandbox text. Slower movement through the gut.', sources: ['sb-review'] },
-        reduce: { text: 'Sandbox text. Fluids and fibre may help.', sources: ['sb-trial'] },
-        timing: { fromDays: 2, toDays: 10, text: 'Sandbox window: later in the week' } },
-      { id: 'gallbladder', name: 'Gallbladder problems', organ: 'gallbladder', alsoOrgans: ['liver'], severity: 'serious',
-        frequency: { text: 'Uncommon (sandbox)', sources: ['sb-trial'] },
-        why: { text: 'Sandbox text. Fast weight loss changes bile.', sources: ['sb-review'] },
-        reduce: { text: 'Sandbox text. Severe pain under the right ribs needs a doctor today.', sources: ['sb-trial'] },
-        timing: { fromDays: 14, toDays: 60, cumulative: true, text: 'Sandbox window: weeks to months of use' } },
-    ],
-  };
+  const entry = q.get('entry') === 'null' ? null : retatrutide;
 
-  const useData = q.get('entry') === 'data';
-  let entry = SAMPLE;
-  if (useData) {
-    try { entry = (await import('/data/retatrutide.js')).default; } catch (e) { console.warn('data entry unavailable', e); }
-  }
-  if (q.get('entry') === 'null') entry = null;
+  // A numbered source list in the same shape js/ui/sources.js renders (<li id="src-ID" value="n">),
+  // so citations in the timeline and the effect cards carry real numbers.
+  const ids = [];
+  const add = (list) => { for (const id of list || []) if (!ids.includes(id)) ids.push(id); };
+  for (const ph of retatrutide.pk?.phases || []) add(ph.sources);
+  for (const st of retatrutide.absorption?.steps || []) add(st.sources);
+  for (const fx of retatrutide.sideEffects || []) { add(fx.frequency?.sources); add(fx.why?.sources); add(fx.reduce?.sources); }
+  document.getElementById('sources').innerHTML = ids.map((id, i) =>
+    `<li id="src-${id}" value="${i + 1}">${(SOURCES[id]?.title || id).replace(/[<&]/g, (c) => (c === '<' ? '&lt;' : '&amp;'))}</li>`).join('');
 
-  const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  let reducedMotion = q.get('rm') === '1' || matchMedia('(prefers-reduced-motion: reduce)').matches;
   const events = { time: [], effects: [], focus: [] };
-  bus.on('time:change', (d) => { events.time.push(d); if (events.time.length > 50) events.time.shift(); });
+  const log = document.getElementById('sb-log');
+  bus.on('time:change', (d) => {
+    events.time.push(d); if (events.time.length > 50) events.time.shift();
+    log.textContent = `time:change ${JSON.stringify({ tDays: +d.tDays.toFixed(3), level: +d.level.toFixed(3), phaseId: d.phaseId, phaseLabel: d.phaseLabel, mode: d.mode, estimate: d.estimate })}`;
+  });
   bus.on('effects:active', (d) => events.effects.push(d));
   bus.on('organ:focus', (d) => events.focus.push(d));
   window.__events = events;
@@ -117,13 +81,14 @@
   if (q.get('mode')) tl.setMode(q.get('mode'));
   if (q.get('t')) tl.set(Number(q.get('t')));
   if (q.get('cue')) bus.emit('sequence:done', {});
-  if (q.get('open')) requestAnimationFrame(() => setTimeout(() => document.querySelectorAll('.fx-more').forEach((d, i) => { if (i < 2) d.open = true; }), 400));
 
   document.querySelector('.sb-bar').addEventListener('click', (e) => {
     const act = e.target.closest('button')?.dataset.act;
     if (act === 'done') bus.emit('sequence:done', {});
     if (act === 'null') bus.emit('peptide:loaded', { id: 'semaglutide', entry: null });
-    if (act === 'entry') bus.emit('peptide:loaded', { id: entry?.id || 'sandbox', entry: entry || SAMPLE });
+    if (act === 'entry') bus.emit('peptide:loaded', { id: 'retatrutide', entry: retatrutide });
+    if (act === 'weekly') tl.setMode(tl.mode === 'weekly' ? 'single' : 'weekly');
+    if (act === 'motion') { reducedMotion = !reducedMotion; bus.emit('motion:change', { reducedMotion }); }
     if (act === 'theme') {
       const root = document.documentElement;
       const dark = root.dataset.theme ? root.dataset.theme === 'dark' : !matchMedia('(prefers-color-scheme: light)').matches;

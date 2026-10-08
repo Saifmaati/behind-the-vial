@@ -1,0 +1,1854 @@
+{
+ "version": 1,
+ "units": "m",
+ "sex": "male",
+ "frame": "metres, +Y up, feet at y=0, body faces +Z, centred on x=0 z=0, person's left = +X (same as body.glb)",
+ "centers": "surface or volume centroid in the published frame; for paired structures `center` is the person's left side (+X) and `sides` gives both",
+ "files": {
+  "body.glb": "assets/anatomy/body.glb",
+  "detail-male.glb": "assets/anatomy/detail-male.glb"
+ },
+ "attribution": "Anatomy adapted from the HRA 3D Reference Organs (NIH HuBMAP, CC BY 4.0), the VOXEL-MAN Segmented Internal Organs of the Visible Human Male (Höhne et al., CC BY 4.0) and BodyParts3D (© DBCLS, CC BY 4.0).",
+ "structures": [
+  {
+   "id": "skin",
+   "name": "Skin",
+   "plain": "The body’s outer covering",
+   "system": "integumentary",
+   "center": [
+    0.0007,
+    0.8976,
+    -0.0108
+   ],
+   "file": "body.glb"
+  },
+  {
+   "id": "brain",
+   "name": "Brain",
+   "plain": "Controls thought, movement and the senses",
+   "system": "nervous",
+   "center": [
+    0.0024,
+    1.6767,
+    -0.0037
+   ],
+   "file": "body.glb"
+  },
+  {
+   "id": "thyroid",
+   "name": "Thyroid gland",
+   "plain": "Gland at the front of the neck that makes thyroid hormone",
+   "system": "endocrine",
+   "center": [
+    -0.0003,
+    1.4773,
+    0.0341
+   ],
+   "file": "body.glb"
+  },
+  {
+   "id": "heart",
+   "name": "Heart",
+   "plain": "Pumps blood around the body",
+   "system": "cardiovascular",
+   "center": [
+    0.0255,
+    1.325,
+    0.0438
+   ],
+   "file": "body.glb"
+  },
+  {
+   "id": "lungs",
+   "name": "Lungs",
+   "plain": "Take in oxygen and remove carbon dioxide",
+   "system": "respiratory",
+   "center": [
+    0.0049,
+    1.3542,
+    -0.0071
+   ],
+   "file": "body.glb",
+   "sides": {
+    "left": [
+     0.0684,
+     1.3565,
+     -0.0071
+    ],
+    "right": [
+     -0.0599,
+     1.3519,
+     -0.0071
+    ]
+   }
+  },
+  {
+   "id": "liver",
+   "name": "Liver",
+   "plain": "Large organ under the right ribs; processes nutrients and makes bile",
+   "system": "digestive",
+   "center": [
+    -0.062,
+    1.241,
+    0.0114
+   ],
+   "file": "body.glb"
+  },
+  {
+   "id": "gallbladder",
+   "name": "Gallbladder",
+   "plain": "Small sac under the liver that stores bile",
+   "system": "digestive",
+   "center": [
+    -0.0734,
+    1.2154,
+    0.0663
+   ],
+   "file": "body.glb"
+  },
+  {
+   "id": "stomach",
+   "name": "Stomach",
+   "plain": "Holds and starts digesting food",
+   "system": "digestive",
+   "center": [
+    0.0539,
+    1.2507,
+    0.0301
+   ],
+   "file": "body.glb"
+  },
+  {
+   "id": "pancreas",
+   "name": "Pancreas",
+   "plain": "Makes digestive enzymes and the hormones insulin and glucagon",
+   "system": "digestive",
+   "center": [
+    0.0167,
+    1.2061,
+    0.018
+   ],
+   "file": "body.glb"
+  },
+  {
+   "id": "spleen",
+   "name": "Spleen",
+   "plain": "Filters the blood and helps fight infection",
+   "system": "lymphatic",
+   "center": [
+    0.0937,
+    1.2319,
+    -0.0405
+   ],
+   "file": "body.glb"
+  },
+  {
+   "id": "small_intestine",
+   "name": "Small intestine",
+   "plain": "Small bowel; absorbs most nutrients from food",
+   "system": "digestive",
+   "center": [
+    0.0345,
+    1.0945,
+    0.0639
+   ],
+   "file": "body.glb"
+  },
+  {
+   "id": "large_intestine",
+   "name": "Large intestine (colon)",
+   "plain": "Large bowel; absorbs water and forms stool",
+   "system": "digestive",
+   "center": [
+    0.0047,
+    1.0951,
+    0.0525
+   ],
+   "file": "body.glb"
+  },
+  {
+   "id": "kidneys",
+   "name": "Kidneys",
+   "plain": "Filter the blood and make urine",
+   "system": "urinary",
+   "center": [
+    0.0121,
+    1.1616,
+    -0.0174
+   ],
+   "file": "body.glb",
+   "sides": {
+    "left": [
+     0.0737,
+     1.1704,
+     -0.0236
+    ],
+    "right": [
+     -0.0605,
+     1.1514,
+     -0.01
+    ]
+   }
+  },
+  {
+   "id": "bladder",
+   "name": "Urinary bladder",
+   "plain": "Stores urine",
+   "system": "urinary",
+   "center": [
+    -0.0024,
+    0.9066,
+    0.0172
+   ],
+   "file": "body.glb"
+  },
+  {
+   "id": "arteries",
+   "name": "Arteries",
+   "plain": "Vessels carrying oxygen-rich blood (shown red; includes the pulmonary veins)",
+   "system": "cardiovascular",
+   "center": [
+    0.0054,
+    0.9404,
+    0.0118
+   ],
+   "file": "body.glb"
+  },
+  {
+   "id": "veins",
+   "name": "Veins",
+   "plain": "Vessels carrying oxygen-poor blood (shown blue; includes the pulmonary arteries)",
+   "system": "cardiovascular",
+   "center": [
+    0.0007,
+    0.9047,
+    0.0024
+   ],
+   "file": "body.glb"
+  },
+  {
+   "id": "skeleton",
+   "name": "Skeleton",
+   "plain": "The bones that support and protect the body",
+   "system": "skeletal",
+   "center": [
+    0.0043,
+    1.0852,
+    -0.0101
+   ],
+   "file": "body.glb"
+  },
+  {
+   "id": "skin_hi",
+   "name": "Skin (close-up surface)",
+   "plain": "The body’s outer covering, in full detail for close-up views",
+   "system": "integumentary",
+   "center": [
+    0.0006,
+    0.8974,
+    -0.0108
+   ],
+   "file": "detail-male.glb"
+  },
+  {
+   "id": "eyes",
+   "name": "Eyeballs",
+   "plain": "The eyes: white sclera, colored iris and the pupil",
+   "system": "sensory",
+   "center": [
+    0.0381,
+    1.6533,
+    0.0892
+   ],
+   "file": "detail-male.glb",
+   "sides": {
+    "left": [
+     0.0381,
+     1.6533,
+     0.0892
+    ],
+    "right": [
+     -0.0308,
+     1.6538,
+     0.0894
+    ]
+   }
+  },
+  {
+   "id": "muscle_sternocleidomastoid",
+   "name": "Sternocleidomastoid",
+   "plain": "The long neck muscle that turns and tilts the head",
+   "system": "muscular",
+   "center": [
+    0.0475,
+    1.5214,
+    0.0364
+   ],
+   "file": "detail-male.glb",
+   "region": "neck",
+   "layer": "superficial",
+   "sides": {
+    "left": [
+     0.0475,
+     1.5214,
+     0.0364
+    ],
+    "right": [
+     -0.0412,
+     1.5165,
+     0.0363
+    ]
+   }
+  },
+  {
+   "id": "muscle_platysma",
+   "name": "Platysma",
+   "plain": "Thin sheet of muscle just under the skin of the neck",
+   "system": "muscular",
+   "center": [
+    0.0453,
+    1.5001,
+    0.0527
+   ],
+   "file": "detail-male.glb",
+   "region": "neck",
+   "layer": "superficial",
+   "sides": {
+    "left": [
+     0.0453,
+     1.5001,
+     0.0527
+    ],
+    "right": [
+     -0.0468,
+     1.4952,
+     0.0464
+    ]
+   }
+  },
+  {
+   "id": "muscle_suprahyoid",
+   "name": "Suprahyoid muscles",
+   "plain": "Muscles of the floor of the mouth; lift the voice box when swallowing",
+   "system": "muscular",
+   "center": [
+    0.024,
+    1.559,
+    0.0657
+   ],
+   "file": "detail-male.glb",
+   "region": "neck",
+   "layer": "superficial",
+   "sides": {
+    "left": [
+     0.024,
+     1.559,
+     0.0657
+    ],
+    "right": [
+     -0.0252,
+     1.5646,
+     0.0592
+    ]
+   }
+  },
+  {
+   "id": "muscle_infrahyoid",
+   "name": "Infrahyoid muscles",
+   "plain": "Strap muscles at the front of the neck; lower the voice box",
+   "system": "muscular",
+   "center": [
+    0.0373,
+    1.4811,
+    0.0339
+   ],
+   "file": "detail-male.glb",
+   "region": "neck",
+   "layer": "superficial",
+   "sides": {
+    "left": [
+     0.0373,
+     1.4811,
+     0.0339
+    ],
+    "right": [
+     -0.033,
+     1.4763,
+     0.0345
+    ]
+   }
+  },
+  {
+   "id": "muscle_scalenes",
+   "name": "Scalene muscles",
+   "plain": "Muscles at the side of the neck; lift the top ribs during deep breathing",
+   "system": "muscular",
+   "center": [
+    0.0377,
+    1.504,
+    0.0075
+   ],
+   "file": "detail-male.glb",
+   "region": "neck",
+   "layer": "superficial",
+   "sides": {
+    "left": [
+     0.0377,
+     1.504,
+     0.0075
+    ],
+    "right": [
+     -0.0345,
+     1.5028,
+     0.0074
+    ]
+   }
+  },
+  {
+   "id": "muscle_prevertebral",
+   "name": "Longus colli and longus capitis",
+   "plain": "Deep muscles at the front of the neck; bend the neck forward",
+   "system": "muscular",
+   "center": [
+    0.0071,
+    1.5441,
+    0.0198
+   ],
+   "file": "detail-male.glb",
+   "region": "neck",
+   "layer": "deep"
+  },
+  {
+   "id": "muscle_splenius",
+   "name": "Splenius capitis and cervicis",
+   "plain": "Muscle at the back of the neck; turns and extends the head",
+   "system": "muscular",
+   "center": [
+    0.0257,
+    1.5024,
+    -0.0408
+   ],
+   "file": "detail-male.glb",
+   "region": "neck",
+   "layer": "superficial",
+   "sides": {
+    "left": [
+     0.0257,
+     1.5024,
+     -0.0408
+    ],
+    "right": [
+     -0.0192,
+     1.4781,
+     -0.0532
+    ]
+   }
+  },
+  {
+   "id": "muscle_semispinalis",
+   "name": "Semispinalis",
+   "plain": "Deep muscles along the back of the neck and upper spine; extend the head and spine",
+   "system": "muscular",
+   "center": [
+    0.0005,
+    1.4562,
+    -0.0565
+   ],
+   "file": "detail-male.glb",
+   "region": "back",
+   "layer": "deep"
+  },
+  {
+   "id": "muscle_suboccipital",
+   "name": "Suboccipital muscles",
+   "plain": "Small muscles just under the base of the skull",
+   "system": "muscular",
+   "center": [
+    0.03,
+    1.5958,
+    -0.0276
+   ],
+   "file": "detail-male.glb",
+   "region": "neck",
+   "layer": "deep",
+   "sides": {
+    "left": [
+     0.03,
+     1.5958,
+     -0.0276
+    ],
+    "right": [
+     -0.0268,
+     1.5984,
+     -0.026
+    ]
+   }
+  },
+  {
+   "id": "muscle_levator_scapulae",
+   "name": "Levator scapulae",
+   "plain": "Lifts the shoulder blade",
+   "system": "muscular",
+   "center": [
+    0.0503,
+    1.5057,
+    -0.0245
+   ],
+   "file": "detail-male.glb",
+   "region": "neck",
+   "layer": "superficial",
+   "sides": {
+    "left": [
+     0.0503,
+     1.5057,
+     -0.0245
+    ],
+    "right": [
+     -0.046,
+     1.5068,
+     -0.0222
+    ]
+   }
+  },
+  {
+   "id": "muscle_trapezius",
+   "name": "Trapezius",
+   "plain": "The large diamond-shaped muscle of the upper back and neck; moves the shoulder blades",
+   "system": "muscular",
+   "center": [
+    0.0408,
+    1.4386,
+    -0.0677
+   ],
+   "file": "detail-male.glb",
+   "region": "back",
+   "layer": "superficial",
+   "sides": {
+    "left": [
+     0.0408,
+     1.4386,
+     -0.0677
+    ],
+    "right": [
+     -0.044,
+     1.4405,
+     -0.069
+    ]
+   }
+  },
+  {
+   "id": "muscle_deltoid",
+   "name": "Deltoid",
+   "plain": "The rounded shoulder muscle; lifts the arm",
+   "system": "muscular",
+   "center": [
+    0.178,
+    1.4155,
+    -0.0148
+   ],
+   "file": "detail-male.glb",
+   "region": "shoulder",
+   "layer": "superficial",
+   "sides": {
+    "left": [
+     0.178,
+     1.4155,
+     -0.0148
+    ],
+    "right": [
+     -0.1726,
+     1.4147,
+     -0.0143
+    ]
+   }
+  },
+  {
+   "id": "muscle_rhomboids",
+   "name": "Rhomboid major and minor",
+   "plain": "Muscles between the spine and the shoulder blade; pull the shoulder blades together",
+   "system": "muscular",
+   "center": [
+    0.038,
+    1.4126,
+    -0.0837
+   ],
+   "file": "detail-male.glb",
+   "region": "back",
+   "layer": "deep",
+   "sides": {
+    "left": [
+     0.038,
+     1.4126,
+     -0.0837
+    ],
+    "right": [
+     -0.0325,
+     1.4155,
+     -0.0831
+    ]
+   }
+  },
+  {
+   "id": "muscle_supraspinatus",
+   "name": "Supraspinatus",
+   "plain": "Rotator cuff muscle above the shoulder blade spine; starts lifting the arm",
+   "system": "muscular",
+   "center": [
+    0.1458,
+    1.4442,
+    -0.0282
+   ],
+   "file": "detail-male.glb",
+   "region": "shoulder",
+   "layer": "deep",
+   "sides": {
+    "left": [
+     0.1458,
+     1.4442,
+     -0.0282
+    ],
+    "right": [
+     -0.1435,
+     1.4436,
+     -0.026
+    ]
+   }
+  },
+  {
+   "id": "muscle_infraspinatus",
+   "name": "Infraspinatus",
+   "plain": "Rotator cuff muscle on the back of the shoulder blade; turns the arm outward",
+   "system": "muscular",
+   "center": [
+    0.1394,
+    1.4108,
+    -0.0532
+   ],
+   "file": "detail-male.glb",
+   "region": "shoulder",
+   "layer": "superficial",
+   "sides": {
+    "left": [
+     0.1394,
+     1.4108,
+     -0.0532
+    ],
+    "right": [
+     -0.1372,
+     1.4097,
+     -0.0527
+    ]
+   }
+  },
+  {
+   "id": "muscle_teres_minor",
+   "name": "Teres minor",
+   "plain": "Small rotator cuff muscle; turns the arm outward",
+   "system": "muscular",
+   "center": [
+    0.1555,
+    1.397,
+    -0.0523
+   ],
+   "file": "detail-male.glb",
+   "region": "shoulder",
+   "layer": "superficial",
+   "sides": {
+    "left": [
+     0.1555,
+     1.397,
+     -0.0523
+    ],
+    "right": [
+     -0.1544,
+     1.3942,
+     -0.0517
+    ]
+   }
+  },
+  {
+   "id": "muscle_teres_major",
+   "name": "Teres major",
+   "plain": "Runs from the lower shoulder blade to the arm; pulls the arm in and back",
+   "system": "muscular",
+   "center": [
+    0.1463,
+    1.3678,
+    -0.0509
+   ],
+   "file": "detail-male.glb",
+   "region": "shoulder",
+   "layer": "superficial",
+   "sides": {
+    "left": [
+     0.1463,
+     1.3678,
+     -0.0509
+    ],
+    "right": [
+     -0.1451,
+     1.364,
+     -0.0515
+    ]
+   }
+  },
+  {
+   "id": "muscle_subscapularis",
+   "name": "Subscapularis",
+   "plain": "Rotator cuff muscle on the rib side of the shoulder blade; turns the arm inward",
+   "system": "muscular",
+   "center": [
+    0.1127,
+    1.4009,
+    -0.0476
+   ],
+   "file": "detail-male.glb",
+   "region": "shoulder",
+   "layer": "deep",
+   "sides": {
+    "left": [
+     0.1127,
+     1.4009,
+     -0.0476
+    ],
+    "right": [
+     -0.114,
+     1.3989,
+     -0.0453
+    ]
+   }
+  },
+  {
+   "id": "muscle_erector_spinae",
+   "name": "Erector spinae",
+   "plain": "The long muscle columns either side of the spine; keep the back upright",
+   "system": "muscular",
+   "center": [
+    0.0448,
+    1.2556,
+    -0.0714
+   ],
+   "file": "detail-male.glb",
+   "region": "back",
+   "layer": "superficial",
+   "sides": {
+    "left": [
+     0.0448,
+     1.2556,
+     -0.0714
+    ],
+    "right": [
+     -0.0428,
+     1.2623,
+     -0.0724
+    ]
+   }
+  },
+  {
+   "id": "muscle_serratus_posterior",
+   "name": "Serratus posterior superior and inferior",
+   "plain": "Thin back muscles attached to the ribs",
+   "system": "muscular",
+   "center": [
+    0.0513,
+    1.26,
+    -0.0771
+   ],
+   "file": "detail-male.glb",
+   "region": "back",
+   "layer": "deep",
+   "sides": {
+    "left": [
+     0.0513,
+     1.26,
+     -0.0771
+    ],
+    "right": [
+     -0.0581,
+     1.2831,
+     -0.076
+    ]
+   }
+  },
+  {
+   "id": "muscle_pectoralis_major",
+   "name": "Pectoralis major",
+   "plain": "The large chest muscle; pulls the arm across the body",
+   "system": "muscular",
+   "center": [
+    0.108,
+    1.3624,
+    0.0674
+   ],
+   "file": "detail-male.glb",
+   "region": "chest",
+   "layer": "superficial",
+   "sides": {
+    "left": [
+     0.108,
+     1.3624,
+     0.0674
+    ],
+    "right": [
+     -0.1003,
+     1.3606,
+     0.0669
+    ]
+   }
+  },
+  {
+   "id": "muscle_pectoralis_minor",
+   "name": "Pectoralis minor",
+   "plain": "Thin chest muscle under the pectoralis major; steadies the shoulder blade",
+   "system": "muscular",
+   "center": [
+    0.1149,
+    1.3781,
+    0.0501
+   ],
+   "file": "detail-male.glb",
+   "region": "chest",
+   "layer": "deep",
+   "sides": {
+    "left": [
+     0.1149,
+     1.3781,
+     0.0501
+    ],
+    "right": [
+     -0.1082,
+     1.3745,
+     0.0471
+    ]
+   }
+  },
+  {
+   "id": "muscle_subclavius",
+   "name": "Subclavius",
+   "plain": "Small muscle under the collarbone",
+   "system": "muscular",
+   "center": [
+    0.0729,
+    1.4444,
+    0.0307
+   ],
+   "file": "detail-male.glb",
+   "region": "chest",
+   "layer": "deep",
+   "sides": {
+    "left": [
+     0.0729,
+     1.4444,
+     0.0307
+    ],
+    "right": [
+     -0.0726,
+     1.4409,
+     0.0293
+    ]
+   }
+  },
+  {
+   "id": "muscle_serratus_anterior",
+   "name": "Serratus anterior",
+   "plain": "Finger-like muscle on the side of the rib cage; holds the shoulder blade to the ribs",
+   "system": "muscular",
+   "center": [
+    0.1181,
+    1.3537,
+    -0.0259
+   ],
+   "file": "detail-male.glb",
+   "region": "chest",
+   "layer": "superficial",
+   "sides": {
+    "left": [
+     0.1181,
+     1.3537,
+     -0.0259
+    ],
+    "right": [
+     -0.1144,
+     1.3532,
+     -0.0257
+    ]
+   }
+  },
+  {
+   "id": "muscle_intercostals",
+   "name": "Intercostal muscles",
+   "plain": "Muscles between the ribs; help breathing",
+   "system": "muscular",
+   "center": [
+    0.1076,
+    1.3023,
+    -0.004
+   ],
+   "file": "detail-male.glb",
+   "region": "chest",
+   "layer": "deep"
+  },
+  {
+   "id": "muscle_diaphragm",
+   "name": "Diaphragm",
+   "plain": "Dome-shaped main breathing muscle under the lungs",
+   "system": "muscular",
+   "center": [
+    0.0804,
+    1.2496,
+    0.0028
+   ],
+   "file": "detail-male.glb",
+   "region": "trunk",
+   "layer": "deep",
+   "sides": {
+    "left": [
+     0.0804,
+     1.2496,
+     0.0028
+    ],
+    "right": [
+     -0.0705,
+     1.2456,
+     0.0098
+    ]
+   }
+  },
+  {
+   "id": "muscle_rectus_abdominis",
+   "name": "Rectus abdominis",
+   "plain": "The \"six-pack\" muscle down the front of the belly",
+   "system": "muscular",
+   "center": [
+    0.0463,
+    1.0814,
+    0.112
+   ],
+   "file": "detail-male.glb",
+   "region": "abdomen",
+   "layer": "superficial",
+   "sides": {
+    "left": [
+     0.0463,
+     1.0814,
+     0.112
+    ],
+    "right": [
+     -0.0348,
+     1.0729,
+     0.1101
+    ]
+   }
+  },
+  {
+   "id": "muscle_external_oblique",
+   "name": "External oblique",
+   "plain": "Outer layer of the side of the belly; twists and bends the trunk",
+   "system": "muscular",
+   "center": [
+    0.1315,
+    1.1272,
+    0.0345
+   ],
+   "file": "detail-male.glb",
+   "region": "abdomen",
+   "layer": "superficial",
+   "sides": {
+    "left": [
+     0.1315,
+     1.1272,
+     0.0345
+    ],
+    "right": [
+     -0.1166,
+     1.1282,
+     0.0359
+    ]
+   }
+  },
+  {
+   "id": "muscle_internal_oblique",
+   "name": "Internal oblique",
+   "plain": "Middle layer of the belly wall, under the external oblique",
+   "system": "muscular",
+   "center": [
+    0.1138,
+    1.0517,
+    0.0335
+   ],
+   "file": "detail-male.glb",
+   "region": "abdomen",
+   "layer": "deep",
+   "sides": {
+    "left": [
+     0.1138,
+     1.0517,
+     0.0335
+    ],
+    "right": [
+     -0.097,
+     1.0477,
+     0.038
+    ]
+   }
+  },
+  {
+   "id": "muscle_transversus_abdominis",
+   "name": "Transversus abdominis",
+   "plain": "Deepest belly-wall layer; wraps around like a corset",
+   "system": "muscular",
+   "center": [
+    0.1049,
+    1.0968,
+    0.055
+   ],
+   "file": "detail-male.glb",
+   "region": "abdomen",
+   "layer": "deep",
+   "sides": {
+    "left": [
+     0.1049,
+     1.0968,
+     0.055
+    ],
+    "right": [
+     -0.0851,
+     1.0917,
+     0.0574
+    ]
+   }
+  },
+  {
+   "id": "muscle_iliopsoas",
+   "name": "Iliopsoas (psoas major and iliacus)",
+   "plain": "Deep hip flexor running from the lower spine and pelvis to the thigh bone",
+   "system": "muscular",
+   "center": [
+    0.0679,
+    1.0291,
+    -0.0018
+   ],
+   "file": "detail-male.glb",
+   "region": "pelvis",
+   "layer": "deep",
+   "sides": {
+    "left": [
+     0.0679,
+     1.0291,
+     -0.0018
+    ],
+    "right": [
+     -0.0503,
+     1.0284,
+     0.0013
+    ]
+   }
+  },
+  {
+   "id": "muscle_pelvic_floor",
+   "name": "Pelvic diaphragm (levator ani and coccygeus)",
+   "plain": "A sling that supports the pelvic organs",
+   "system": "muscular",
+   "center": [
+    0.0033,
+    0.8741,
+    -0.0303
+   ],
+   "file": "detail-male.glb",
+   "region": "pelvis",
+   "layer": "deep"
+  },
+  {
+   "id": "muscle_biceps_brachii",
+   "name": "Biceps brachii",
+   "plain": "Front of the upper arm; bends the elbow and turns the palm up",
+   "system": "muscular",
+   "center": [
+    0.1893,
+    1.3114,
+    0.0098
+   ],
+   "file": "detail-male.glb",
+   "region": "arm",
+   "layer": "superficial",
+   "sides": {
+    "left": [
+     0.1893,
+     1.3114,
+     0.0098
+    ],
+    "right": [
+     -0.1829,
+     1.3111,
+     0.0099
+    ]
+   }
+  },
+  {
+   "id": "muscle_triceps_brachii",
+   "name": "Triceps brachii",
+   "plain": "Back of the upper arm; straightens the elbow",
+   "system": "muscular",
+   "center": [
+    0.2059,
+    1.2905,
+    -0.0436
+   ],
+   "file": "detail-male.glb",
+   "region": "arm",
+   "layer": "superficial",
+   "sides": {
+    "left": [
+     0.2059,
+     1.2905,
+     -0.0436
+    ],
+    "right": [
+     -0.1999,
+     1.2892,
+     -0.0436
+    ]
+   }
+  },
+  {
+   "id": "muscle_brachialis",
+   "name": "Brachialis",
+   "plain": "Under the biceps; the main elbow-bending muscle",
+   "system": "muscular",
+   "center": [
+    0.2166,
+    1.2549,
+    -0.0032
+   ],
+   "file": "detail-male.glb",
+   "region": "arm",
+   "layer": "deep",
+   "sides": {
+    "left": [
+     0.2166,
+     1.2549,
+     -0.0032
+    ],
+    "right": [
+     -0.2105,
+     1.2552,
+     -0.0038
+    ]
+   }
+  },
+  {
+   "id": "muscle_coracobrachialis",
+   "name": "Coracobrachialis",
+   "plain": "Small muscle on the inner upper arm",
+   "system": "muscular",
+   "center": [
+    0.16,
+    1.3734,
+    -0.0051
+   ],
+   "file": "detail-male.glb",
+   "region": "arm",
+   "layer": "deep",
+   "sides": {
+    "left": [
+     0.16,
+     1.3734,
+     -0.0051
+    ],
+    "right": [
+     -0.1559,
+     1.3712,
+     -0.0039
+    ]
+   }
+  },
+  {
+   "id": "muscle_brachioradialis",
+   "name": "Brachioradialis",
+   "plain": "Thumb-side forearm muscle; bends the elbow",
+   "system": "muscular",
+   "center": [
+    0.2944,
+    1.1725,
+    0.0037
+   ],
+   "file": "detail-male.glb",
+   "region": "forearm",
+   "layer": "superficial",
+   "sides": {
+    "left": [
+     0.2944,
+     1.1725,
+     0.0037
+    ],
+    "right": [
+     -0.2883,
+     1.1764,
+     0.0025
+    ]
+   }
+  },
+  {
+   "id": "muscle_forearm_flexors",
+   "name": "Forearm flexor-pronator group",
+   "plain": "Forearm muscles on the palm side; bend the wrist and fingers",
+   "system": "muscular",
+   "center": [
+    0.3214,
+    1.0511,
+    0.0076
+   ],
+   "file": "detail-male.glb",
+   "region": "forearm",
+   "layer": "superficial",
+   "sides": {
+    "left": [
+     0.3214,
+     1.0511,
+     0.0076
+    ],
+    "right": [
+     -0.318,
+     1.0554,
+     0.0059
+    ]
+   }
+  },
+  {
+   "id": "muscle_forearm_extensors",
+   "name": "Forearm extensor-supinator group",
+   "plain": "Forearm muscles on the back of the forearm; straighten the wrist and fingers",
+   "system": "muscular",
+   "center": [
+    0.3234,
+    1.0831,
+    -0.0154
+   ],
+   "file": "detail-male.glb",
+   "region": "forearm",
+   "layer": "superficial",
+   "sides": {
+    "left": [
+     0.3234,
+     1.0831,
+     -0.0154
+    ],
+    "right": [
+     -0.3204,
+     1.0849,
+     -0.0168
+    ]
+   }
+  },
+  {
+   "id": "muscle_hand_intrinsic",
+   "name": "Intrinsic muscles of the hand",
+   "plain": "Small muscles of the thumb pad, little-finger pad and between the hand bones; fine finger movements",
+   "system": "muscular",
+   "center": [
+    0.3982,
+    0.9428,
+    0.0077
+   ],
+   "file": "detail-male.glb",
+   "region": "hand",
+   "layer": "superficial",
+   "sides": {
+    "left": [
+     0.3982,
+     0.9428,
+     0.0077
+    ],
+    "right": [
+     -0.3961,
+     0.9501,
+     0.006
+    ]
+   }
+  },
+  {
+   "id": "muscle_gluteus_maximus",
+   "name": "Gluteus maximus",
+   "plain": "The large buttock muscle; extends the hip",
+   "system": "muscular",
+   "center": [
+    0.0847,
+    0.9045,
+    -0.0644
+   ],
+   "file": "detail-male.glb",
+   "region": "hip",
+   "layer": "superficial",
+   "sides": {
+    "left": [
+     0.0847,
+     0.9045,
+     -0.0644
+    ],
+    "right": [
+     -0.0912,
+     0.9083,
+     -0.058
+    ]
+   }
+  },
+  {
+   "id": "muscle_gluteus_medius",
+   "name": "Gluteus medius",
+   "plain": "Upper outer buttock; keeps the pelvis level when walking",
+   "system": "muscular",
+   "center": [
+    0.1282,
+    0.9733,
+    -0.0323
+   ],
+   "file": "detail-male.glb",
+   "region": "hip",
+   "layer": "superficial",
+   "sides": {
+    "left": [
+     0.1282,
+     0.9733,
+     -0.0323
+    ],
+    "right": [
+     -0.1196,
+     0.9755,
+     -0.03
+    ]
+   }
+  },
+  {
+   "id": "muscle_gluteus_minimus",
+   "name": "Gluteus minimus",
+   "plain": "Smallest, deepest buttock muscle",
+   "system": "muscular",
+   "center": [
+    0.1299,
+    0.9552,
+    -0.0155
+   ],
+   "file": "detail-male.glb",
+   "region": "hip",
+   "layer": "deep",
+   "sides": {
+    "left": [
+     0.1299,
+     0.9552,
+     -0.0155
+    ],
+    "right": [
+     -0.1194,
+     0.9581,
+     -0.0122
+    ]
+   }
+  },
+  {
+   "id": "muscle_tensor_fasciae_latae",
+   "name": "Tensor fasciae latae",
+   "plain": "Front-outer hip; steadies the hip and knee",
+   "system": "muscular",
+   "center": [
+    0.1614,
+    0.9365,
+    0.0252
+   ],
+   "file": "detail-male.glb",
+   "region": "hip",
+   "layer": "superficial",
+   "sides": {
+    "left": [
+     0.1614,
+     0.9365,
+     0.0252
+    ],
+    "right": [
+     -0.1563,
+     0.936,
+     0.0274
+    ]
+   }
+  },
+  {
+   "id": "muscle_deep_hip_rotators",
+   "name": "Deep lateral rotators of the hip",
+   "plain": "Deep buttock muscles (piriformis and its neighbours); turn the thigh outward",
+   "system": "muscular",
+   "center": [
+    0.0824,
+    0.8921,
+    -0.0304
+   ],
+   "file": "detail-male.glb",
+   "region": "hip",
+   "layer": "deep",
+   "sides": {
+    "left": [
+     0.0824,
+     0.8921,
+     -0.0304
+    ],
+    "right": [
+     -0.0756,
+     0.8938,
+     -0.0285
+    ]
+   }
+  },
+  {
+   "id": "muscle_sartorius",
+   "name": "Sartorius",
+   "plain": "Long strap muscle crossing the front of the thigh",
+   "system": "muscular",
+   "center": [
+    0.1009,
+    0.6981,
+    0.0416
+   ],
+   "file": "detail-male.glb",
+   "region": "thigh",
+   "layer": "superficial",
+   "sides": {
+    "left": [
+     0.1009,
+     0.6981,
+     0.0416
+    ],
+    "right": [
+     -0.0988,
+     0.7103,
+     0.0426
+    ]
+   }
+  },
+  {
+   "id": "muscle_rectus_femoris",
+   "name": "Rectus femoris",
+   "plain": "Middle quadriceps muscle on the front of the thigh",
+   "system": "muscular",
+   "center": [
+    0.1486,
+    0.7134,
+    0.0392
+   ],
+   "file": "detail-male.glb",
+   "region": "thigh",
+   "layer": "superficial",
+   "sides": {
+    "left": [
+     0.1486,
+     0.7134,
+     0.0392
+    ],
+    "right": [
+     -0.1429,
+     0.7166,
+     0.0412
+    ]
+   }
+  },
+  {
+   "id": "muscle_vastus_lateralis",
+   "name": "Vastus lateralis",
+   "plain": "Outer quadriceps muscle of the thigh",
+   "system": "muscular",
+   "center": [
+    0.1774,
+    0.645,
+    0.0166
+   ],
+   "file": "detail-male.glb",
+   "region": "thigh",
+   "layer": "superficial",
+   "sides": {
+    "left": [
+     0.1774,
+     0.645,
+     0.0166
+    ],
+    "right": [
+     -0.1721,
+     0.6451,
+     0.0169
+    ]
+   }
+  },
+  {
+   "id": "muscle_vastus_medialis",
+   "name": "Vastus medialis",
+   "plain": "Inner, teardrop-shaped quadriceps muscle above the knee",
+   "system": "muscular",
+   "center": [
+    0.1189,
+    0.6178,
+    0.0414
+   ],
+   "file": "detail-male.glb",
+   "region": "thigh",
+   "layer": "superficial",
+   "sides": {
+    "left": [
+     0.1189,
+     0.6178,
+     0.0414
+    ],
+    "right": [
+     -0.116,
+     0.62,
+     0.0423
+    ]
+   }
+  },
+  {
+   "id": "muscle_vastus_intermedius",
+   "name": "Vastus intermedius",
+   "plain": "Deep quadriceps muscle, under the rectus femoris",
+   "system": "muscular",
+   "center": [
+    0.1527,
+    0.6377,
+    0.0279
+   ],
+   "file": "detail-male.glb",
+   "region": "thigh",
+   "layer": "deep",
+   "sides": {
+    "left": [
+     0.1527,
+     0.6377,
+     0.0279
+    ],
+    "right": [
+     -0.1466,
+     0.6374,
+     0.0288
+    ]
+   }
+  },
+  {
+   "id": "muscle_adductors",
+   "name": "Adductor group (adductor longus, brevis, magnus, minimus; pectineus)",
+   "plain": "Inner-thigh muscles; pull the legs together",
+   "system": "muscular",
+   "center": [
+    0.0954,
+    0.7425,
+    0.01
+   ],
+   "file": "detail-male.glb",
+   "region": "thigh",
+   "layer": "superficial",
+   "sides": {
+    "left": [
+     0.0954,
+     0.7425,
+     0.01
+    ],
+    "right": [
+     -0.0895,
+     0.7441,
+     0.0117
+    ]
+   }
+  },
+  {
+   "id": "muscle_gracilis",
+   "name": "Gracilis",
+   "plain": "Thin strap muscle on the inner thigh",
+   "system": "muscular",
+   "center": [
+    0.0601,
+    0.6555,
+    0.0125
+   ],
+   "file": "detail-male.glb",
+   "region": "thigh",
+   "layer": "superficial",
+   "sides": {
+    "left": [
+     0.0601,
+     0.6555,
+     0.0125
+    ],
+    "right": [
+     -0.057,
+     0.6632,
+     0.0122
+    ]
+   }
+  },
+  {
+   "id": "muscle_biceps_femoris",
+   "name": "Biceps femoris",
+   "plain": "Outer hamstring at the back of the thigh; bends the knee",
+   "system": "muscular",
+   "center": [
+    0.1494,
+    0.6294,
+    -0.0396
+   ],
+   "file": "detail-male.glb",
+   "region": "thigh",
+   "layer": "superficial",
+   "sides": {
+    "left": [
+     0.1494,
+     0.6294,
+     -0.0396
+    ],
+    "right": [
+     -0.1452,
+     0.6277,
+     -0.039
+    ]
+   }
+  },
+  {
+   "id": "muscle_semitendinosus",
+   "name": "Semitendinosus",
+   "plain": "Inner hamstring at the back of the thigh",
+   "system": "muscular",
+   "center": [
+    0.0864,
+    0.6201,
+    -0.0396
+   ],
+   "file": "detail-male.glb",
+   "region": "thigh",
+   "layer": "superficial",
+   "sides": {
+    "left": [
+     0.0864,
+     0.6201,
+     -0.0396
+    ],
+    "right": [
+     -0.0832,
+     0.6278,
+     -0.0402
+    ]
+   }
+  },
+  {
+   "id": "muscle_semimembranosus",
+   "name": "Semimembranosus",
+   "plain": "Deep inner hamstring at the back of the thigh",
+   "system": "muscular",
+   "center": [
+    0.0798,
+    0.6268,
+    -0.0237
+   ],
+   "file": "detail-male.glb",
+   "region": "thigh",
+   "layer": "superficial",
+   "sides": {
+    "left": [
+     0.0798,
+     0.6268,
+     -0.0237
+    ],
+    "right": [
+     -0.0772,
+     0.6309,
+     -0.0241
+    ]
+   }
+  },
+  {
+   "id": "muscle_gastrocnemius",
+   "name": "Gastrocnemius",
+   "plain": "The two-headed calf muscle; points the foot",
+   "system": "muscular",
+   "center": [
+    0.1386,
+    0.3824,
+    -0.0729
+   ],
+   "file": "detail-male.glb",
+   "region": "leg",
+   "layer": "superficial",
+   "sides": {
+    "left": [
+     0.1386,
+     0.3824,
+     -0.0729
+    ],
+    "right": [
+     -0.141,
+     0.3829,
+     -0.0726
+    ]
+   }
+  },
+  {
+   "id": "muscle_soleus",
+   "name": "Soleus",
+   "plain": "Flat calf muscle under the gastrocnemius",
+   "system": "muscular",
+   "center": [
+    0.163,
+    0.31,
+    -0.0709
+   ],
+   "file": "detail-male.glb",
+   "region": "leg",
+   "layer": "superficial",
+   "sides": {
+    "left": [
+     0.163,
+     0.31,
+     -0.0709
+    ],
+    "right": [
+     -0.1646,
+     0.3115,
+     -0.0708
+    ]
+   }
+  },
+  {
+   "id": "muscle_tibialis_anterior",
+   "name": "Tibialis anterior",
+   "plain": "Front of the shin; lifts the foot",
+   "system": "muscular",
+   "center": [
+    0.1828,
+    0.2416,
+    -0.0289
+   ],
+   "file": "detail-male.glb",
+   "region": "leg",
+   "layer": "superficial",
+   "sides": {
+    "left": [
+     0.1828,
+     0.2416,
+     -0.0289
+    ],
+    "right": [
+     -0.1852,
+     0.2441,
+     -0.0286
+    ]
+   }
+  },
+  {
+   "id": "muscle_toe_extensors",
+   "name": "Extensor digitorum longus and extensor hallucis longus",
+   "plain": "Long muscles at the front of the shin; lift the toes",
+   "system": "muscular",
+   "center": [
+    0.2071,
+    0.1938,
+    -0.0314
+   ],
+   "file": "detail-male.glb",
+   "region": "leg",
+   "layer": "superficial",
+   "sides": {
+    "left": [
+     0.2071,
+     0.1938,
+     -0.0314
+    ],
+    "right": [
+     -0.2085,
+     0.1932,
+     -0.0316
+    ]
+   }
+  },
+  {
+   "id": "muscle_fibularis",
+   "name": "Fibularis (peroneus) longus, brevis and tertius",
+   "plain": "Muscles on the outer side of the lower leg; turn the foot outward",
+   "system": "muscular",
+   "center": [
+    0.2084,
+    0.1894,
+    -0.0737
+   ],
+   "file": "detail-male.glb",
+   "region": "leg",
+   "layer": "superficial",
+   "sides": {
+    "left": [
+     0.2084,
+     0.1894,
+     -0.0737
+    ],
+    "right": [
+     -0.2079,
+     0.1923,
+     -0.0729
+    ]
+   }
+  },
+  {
+   "id": "muscle_deep_calf",
+   "name": "Deep posterior leg muscles",
+   "plain": "Deep calf muscles; support the arch and curl the toes",
+   "system": "muscular",
+   "center": [
+    0.1714,
+    0.2163,
+    -0.0491
+   ],
+   "file": "detail-male.glb",
+   "region": "leg",
+   "layer": "deep",
+   "sides": {
+    "left": [
+     0.1714,
+     0.2163,
+     -0.0491
+    ],
+    "right": [
+     -0.173,
+     0.2148,
+     -0.0483
+    ]
+   }
+  },
+  {
+   "id": "muscle_foot_intrinsic",
+   "name": "Intrinsic muscles of the foot",
+   "plain": "Small muscles of the sole and top of the foot; support the arch and move the toes",
+   "system": "muscular",
+   "center": [
+    0.1972,
+    0.0388,
+    -0.0235
+   ],
+   "file": "detail-male.glb",
+   "region": "foot",
+   "layer": "superficial",
+   "sides": {
+    "left": [
+     0.1972,
+     0.0388,
+     -0.0235
+    ],
+    "right": [
+     -0.2006,
+     0.0413,
+     -0.0233
+    ]
+   }
+  },
+  {
+   "id": "skeleton_hi",
+   "name": "Skeleton (close-up bones)",
+   "plain": "The bones that support and protect the body, in full detail for close-up views",
+   "system": "skeletal",
+   "center": [
+    0.0043,
+    1.0938,
+    -0.0086
+   ],
+   "file": "detail-male.glb"
+  }
+ ]
+}

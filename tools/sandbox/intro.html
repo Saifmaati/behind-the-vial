@@ -1,10 +1,12 @@
 <!doctype html>
-<!-- Dev sandbox for js/intro.js + js/scene/syringe.js (not shipped).
-     Serve the repo root (node tools/serve.mjs 8802) and open /tools/sandbox/intro.html
-       ?t=8          start the intro clock at 8 s        ?freeze=1   hold the clock (for stills)
-       ?rm=1         reduced motion (one composed still)
-       ?view=syringe photoreal check of the syringe alone under RoomEnvironment
-                     (&plunger=0.5&liquid=0.4&cap=1&glow=0&dist=0.16&az=20&el=10&bg=000000) -->
+<!-- Dev sandbox for js/intro.js, js/scene/vial.js and js/scene/syringe.js (not shipped).
+     Serve the repo root (node tools/serve.mjs 8823) and open /tools/sandbox/intro.html
+       ?p=0.35        seek the film to a scroll fraction (0..1) and hold it there
+       ?freeze=1      freeze the clock (stills)            ?rm=1   reduced motion (still chapters)
+       ?no3d=1        pretend WebGL is unavailable (static still composition)
+       ?view=vial     the vial alone under the intro's studio light (&az=20&el=8&dist=0.11&fy=0.02)
+       ?view=syringe  the syringe alone (&plunger=0.35&liquid=0.3&cap=1&dist=0.2&az=15&el=8&roll=-38)
+     Dev handle on the page: window.__intro (seek(p, { instant }), state). -->
 <html lang="en" data-theme="dark" data-intro="show">
 <head>
   <meta charset="utf-8">
@@ -16,12 +18,13 @@
   </script>
   <link rel="stylesheet" href="/css/tokens.css">
   <link rel="stylesheet" href="/css/app.css">
+  <link rel="stylesheet" href="/css/brand.css">
   <link rel="stylesheet" href="/css/intro.css">
   <style>
-    .sb-log { position: fixed; left: 12px; top: 12px; z-index: 200; font: 12px/1.4 ui-monospace, monospace; color: #8fe9ff; background: rgba(0,0,0,.6); padding: 6px 8px; border-radius: 6px; }
+    .sb-log { position: fixed; left: 12px; bottom: 60px; z-index: 300; font: 12px/1.4 ui-monospace, monospace; color: #E6D3A3; background: rgba(0,0,0,.6); padding: 6px 8px; border-radius: 6px; pointer-events: none; }
     .sb-log:empty { display: none; }
-    #syringe-view { position: fixed; inset: 0; background: #000; }
-    #syringe-view canvas { width: 100%; height: 100%; display: block; }
+    #product-view { position: fixed; inset: 0; background: #000; }
+    #product-view canvas { width: 100%; height: 100%; display: block; }
   </style>
 </head>
 <body>
@@ -31,25 +34,7 @@
     </symbol>
   </svg>
 
-  <!-- same markup as index.html -->
-  <div id="intro" class="intro force-dark" role="dialog" aria-modal="false" aria-labelledby="intro-title" aria-describedby="intro-sub">
-    <div id="intro-canvas-host" class="intro-canvas-host" aria-hidden="true"></div>
-    <div class="intro-backdrop" aria-hidden="true"></div>
-    <button id="intro-skip" class="intro-skip" type="button">Skip intro</button>
-    <div class="intro-content">
-      <p class="intro-kicker">An educational visualization</p>
-      <h1 id="intro-title" class="intro-title">PeptideScope</h1>
-      <p id="intro-sub" class="intro-sub">What actually happens inside the body after injecting a peptide that is trending online, and what the evidence really says.</p>
-      <div class="intro-actions">
-        <button id="intro-enter" class="btn btn--primary btn--lg" type="button">
-          <span class="btn-label">Enter the body</span>
-          <svg class="btn-icon" aria-hidden="true" focusable="false"><use href="#i-arrow"/></svg>
-        </button>
-        <button id="intro-facts" class="btn btn--ghost btn--lg" type="button">Read the facts first</button>
-      </div>
-      <p class="intro-note">Education only · Not medical advice · No dosing guidance</p>
-    </div>
-  </div>
+  <div id="intro-slot"></div>
 
   <main id="app" style="padding: 120px 24px"><h2 id="explorer-title" tabindex="-1">App behind the intro</h2></main>
 
@@ -61,15 +46,20 @@
   <script type="module">
     const q = new URLSearchParams(location.search);
     const html = document.documentElement;
-    if (q.get('theme') === 'light') html.dataset.theme = 'light';
+    html.classList.add('js');
     const log = (s) => { document.getElementById('sb-log').textContent = s; };
     const bar = document.getElementById('disclaimer');
     html.style.setProperty('--disclaimer-h', `${Math.ceil(bar.getBoundingClientRect().height)}px`);
 
-    if (q.get('view') === 'syringe') {
-      document.getElementById('intro').remove();
-      await syringeView();
+    if (q.get('view') === 'vial' || q.get('view') === 'syringe') {
+      await productView(q.get('view'));
     } else {
+      // the exact #intro block from index.html, so the sandbox never drifts from the page
+      const src = await (await fetch('/index.html', { cache: 'no-store' })).text();
+      const doc = new DOMParser().parseFromString(src, 'text/html');
+      const sprite = doc.querySelector('svg.sprite, body > svg');
+      if (sprite) document.body.prepend(document.importNode(sprite, true));
+      document.getElementById('intro-slot').replaceWith(document.importNode(doc.getElementById('intro'), true));
       const reducedMotion = q.get('rm') === '1' || matchMedia('(prefers-reduced-motion: reduce)').matches;
       if (reducedMotion) html.dataset.motion = 'reduce';
       const { mountIntro } = await import('/js/intro.js');
@@ -78,69 +68,73 @@
         log(`entered: ${kind}`);
         html.dataset.intro = 'leaving';
         const finish = () => { html.dataset.intro = 'done'; ctl?.dispose(); window.__disposed = true; };
-        if (reducedMotion) finish(); else setTimeout(finish, 760);
+        if (reducedMotion) finish(); else setTimeout(finish, 1000);
       };
       ctl = await mountIntro(document.getElementById('intro'), {
         reducedMotion,
         onEnter: (d) => close(d?.reason || 'enter'),
         onFacts: (d) => close(d?.reason || 'facts'),
-        debug: (q.has('t') || q.has('deadline')) ? {
-          t: q.has('t') ? Number(q.get('t')) : undefined,
+        debug: {
+          p: q.has('p') ? Number(q.get('p')) : undefined,
           freeze: q.get('freeze') === '1',
-          textDeadlineMs: q.has('deadline') ? Number(q.get('deadline')) : undefined,
-          view: q.has('view4') ? q.get('view4').split(',').map(Number) : undefined,
-        } : null,
+          quality: q.has('quality') ? Number(q.get('quality')) : undefined,
+          no3d: q.get('no3d') === '1',
+        },
       });
-      window.__intro = ctl;
+      window.__ctl = ctl;
+      setInterval(() => { const s = ctl?._state; if (s) log(JSON.stringify(s)); }, 500);
     }
 
-    async function syringeView() {
+    async function productView(kind) {
       const THREE = await import('three');
-      const { RoomEnvironment } = await import('three/addons/environments/RoomEnvironment.js');
-      const { createSyringe } = await import('/js/scene/syringe.js');
+      const { __dev } = await import('/js/intro.js');
       const host = document.createElement('div');
-      host.id = 'syringe-view';
+      host.id = 'product-view';
       document.body.prepend(host);
       const renderer = new THREE.WebGLRenderer({ antialias: true });
       renderer.setPixelRatio(Math.min(devicePixelRatio, 1.5));
       renderer.setSize(innerWidth, innerHeight);
-      renderer.toneMapping = THREE.ACESFilmicToneMapping;
+      renderer.toneMapping = THREE.AgXToneMapping;
       renderer.outputColorSpace = THREE.SRGBColorSpace;
       host.append(renderer.domElement);
       const scene = new THREE.Scene();
-      scene.background = new THREE.Color('#' + (q.get('bg') || '000000'));
+      scene.background = new THREE.Color('#' + (q.get('bg') || '0b0a0b'));
       const pmrem = new THREE.PMREMGenerator(renderer);
-      scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
-      const camera = new THREE.PerspectiveCamera(30, innerWidth / innerHeight, 0.001, 10);
-      const s = createSyringe(THREE, {});
-      s.setPlunger(Number(q.get('plunger') ?? 0.5));
-      s.setLiquid(Number(q.get('liquid') ?? 0.42));
-      s.setCapOn(q.get('cap') === '1');
-      s.setGlow(Number(q.get('glow') ?? 0));
+      const envScene = __dev.buildStudio(THREE);
+      scene.environment = pmrem.fromScene(envScene, 0, 0.1, 100, { size: 256 }).texture;
+      scene.environmentIntensity = Number(q.get('env') ?? 1);
+      __dev.addStudioLights(THREE, scene);
+      const camera = new THREE.PerspectiveCamera(Number(q.get('fov') ?? 26), innerWidth / innerHeight, 0.001, 10);
       const pivot = new THREE.Group();
-      pivot.add(s.group);
-      s.group.position.y = -Number(q.get('cy') ?? 0.06);
-      pivot.rotation.z = THREE.MathUtils.degToRad(Number(q.get('roll') ?? -38));
       scene.add(pivot);
-      // a few glowing lines behind, drawn in the opaque list like the intro's vessels
-      const lineMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(2.2, 0.3, 0.2), blending: THREE.AdditiveBlending, depthWrite: false });
-      for (let i = 0; i < 5; i++) {
-        const m = new THREE.Mesh(new THREE.CylinderGeometry(0.0012, 0.0012, 0.5, 8), lineMat);
-        m.position.set(-0.08 + i * 0.04, 0, -0.12);
-        m.rotation.z = 0.6 + i * 0.2;
-        m.renderOrder = 10;
-        scene.add(m);
+      let obj;
+      if (kind === 'vial') {
+        const { createVial } = await import('/js/scene/vial.js');
+        obj = createVial(THREE, {});
+        await obj.labelReady;
+        pivot.add(obj.group);
+        pivot.rotation.y = THREE.MathUtils.degToRad(Number(q.get('spin') ?? 0));
+      } else {
+        const { createSyringe } = await import('/js/scene/syringe.js');
+        obj = createSyringe(THREE, {});
+        obj.setPlunger(Number(q.get('plunger') ?? 0.35));
+        obj.setLiquid(Number(q.get('liquid') ?? 0.3));
+        obj.setCapOn(q.get('cap') === '1');
+        obj.setGlow(Number(q.get('glow') ?? 0));
+        obj.group.position.y = -Number(q.get('cy') ?? 0.06);
+        pivot.rotation.z = THREE.MathUtils.degToRad(Number(q.get('roll') ?? -38));
+        pivot.add(obj.group);
       }
-      const dist = Number(q.get('dist') ?? 0.2);
+      const dist = Number(q.get('dist') ?? (kind === 'vial' ? 0.12 : 0.2));
       const az = THREE.MathUtils.degToRad(Number(q.get('az') ?? 15));
       const el = THREE.MathUtils.degToRad(Number(q.get('el') ?? 8));
-      const fy = Number(q.get('fy') ?? 0);
+      const fy = Number(q.get('fy') ?? (kind === 'vial' ? 0.02 : 0));
       camera.position.set(Math.sin(az) * Math.cos(el) * dist, Math.sin(el) * dist + fy, Math.cos(az) * Math.cos(el) * dist);
       camera.lookAt(0, fy, 0);
       renderer.render(scene, camera);
       renderer.render(scene, camera);
-      log(`syringe: plunger ${s.plunger.toFixed(2)} liquid ${s.liquid.toFixed(2)} · dims ${JSON.stringify(s.dims).slice(0, 160)}`);
-      window.__syringe = s;
+      log(`${kind}: dims ${JSON.stringify(obj.dims).slice(0, 180)}`);
+      window.__obj = obj;
     }
   </script>
 </body>

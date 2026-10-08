@@ -1,6 +1,7 @@
 /* PeptideScope: #stage-host internals (body3d).
    Canvas, callout labels in #callout-layer, the small 3D toolbar, the skip button, the colour key,
-   the zoom hint, the "Body" button and the body editor panel (#body-editor, js/ui/bodyeditor.js).
+   the zoom hint, the "Layers" and "Body" buttons, the body editor panel (#body-editor) and the anatomy
+   layers panel (#layers-panel), both rendered by js/ui/bodyeditor.js.
    The frame itself (size, background, HUD, loading, fallback) belongs to app.css.
 
    Luxury palette (docs/ARCHITECTURE.md, v2): obsidian, ivory and champagne gold; oxblood arteries,
@@ -412,11 +413,16 @@ html[data-theme="light"] .stage-tool:hover { color: var(--st-gold); }
 .stage-host.is-context-lost #callout-layer { visibility: hidden; }
 
 /* ---------------------------------------------------------------- body editor (appearance only) */
-.stage-body-btn {
+.stage-panel-btns {
   position: absolute;
   top: 44px;
   right: 14px;
   z-index: var(--z-stage-overlay, 4);
+  display: flex;
+  gap: 8px;
+}
+.stage-body-btn {
+  position: relative;
   display: inline-flex;
   align-items: center;
   gap: 8px;
@@ -593,6 +599,40 @@ html[data-theme="light"] .be-eyebrow { color: var(--st-gold); }
 }
 .be-seg__soon[hidden] { display: none; }
 
+/* skin tone swatches (appearance only) */
+.be-tones .be-label { margin-bottom: 9px; }
+.be-tone-row { display: flex; gap: 8px; flex-wrap: wrap; }
+.be-tone {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  cursor: pointer;
+}
+.be-tone input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: inherit;
+}
+.be-tone__sw {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--sw);
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.18), 0 0 0 1px var(--st-line-strong);
+  transition: box-shadow 200ms var(--st-ease), transform 200ms var(--st-ease);
+}
+.be-tone:has(input:checked) .be-tone__sw { box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.18), 0 0 0 2px var(--st-glass-strong), 0 0 0 3px var(--st-gold); }
+.be-tone:has(input:focus-visible) { outline: 2px solid var(--st-focus); outline-offset: 2px; }
+.be-tone:has(input:disabled) { cursor: not-allowed; opacity: 0.5; }
+.be-hint { margin: 8px 0 0; color: var(--st-muted); font-size: 0.68rem; line-height: 1.4; }
+
 /* sliders with Newsreader readouts */
 .be-row {
   display: flex;
@@ -704,6 +744,87 @@ html[data-theme="light"] .be-eyebrow { color: var(--st-gold); }
   line-height: 1.45;
 }
 
+/* ---------------------------------------------------------------- anatomy layers panel (view only) */
+.lp-switches { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 14px; margin-top: 9px; }
+.lp-switch {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 30px;
+  color: var(--st-text-2);
+  font-size: 0.78rem;
+  cursor: pointer;
+}
+.lp-switch[hidden] { display: none; }
+.lp-switch input { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: inherit; }
+.lp-switch__box {
+  position: relative;
+  flex: none;
+  width: 28px;
+  height: 16px;
+  border: 1px solid var(--st-line-strong);
+  border-radius: 999px;
+  transition: border-color 200ms var(--st-ease), background-color 200ms var(--st-ease);
+}
+.lp-switch__box::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--st-muted);
+  transition: transform 200ms var(--st-ease), background-color 200ms var(--st-ease);
+}
+.lp-switch:has(input:checked) { color: var(--st-text); }
+.lp-switch:has(input:checked) .lp-switch__box { border-color: var(--st-gold-line); background: var(--st-gold-soft); }
+.lp-switch:has(input:checked) .lp-switch__box::after { transform: translateX(12px); background: var(--st-gold); }
+.lp-switch:has(input:focus-visible) .lp-switch__box { outline: 2px solid var(--st-focus); outline-offset: 2px; }
+.lp-switch:has(input:disabled) { opacity: 0.5; cursor: not-allowed; }
+.lp-read {
+  color: var(--st-text);
+  font-family: var(--st-serif);
+  font-size: 1.05rem;
+  line-height: 1;
+  font-variant-numeric: tabular-nums lining-nums;
+}
+.lp-ends { display: flex; justify-content: space-between; margin-top: 2px; }
+.lp-end {
+  padding: 4px 0;
+  border: 0;
+  background: none;
+  color: var(--st-muted);
+  font: inherit;
+  font-size: 0.6rem;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+.lp-end:hover { color: var(--st-text); }
+.lp-end:focus-visible, .lp-item:focus-visible { outline: 2px solid var(--st-focus); outline-offset: 2px; border-radius: 2px; }
+.lp-structures summary { cursor: pointer; list-style: none; display: flex; justify-content: space-between; align-items: center; }
+.lp-structures summary::-webkit-details-marker { display: none; }
+.lp-structures summary::after { content: "+"; color: var(--st-gold); font-size: 0.9rem; letter-spacing: 0; }
+.lp-structures[open] summary::after { content: "−"; }
+.lp-structures summary:focus-visible { outline: 2px solid var(--st-focus); outline-offset: 2px; }
+.lp-list { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0 0; padding: 0; list-style: none; }
+.lp-item {
+  min-height: 28px;
+  padding: 0 11px;
+  border: 1px solid var(--st-line-strong);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--st-text-2);
+  font: inherit;
+  font-size: 0.72rem;
+  cursor: pointer;
+  transition: border-color 200ms var(--st-ease), color 200ms var(--st-ease);
+}
+.lp-item:hover { border-color: var(--st-gold-line); color: var(--st-text); }
+
 /* ---------------------------------------------------------------- narrow stages */
 /* The stage frame is a size container (app.css); follow its width, like the HUD does. */
 @container stage (max-width: 600px) {
@@ -739,7 +860,8 @@ html[data-theme="light"] .be-eyebrow { color: var(--st-gold); }
   .stage-credit__long { display: none; }
   .stage-credit__short { display: inline; }
   .stage-skip { bottom: 42px; }
-  .stage-body-btn { top: 14px; right: 10px; min-height: 32px; padding: 0 12px 0 9px; }
+  .stage-panel-btns { top: 14px; right: 10px; gap: 6px; }
+  .stage-body-btn { min-height: 32px; padding: 0 12px 0 9px; }
 }
 @container stage (max-width: 360px) {
   .stage-legend { gap: 8px; letter-spacing: 0.08em; }
@@ -749,17 +871,17 @@ html[data-theme="light"] .be-eyebrow { color: var(--st-gold); }
 @media (prefers-reduced-motion: reduce) {
   :root:not([data-motion="full"]) .bv-callout,
   :root:not([data-motion="full"]) .stage-skip { animation: none; }
-  :root:not([data-motion="full"]) :is(.stage-tool, .stage-zoom-hint, .bv-callout--interactive, .stage-body-btn, .body-editor, .be-seg__opt, .be-reset, .be-close) { transition: none; }
+  :root:not([data-motion="full"]) :is(.stage-tool, .stage-zoom-hint, .bv-callout--interactive, .stage-body-btn, .body-editor, .be-seg__opt, .be-reset, .be-close, .be-tone__sw, .lp-switch__box, .lp-switch__box::after, .lp-item) { transition: none; }
   :root:not([data-motion="full"]) .body-editor { transform: none; }
 }
 html[data-motion="reduce"] .bv-callout,
 html[data-motion="reduce"] .stage-skip { animation: none; }
-html[data-motion="reduce"] :is(.stage-tool, .stage-zoom-hint, .bv-callout--interactive, .stage-body-btn, .body-editor, .be-seg__opt, .be-reset, .be-close) { transition: none; }
+html[data-motion="reduce"] :is(.stage-tool, .stage-zoom-hint, .bv-callout--interactive, .stage-body-btn, .body-editor, .be-seg__opt, .be-reset, .be-close, .be-tone__sw, .lp-switch__box, .lp-switch__box::after, .lp-item) { transition: none; }
 html[data-motion="reduce"] .body-editor { transform: none; }
 
 /* ---------------------------------------------------------------- forced colours */
 @media (forced-colors: active) {
-  .bv-callout, .stage-tool, .stage-skip, .stage-body-btn, .body-editor, .be-seg, .be-reset, .be-close {
+  .bv-callout, .stage-tool, .stage-skip, .stage-body-btn, .body-editor, .be-seg, .be-reset, .be-close, .lp-switch__box, .lp-item {
     border: 1px solid CanvasText; background: Canvas; color: CanvasText;
   }
   .bv-callout-dot { background: Highlight; box-shadow: none; }

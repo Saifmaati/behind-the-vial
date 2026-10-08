@@ -55,7 +55,6 @@ const doseFacts = {
         { arm: '9 mg group', cells: ['−23.7%', '6.5%', '38.4%', '22.8%', '12.3%', '7.7%', '+2.7'] },
         { arm: '12 mg group', cells: ['−25.0%', '11.2%', '42.4%', '25.3%', '12.5%', '10.5%', '+2.6'] },
       ],
-      chart: { columns: ['Stopped because of side effects', 'Nausea', 'Vomiting', 'Odd skin feelings (dysesthesia)'] },
       sources: [
         'new-england-2026-retatrutide-triple-hormone-receptor-2',
         'new-england-2026-retatrutide-triple-hormone-receptor-3',
@@ -93,7 +92,6 @@ const doseFacts = {
         { arm: '9 mg group', cells: ['−16.8%', '12%', '21%', '34%', '6%', '5%', '+1.0'] },
         { arm: '12 mg group', cells: ['−18.8%', '8%', '28%', '34%', '7%', '6%', '+1.5'] },
       ],
-      chart: { columns: ['Stopped for good because of side effects or death', 'Nausea', 'Diarrhea', 'Odd skin feelings (dysesthesia)'] },
       sources: [
         'lancet-via-2026-retatrutide-adults-obesity-type',
         'lancet-elsevier-2026-supplementary-appendix-bellido-v',
@@ -127,7 +125,6 @@ const doseFacts = {
         { arm: '9 mg group', cells: ['−20.0%', '12.2%', '38.1%', '20.4%', '8.8%'] },
         { arm: '12 mg group', cells: ['−23.7%', '18.2%', '43.2%', '20.9%', '20.9%'] },
       ],
-      chart: { columns: ['Stopped because of side effects', 'Nausea', 'Vomiting', 'Odd skin feelings (dysesthesia)'] },
       sources: ['eli-lilly-2025-lilly-s-triple-agonist'],
       ledger: [
         'trials-triumph4-design',
@@ -161,7 +158,6 @@ const doseFacts = {
         { arm: '8 mg, group B', cells: ['−22.8% (A and B together)', '6%', '60%', '26%', '14.3%', '+6.0'] },
         { arm: '12 mg group', cells: ['−24.2%', '16%', '45%', '19%', '12.9%', '+9.2'] },
       ],
-      chart: { columns: ['Stopped because of side effects', 'Nausea', 'Vomiting'] },
       sources: [
         'new-england-2023-triple-hormone-receptor-agonist-2',
         'new-england-2023-triple-hormone-receptor-agonist',
@@ -401,14 +397,14 @@ const claims = [
   {
     claim: 'It\'s natural, just a peptide, so it\'s gentle.',
     verdict: 'not-supported',
-    evidence: 'It is a lab-made molecule the body does not make, and it is built to last: in an early trial in people with type 2 diabetes, it took about 6 days for the amount in the blood to fall by half. The FDA warns that injected products skip some of the body\'s key defenses against germs and toxins.',
+    evidence: 'It is a lab-made molecule the body does not make, and it is built to last: in an early trial in people with type 2 diabetes, it took about 6 days for the amount in the blood to fall by half, so its effects, including side effects, do not wear off quickly. Side effects were common: in TRIUMPH-1, 42.4% of the 12 mg group had nausea versus 14.8% on placebo.',
     sources: [
       'diabetes-obesity-2025-retatrutide-treatment-obesity-obstruct-2',
       'naunyn-schmiedeberg-2025-inotropic-effects-retatrutide-isola',
       'lancet-elsevier-2022-ly3437943-novel-triple-gip',
-      'u-s-2026-warning-letter-lovega-llc',
+      'eli-lilly-2026-lilly-s-triple-agonist',
     ],
-    ledger: ['claims-12-synthetic', 'claims-12-not-made-by-body', 'claims-12-long-half-life', 'claims-12-injection-bypasses-defenses'],
+    ledger: ['claims-12-synthetic', 'claims-12-not-made-by-body', 'claims-12-long-half-life', 'claims-3-gi-rates-triumph1'],
   },
   {
     claim: 'It has no effect on the heart.',

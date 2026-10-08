@@ -741,3 +741,227 @@
   .tl-pdot { fill: Highlight; }
   .fx-card::before { background: CanvasText; }
 }
+
+/* timeline-text (plain text timeline) */
+/* Owned by the timeline-text task. No graphs (owner, 2026-10-08): the level chart is gone and
+   js/timeline.js renders a plain-text timeline instead. Only this block styles the new parts.
+   Tokens only; no green. Chart rules above (.tl-svg, .tl-chart, .tl-modes, .tl-legend …) no
+   longer match any element. */
+
+.tl-text .tl-head { align-items: center; gap: 14px 28px; }
+.tl-text .tl-lead { flex: 0 1 auto; }
+@media (min-width: 700px) { .tl-text .tl-readout { min-width: 13.5rem; } }
+.tl-time {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0 8px;
+  margin-top: 3px;
+  font-family: var(--font-display, "Newsreader", Georgia, serif);
+  font-variant-numeric: lining-nums tabular-nums;
+  line-height: 1.05;
+}
+.tl-time-main { font-size: clamp(1.6rem, 1.3rem + 0.9vw, 2.1rem); font-weight: 380; letter-spacing: -0.01em; color: var(--text); }
+.tl-time-sub { font-family: var(--font-sans, Inter, system-ui, sans-serif); font-size: 0.8rem; letter-spacing: 0.01em; color: var(--muted); }
+.tl-time-sub[hidden] { display: none; }
+
+/* track: a groove and the four milestone pins drawn behind the native range (its own track is
+   transparent), so the thumb always sits on top */
+.tl-track { position: relative; flex: 1 1 300px; min-width: 0; }
+.tl-text .tl-scrub { --thumb: 18px; position: relative; margin: 0; }
+.tl-groove {
+  position: absolute;
+  left: calc(var(--thumb) / 2);
+  right: calc(var(--thumb) / 2);
+  top: 50%;
+  height: 2px;
+  margin-top: -1px;
+  border-radius: 1px;
+  background: var(--line-strong, var(--line));
+  pointer-events: none;
+}
+.tl-groove-fill { position: absolute; inset: 0 auto 0 0; width: calc(var(--tl-f, 0) * 100%); border-radius: inherit; background: var(--accent); }
+.tl-pins { position: absolute; inset: 0; }
+.tl-pin {
+  position: absolute;
+  top: 50%;
+  left: calc(var(--p, 0) * 100%);
+  width: 8px;
+  height: 8px;
+  transform: translate(-50%, -50%) rotate(45deg);
+  background: var(--surface);
+  border: 1px solid var(--muted);
+  transition: background var(--dur-2, 400ms) var(--ease), border-color var(--dur-2, 400ms) var(--ease), box-shadow var(--dur-2, 400ms) var(--ease);
+}
+.tl-pin.is-past { background: var(--accent); border-color: var(--accent); }
+.tl-pin.is-active { box-shadow: 0 0 0 3px var(--accent-soft, transparent); }
+.tl-text .tl-range { position: relative; z-index: 1; }
+.tl-text .tl-range::-webkit-slider-runnable-track { background: transparent; }
+.tl-text .tl-range::-moz-range-track { background: transparent; }
+.tl-text .tl-range::-moz-range-progress { background: transparent; }
+
+.tl-text .tl-scrub-foot {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: baseline;
+  gap: 8px;
+  padding: 0;
+  margin-top: 1px;
+}
+.tl-text .tl-range-label { text-align: center; }
+.tl-text .tl-range-label::after { content: none; }
+.tl-end { font-size: 0.72rem; line-height: 1.4; color: var(--muted); white-space: nowrap; }
+.tl-end-stop { text-align: right; }
+/* the key hint appears only while the scrubber has keyboard focus, floating, so nothing moves */
+.tl-text .tl-keys {
+  position: absolute;
+  right: 0;
+  top: 100%;
+  z-index: 2;
+  margin-top: 4px;
+  padding: 3px 9px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-s, 6px);
+  background: var(--surface);
+  color: var(--muted);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--dur-1, 200ms) var(--ease);
+}
+.tl-track:has(.tl-range:focus-visible) .tl-keys { opacity: 1; }
+
+/* coming soon: no entry, so no scrubber; the readout says why */
+.tl-text.is-disabled .tl-track { display: none; }
+
+/* milestones: one hairline through four diamonds; the part already passed turns gold */
+.tl-miles {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0;
+  margin: 24px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.tl-miles[hidden] { display: none; }
+.tl-mile-item { margin: 0; padding: 0; min-width: 0; }
+.tl-mile {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 5px;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 18px 14px 14px;
+  border: 0;
+  border-top: 1px solid var(--line);
+  border-radius: 0 0 var(--radius-m, 8px) var(--radius-m, 8px);
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--dur-2, 400ms) var(--ease), border-color var(--dur-2, 400ms) var(--ease);
+}
+.tl-mile:hover { background: color-mix(in srgb, var(--accent) 6%, transparent); }
+.tl-mile-dot {
+  position: absolute;
+  top: -5px;
+  left: 14px;
+  width: 9px;
+  height: 9px;
+  transform: rotate(45deg);
+  background: var(--surface);
+  border: 1px solid var(--muted);
+  transition: background var(--dur-2, 400ms) var(--ease), border-color var(--dur-2, 400ms) var(--ease), box-shadow var(--dur-2, 400ms) var(--ease);
+}
+.tl-mile-name {
+  font-family: var(--font-display, "Newsreader", Georgia, serif);
+  font-size: 1.12rem;
+  font-weight: 420;
+  line-height: 1.2;
+  color: var(--text);
+}
+.tl-mile-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 8px;
+  font-size: 0.8rem;
+  line-height: 1.4;
+  color: var(--text-2, var(--text));
+  font-variant-numeric: tabular-nums;
+}
+.tl-mile-term, .tl-detail-term {
+  font-size: 0.64rem;
+  font-weight: 500;
+  font-feature-settings: var(--label-features, "case");
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.tl-mile .tl-chip { margin-top: 2px; }
+.tl-mile.is-past { border-top-color: var(--accent); }
+.tl-mile.is-past .tl-mile-dot { background: var(--accent); border-color: var(--accent); }
+.tl-mile.is-active { border-top-color: var(--accent); background: linear-gradient(180deg, var(--accent-soft, transparent), transparent 92%); }
+.tl-mile.is-active .tl-mile-dot { background: var(--accent); border-color: var(--accent); box-shadow: 0 0 0 4px var(--accent-soft, transparent); }
+.tl-mile.is-active .tl-mile-name { color: var(--accent); }
+.tl-mile:focus-visible { outline: 1.5px solid var(--focus, var(--accent)); outline-offset: 2px; }
+
+@media (max-width: 639px) {
+  /* phones: the same timeline, stacked, with the hairline running down the left */
+  .tl-miles { grid-template-columns: minmax(0, 1fr); margin-top: 20px; margin-left: 5px; }
+  .tl-mile {
+    padding: 10px 12px 12px 22px;
+    border-top: 0;
+    border-left: 1px solid var(--line);
+    border-radius: 0 var(--radius-m, 8px) var(--radius-m, 8px) 0;
+  }
+  .tl-mile { flex-direction: row; flex-wrap: wrap; align-items: center; gap: 3px 10px; }
+  .tl-mile-name { flex: 1 0 100%; }
+  .tl-mile .tl-chip { margin-top: 0; }
+  .tl-mile-dot { top: 15px; left: -5px; }
+  .tl-mile.is-past { border-left-color: var(--accent); }
+  .tl-mile.is-active { border-left-color: var(--accent); background: linear-gradient(90deg, var(--accent-soft, transparent), transparent 92%); }
+}
+
+.tl-text .tl-detail { margin-top: 14px; }
+.tl-text .tl-detail-head { align-items: baseline; }
+
+/* "with weekly shots": cited text only, folded away */
+.tl-weekly { margin-top: 14px; border-top: 1px solid var(--line); }
+.tl-weekly[hidden] { display: none; }
+.tl-weekly-sum {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+  padding: 12px 0 4px;
+  list-style: none;
+  color: var(--text);
+  font-size: var(--step--1, 0.88rem);
+  cursor: pointer;
+}
+.tl-weekly-sum::-webkit-details-marker { display: none; }
+.tl-weekly-sum::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  margin: 0 2px 2px 2px;
+  border-right: 1px solid var(--accent);
+  border-bottom: 1px solid var(--accent);
+  transform: rotate(-45deg);
+  transition: transform var(--dur-1, 200ms) var(--ease);
+}
+.tl-weekly[open] > .tl-weekly-sum::before { transform: rotate(45deg); }
+.tl-weekly-label { font-weight: 500; }
+.tl-weekly-sum:focus-visible { outline: 1.5px solid var(--focus, var(--accent)); outline-offset: 3px; border-radius: 4px; }
+.tl-weekly-text { margin-top: 6px; max-width: var(--measure, 64ch); color: var(--text-2, var(--text)); font-size: var(--step--1, 0.9rem); line-height: var(--leading, 1.6); }
+
+.tl-text.tl-rm .tl-pin, .tl-text.tl-rm .tl-mile, .tl-text.tl-rm .tl-mile-dot, .tl-text.tl-rm .tl-keys { transition: none; }
+@media (forced-colors: active) {
+  .tl-groove { background: CanvasText; }
+  .tl-groove-fill, .tl-pin.is-past, .tl-mile.is-past .tl-mile-dot { background: Highlight; }
+  .tl-mile.is-active { outline: 1px solid Highlight; }
+}

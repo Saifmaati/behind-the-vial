@@ -13,7 +13,7 @@ import { bus } from './busref.js';
 import { SOURCES } from '../../data/sources.js';
 import { GRAY } from '../../data/graymarket.js';
 import { createCiteContext } from './cite.js';
-import { html, prefersReducedMotion, sampleNote } from './util.js';
+import { html, prefersReducedMotion } from './util.js';
 import { mountPicker, mountSitePicker as mountSites } from './picker.js';
 import { renderOverview } from './overview.js';
 import { renderPharmacology } from './pharmacology.js';
@@ -27,7 +27,6 @@ import { renderGrayMarket } from './graymarket.js';
 import { mountRiskCheck as mountRisk } from './riskcheck.js';
 import { renderSources } from './sources.js';
 import { comingSoonCard, comingSoonSection } from './comingsoon.js';
-import { hydrateCharts, resetCharts } from './charts.js';
 
 export { mountPicker };
 export { createCiteContext } from './cite.js';
@@ -53,8 +52,6 @@ export function mountSitePicker(host, opts = {}) {
   return mountSites(host, opts);
 }
 
-const SAMPLE_NOTE = sampleNote();
-
 /** [data-render] bodies in reading order (first per key), plus a #sources fallback. */
 function bodies(root) {
   const map = new Map();
@@ -70,8 +67,8 @@ function bodies(root) {
   return map;
 }
 
-function fill(el, key, markup, { sample } = {}) {
-  el.innerHTML = `${sample ? SAMPLE_NOTE : ''}${markup}`;
+function fill(el, key, markup) {
+  el.innerHTML = markup;
   el.classList.add('c-body');
   el.dataset.rendered = key;
 }
@@ -82,7 +79,6 @@ function failNote(key, err) {
 }
 
 function afterRender(root) {
-  hydrateCharts(root && root.querySelectorAll ? root : document);
   reflectSite(root);
 }
 
@@ -91,7 +87,6 @@ export function renderEntry(entry, { root = document } = {}) {
   if (!entry) return { ctx: null };
   const ctx = createCiteContext(SOURCES);
   current = { id: entry.id, ctx };
-  resetCharts();
   const map = bodies(root);
   for (const [key, el] of map) {
     if (key === 'sources') continue;
@@ -103,15 +98,14 @@ export function renderEntry(entry, { root = document } = {}) {
       }
       const r = RENDER[key];
       if (!r) continue;
-      const sample = key === 'gray-market' ? !!GRAY?.sample : !!entry.sample;
-      fill(el, key, String(r(entry, ctx)), { sample });
+      fill(el, key, String(r(entry, ctx)));
     } catch (err) {
       el.innerHTML = failNote(key, err);
     }
   }
   const src = map.get('sources');
   if (src) {
-    try { fill(src, 'sources', String(renderSources(ctx)), { sample: Object.values(SOURCES).some((s) => s.sample) }); } catch (err) { src.innerHTML = failNote('sources', err); }
+    try { fill(src, 'sources', String(renderSources(ctx))); } catch (err) { src.innerHTML = failNote('sources', err); }
   }
   afterRender(root);
   return { ctx };
@@ -122,14 +116,13 @@ export function renderComingSoon(peptide, { root = document } = {}) {
   if (!peptide) return { ctx: null };
   const ctx = createCiteContext(SOURCES);
   current = { id: peptide.id, ctx };
-  resetCharts();
   const map = bodies(root);
   for (const [key, el] of map) {
     if (key === 'sources') continue;
     try {
       if (key === 'risk-check') { mountRisk(el, { name: peptide.name, id: peptide.id, risk: null }, ctx); el.classList.add('c-body'); continue; }
-      if (key === 'overview') { fill(el, key, String(comingSoonCard(peptide, ctx)), { sample: !!peptide.sample }); continue; }
-      if (key === 'gray-market') { fill(el, key, String(renderGrayMarket(GRAY, ctx)), { sample: !!GRAY?.sample }); continue; }
+      if (key === 'overview') { fill(el, key, String(comingSoonCard(peptide, ctx))); continue; }
+      if (key === 'gray-market') { fill(el, key, String(renderGrayMarket(GRAY, ctx))); continue; }
       fill(el, key, String(comingSoonSection(key, peptide)));
     } catch (err) {
       el.innerHTML = failNote(key, err);
@@ -137,7 +130,7 @@ export function renderComingSoon(peptide, { root = document } = {}) {
   }
   const src = map.get('sources');
   if (src) {
-    try { fill(src, 'sources', String(renderSources(ctx)), { sample: Object.values(SOURCES).some((s) => s.sample) }); } catch (err) { src.innerHTML = failNote('sources', err); }
+    try { fill(src, 'sources', String(renderSources(ctx))); } catch (err) { src.innerHTML = failNote('sources', err); }
   }
   afterRender(root);
   return { ctx };

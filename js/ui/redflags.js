@@ -51,8 +51,8 @@ export function renderRedFlags(entry, ctx) {
           <p class="c-flag__sub">Or go to the nearest emergency room. Do not wait to see if it passes.</p>
         </div>
       </header>
-      ${flagList(rf.call911, ctx)}
       <a class="c-flag__cta" href="tel:911">${icon('phone', { size: 16 })}Call 911</a>
+      ${flagList(rf.call911, ctx)}
     </section>
     <section class="c-flag c-flag--today" aria-labelledby="${b}">
       <header class="c-flag__head">

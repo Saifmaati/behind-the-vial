@@ -15,10 +15,23 @@
 //     follows, one framing something else keeps it centred as the body scales; stage.homeTarget
 //   stage.advance(seconds, step) — dev/test hook: deterministic time steps + one frame
 //   (with stage.timeScale = 0 the real-time loop keeps drawing but scene time stands still).
+//   stage.lights { key, rim, fill, hemi }; stage.quality ('high' | 'low'); stage.setBloom(bool)
 //
-// Budget: pixel ratio capped at 1.75 and stepped down when frames are slow; bloom runs at half
-// resolution (UnrealBloomPass); the loop stops when the stage is off-screen, the tab is hidden or the
-// WebGL context is lost (a status note shows, and the prefiltered environment is rebuilt on restore).
+// Deep zoom (v3): the mouse wheel and a pinch zoom toward the point under the cursor. Before each zoom
+// step the orbit pivot moves (along the current view axis, so the picture does not jump) to the depth
+// of the surface under the cursor, found by stage.surfacePicker(clientX, clientY) → Vector3 | null
+// (index.js supplies it from the visible layers); the camera can then come to within MIN_DIST of that
+// surface but never through it. The near plane follows the distance (down to 1 mm), panning is on
+// while zoomed in (right-drag, Shift/⌘-drag, two fingers), the pivot stays inside the body's bounds,
+// and pulling back out drifts the pivot home so the whole body is centred again.
+//   stage.focusPoint(point, { distance, duration }) — fly so `point` is the pivot (double-click focus)
+//   stage.minDistance; stage.zoomed (closer than ~70 % of the home distance)
+//
+// Budget: pixel ratio capped at 1.75 (1.5 on phones and low-end devices) and stepped down when frames
+// are slow; bloom runs at half resolution (UnrealBloomPass) and is skipped on phones and low-end
+// devices, or switched off when frames stay slow at the lowest pixel ratio; the loop stops when the
+// stage is off-screen, the tab is hidden or the WebGL context is lost (a status note shows, and the
+// prefiltered environment is rebuilt on restore).
 //
 // Conventions (docs/ARCHITECTURE.md, "3D world contract"): meters, Y up, feet at y = 0, the body
 // faces +Z, the person's left is +X. flyTo angles are DEGREES: azimuth 0 = camera in front of the
@@ -45,6 +58,23 @@ const BODY_HALF_W = 0.42;
 const HOME_TARGET = [0, 0.9, 0];
 const HOME_AZ = 16;
 const HOME_EL = 4;
+const MIN_DIST = 0.024;      // m: closest the camera comes to the pivot (a ~13 mm field of view)
+const NEAR_MIN = 0.001;      // m: the near plane at the closest zoom
+const NEAR_MAX = 0.05;
+// Bounds the orbit pivot may wander within while panning (model frame at scale 1, metres).
+const PIVOT_BOX = { x: 0.62, y0: 0.0, y1: 1.98, z: 0.42 };
+
+// Phones, tablets and low-end machines get a lighter pipeline (no bloom, a lower pixel-ratio cap,
+// fewer particles). `quality` may force it ('high' | 'low'); 'auto' decides from the device.
+export function detectQuality(pref = 'auto') {
+  if (pref === 'high' || pref === 'low') return pref;
+  try {
+    const coarse = !!globalThis.matchMedia?.('(pointer: coarse)').matches && !globalThis.matchMedia?.('(any-pointer: fine)').matches;
+    const cores = navigator.hardwareConcurrency || 8;
+    const mem = navigator.deviceMemory || 8;
+    return coarse || cores <= 4 || mem <= 4 ? 'low' : 'high';
+  } catch { return 'high'; }
+}
 
 export const STAGE_THEMES = {
   dark: {
@@ -143,7 +173,7 @@ function makeFloor() {
   return mesh;
 }
 
-export async function createStage(host, { reducedMotion = false, theme = 'dark' } = {}) {
+export async function createStage(host, { reducedMotion = false, theme = 'dark', quality = 'auto' } = {}) {
   if (!host) throw new Error('createStage: host element required');
   const canvasHost = host.querySelector('#stage-canvas-host') || host;
 
@@ -161,7 +191,8 @@ export async function createStage(host, { reducedMotion = false, theme = 'dark' 
   canvasHost.appendChild(canvas);
 
   const scene = new THREE.Scene();
-  const camera = new THREE.PerspectiveCamera(FOV, 1, 0.01, 40);
+  const camera = new THREE.PerspectiveCamera(FOV, 1, NEAR_MAX, 40);
+  const tier = detectQuality(quality);
   const tanHalf = Math.tan((FOV * DEG) / 2);
 
   // ---- environment + lights
@@ -197,8 +228,12 @@ export async function createStage(host, { reducedMotion = false, theme = 'dark' 
   controls.enablePan = false;
   controls.rotateSpeed = 0.55;
   controls.zoomSpeed = 0.7;
-  controls.minDistance = 0.22;
+  controls.minDistance = MIN_DIST;
   controls.maxDistance = 6;
+  // zoom toward the cursor (the pivot is first moved to the surface under it; see onWheelCapture)
+  controls.zoomToCursor = true;
+  controls.screenSpacePanning = true;
+  controls.panSpeed = 0.8;
   controls.minPolarAngle = 0.27 * Math.PI; // ~41° above level
   controls.maxPolarAngle = 0.62 * Math.PI; // ~22° below level
   controls.target.set(...HOME_TARGET);
@@ -207,11 +242,12 @@ export async function createStage(host, { reducedMotion = false, theme = 'dark' 
 
   // ---- post-processing
   const size = { width: 1, height: 1 };
-  const prMax = Math.min(window.devicePixelRatio || 1, 1.75);
-  const prMin = Math.min(1, prMax);
+  const dpr = window.devicePixelRatio || 1;
+  const prMax = Math.min(dpr, tier === 'low' ? 1.5 : 1.75);
+  const prMin = Math.min(tier === 'low' ? 0.85 : 1, prMax);
   let pr = prMax;
   // MSAA on the HDR target; high-density screens need fewer samples for the same smoothness
-  const rt = new THREE.WebGLRenderTarget(2, 2, { type: THREE.HalfFloatType, samples: (window.devicePixelRatio || 1) > 1.5 ? 2 : 4 });
+  const rt = new THREE.WebGLRenderTarget(2, 2, { type: THREE.HalfFloatType, samples: dpr > 1.5 || tier === 'low' ? 2 : 4 });
   const composer = new EffectComposer(renderer, rt);
   const renderPass = new RenderPass(scene, camera);
   // UnrealBloomPass already extracts and blurs at half resolution internally.
@@ -234,6 +270,8 @@ export async function createStage(host, { reducedMotion = false, theme = 'dark' 
   composer.addPass(renderPass);
   composer.addPass(bloom);
   composer.addPass(outputPass);
+  let bloomWanted = tier !== 'low';
+  bloom.enabled = bloomWanted;
 
   // ---- state
   const frameFns = [];
@@ -248,6 +286,7 @@ export async function createStage(host, { reducedMotion = false, theme = 'dark' 
   const homeTarget = new THREE.Vector3(...HOME_TARGET);
   const prevHomeTarget = new THREE.Vector3();
   let bodyHalfH = BODY_HALF_H;
+  let bodyH = 1.75;           // current body height (m), for the pivot bounds
   const raycaster = new THREE.Raycaster();
   const ndc = new THREE.Vector2();
   const hits = [];
@@ -262,11 +301,17 @@ export async function createStage(host, { reducedMotion = false, theme = 'dark' 
     theme: theme === 'light' ? 'light' : 'dark',
     reducedMotion: !!reducedMotion,
     timeScale: 1,
+    quality: tier,
+    lights: { key, rim, fill, hemi },
+    minDistance: MIN_DIST,
+    surfacePicker: null,      // (clientX, clientY) → Vector3 | null, set by index.js
     get time() { return time; },
     get flying() { return flight.active; },
     get homeDistance() { return homeDistance; },
     get homeTarget() { return homeTarget; },
+    get zoomed() { return camera.position.distanceTo(controls.target) < homeDistance * 0.7; },
   };
+  stage.setBloom = (on) => { bloomWanted = !!on; bloom.enabled = bloomWanted; };
 
   // ---------------------------------------------------------------- theme
   function setTheme(next) {
@@ -341,6 +386,7 @@ export async function createStage(host, { reducedMotion = false, theme = 'dark' 
     perfAcc = 0; perfFrames = 0;
     if (perfCool > 0) { perfCool--; return; }
     if (fps < 48 && pr > prMin + 0.01) { pr = Math.max(prMin, pr - 0.25); applySize(); perfCool = 1; }
+    else if (fps < 30 && bloom.enabled) { bloom.enabled = false; perfCool = 2; } // still slow at the lowest ratio
     else if (fps > 58 && pr < prMax - 0.01) { pr = Math.min(prMax, pr + 0.125); applySize(); perfCool = 3; }
   }
 
@@ -387,7 +433,7 @@ export async function createStage(host, { reducedMotion = false, theme = 'dark' 
     if (target && target.isVector3) toTarget.copy(target);
     else if (Array.isArray(target)) toTarget.set(target[0], target[1], target[2]);
     else toTarget.copy(controls.target);
-    const toR = Math.max(0.05, distance ?? cur.r);
+    const toR = Math.max(MIN_DIST, distance ?? cur.r);
     const toAz = azimuth == null ? cur.az : azimuth * DEG;
     const elMax = Math.PI / 2 - controls.minPolarAngle;
     const elMin = Math.PI / 2 - controls.maxPolarAngle;
@@ -432,6 +478,7 @@ export async function createStage(host, { reducedMotion = false, theme = 'dark' 
   // view. A camera at home follows the new home; any other view stays centred on what it frames as
   // the body scales about the feet. Called on every tween step; no allocation.
   stage.setBodyFrame = (heightM = 1.75, scaleRatio = 1) => {
+    bodyH = heightM > 0.5 ? heightM : 1.75;
     prevHomeTarget.copy(homeTarget);
     const prevDist = homeDistance;
     bodyHalfH = Math.max(BODY_HALF_H, heightM / 2 + 0.055);
@@ -455,6 +502,66 @@ export async function createStage(host, { reducedMotion = false, theme = 'dark' 
     const v = currentView();
     return { target: controls.target.toArray(), distance: v.r, azimuth: v.az / DEG, elevation: v.el / DEG };
   };
+  // Double-click / double-tap focus: the point becomes the pivot and the camera closes in on it along
+  // the current view direction (the camera was looking at that surface, so it stays outside it).
+  stage.focusPoint = (p, { distance, duration = 950 } = {}) => {
+    if (!p) return Promise.resolve();
+    const cur = currentView();
+    const d = distance ?? THREE.MathUtils.clamp(cur.r * 0.38, MIN_DIST * 3, homeDistance * 0.55);
+    return stage.flyTo({ target: p.isVector3 ? p.toArray() : p, distance: d, duration });
+  };
+
+  // ---------------------------------------------------------------- deep zoom helpers
+  // Move the orbit pivot along the current view axis to the depth of the surface under the cursor, so a
+  // zoom step heads for that surface and stops MIN_DIST short of it (the picture does not move: the
+  // pivot stays on the line the camera already looks along). Picks are throttled while wheeling.
+  const fwd = new THREE.Vector3();
+  const rel = new THREE.Vector3();
+  let lastPickT = -1e9, lastPickX = -1e4, lastPickY = -1e4;
+  function pivotToSurface(clientX, clientY, force = false) {
+    if (typeof stage.surfacePicker !== 'function' || flight.active) return false;
+    const now = performance.now();
+    if (!force && now - lastPickT < 90 && Math.abs(clientX - lastPickX) + Math.abs(clientY - lastPickY) < 8) return false;
+    lastPickT = now; lastPickX = clientX; lastPickY = clientY;
+    let p = null;
+    try { p = stage.surfacePicker(clientX, clientY); } catch (e) { console.warn('[stage] surface pick failed', e); }
+    if (!p) return false;
+    camera.getWorldDirection(fwd);
+    const depth = rel.subVectors(p, camera.position).dot(fwd);
+    if (depth < controls.minDistance * 1.05 || depth > controls.maxDistance * 0.98) return false;
+    controls.target.copy(camera.position).addScaledVector(fwd, depth);
+    return true;
+  }
+  stage.pivotToSurface = pivotToSurface;
+  let touchZoomed = false;
+  stage.autoCenter = true; // pulling back out drifts the pivot home (index.js pauses it during the sequence)
+  // After the controls move the camera: near plane, panning, pivot bounds and the drift home.
+  function afterControls(dt) {
+    offset.subVectors(camera.position, controls.target);
+    const r = offset.length();
+    const near = THREE.MathUtils.clamp(r * 0.04, NEAR_MIN, NEAR_MAX);
+    if (Math.abs(near - camera.near) > camera.near * 0.04) { camera.near = near; camera.updateProjectionMatrix(); }
+    const zoomedIn = r < homeDistance * 0.7;
+    controls.enablePan = !flight.active && zoomedIn;
+    // zoomed in, one-finger drags turn the body instead of scrolling the page
+    if (zoomedIn !== touchZoomed) { touchZoomed = zoomedIn; canvas.style.touchAction = zoomedIn ? 'none' : 'pan-y'; }
+    if (flight.active) return;
+    const k = bodyH / 1.75;
+    const t = controls.target;
+    let tx = THREE.MathUtils.clamp(t.x, -PIVOT_BOX.x * k, PIVOT_BOX.x * k);
+    let ty = THREE.MathUtils.clamp(t.y, PIVOT_BOX.y0, PIVOT_BOX.y1 * k);
+    let tz = THREE.MathUtils.clamp(t.z, -PIVOT_BOX.z * k, PIVOT_BOX.z * k);
+    const out = stage.autoCenter ? THREE.MathUtils.smoothstep(r / homeDistance, 0.72, 0.95) : 0;
+    if (out > 0) {
+      const e = (stage.reducedMotion ? 1 : 1 - Math.exp(-dt * 2.6)) * out;
+      tx += (homeTarget.x - tx) * e; ty += (homeTarget.y - ty) * e; tz += (homeTarget.z - tz) * e;
+    }
+    const dx = tx - t.x, dy = ty - t.y, dz = tz - t.z;
+    if (Math.abs(dx) + Math.abs(dy) + Math.abs(dz) > 1e-7) {
+      t.set(tx, ty, tz);
+      camera.position.x += dx; camera.position.y += dy; camera.position.z += dz;
+    }
+  }
 
   // ---------------------------------------------------------------- picking + projection
   stage.pick = (clientX, clientY, objects) => {
@@ -503,16 +610,34 @@ export async function createStage(host, { reducedMotion = false, theme = 'dark' 
     if (!(engaged || e.ctrlKey || e.metaKey)) {
       e.stopPropagation(); // OrbitControls never sees it; the page scrolls normally
       showHint('Click the body first, or hold Ctrl, to zoom');
+      return;
     }
+    // zoom in toward the surface under the cursor; zoom out straight back along the view axis
+    controls.zoomToCursor = e.deltaY < 0;
+    if (e.deltaY < 0) pivotToSurface(e.clientX, e.clientY);
   };
+  // two fingers down: the pinch heads for the surface between them
+  const touches = new Map();
   const onPointerDown = (e) => {
     if (e.target === canvas) engaged = true;
     if (flight.active && e.target === canvas) endFlight();
+    if (e.pointerType === 'touch' && e.target === canvas) {
+      touches.set(e.pointerId, e);
+      if (touches.size === 2) {
+        controls.zoomToCursor = true;
+        let x = 0, y = 0;
+        for (const t of touches.values()) { x += t.clientX; y += t.clientY; }
+        pivotToSurface(x / 2, y / 2, true);
+      }
+    }
   };
+  const onPointerEnd = (e) => { touches.delete(e.pointerId); };
   const onPointerLeave = () => { engaged = false; };
   host.addEventListener('wheel', onWheelCapture, { capture: true, passive: true });
   host.addEventListener('pointerdown', onPointerDown, { capture: true });
   host.addEventListener('pointerleave', onPointerLeave);
+  window.addEventListener('pointerup', onPointerEnd);
+  window.addEventListener('pointercancel', onPointerEnd);
 
   const onKey = (e) => {
     if (e.altKey || e.ctrlKey || e.metaKey) return;
@@ -523,7 +648,7 @@ export async function createStage(host, { reducedMotion = false, theme = 'dark' 
       case 'ArrowRight': controls.rotateLeft?.(step); break;
       case 'ArrowUp': controls.rotateUp?.(-step * 0.6); break;
       case 'ArrowDown': controls.rotateUp?.(step * 0.6); break;
-      case '+': case '=': controls.dollyIn?.(1.18); break;
+      case '+': case '=': pivotToCentre(); controls.dollyIn?.(1.18); break;
       case '-': case '_': controls.dollyOut?.(1.18); break;
       case 'Home': case '0': stage.homeView(); break;
       default: handled = false;
@@ -531,9 +656,14 @@ export async function createStage(host, { reducedMotion = false, theme = 'dark' 
     if (handled) { e.preventDefault(); if (flight.active && e.key !== 'Home' && e.key !== '0') endFlight(); }
   };
   canvas.addEventListener('keydown', onKey);
+  // Buttons and keys zoom toward the surface at the middle of the view (not into the body's centre).
+  function pivotToCentre() {
+    const r = canvas.getBoundingClientRect();
+    if (r.width && r.height) pivotToSurface(r.left + r.width / 2, r.top + r.height / 2, true);
+  }
   stage.zoom = (factor) => {
     if (flight.active) endFlight();
-    if (factor > 1) controls.dollyIn?.(factor); else controls.dollyOut?.(1 / factor);
+    if (factor > 1) { pivotToCentre(); controls.dollyIn?.(factor); } else controls.dollyOut?.(1 / factor);
   };
 
   // ---------------------------------------------------------------- loop
@@ -541,6 +671,7 @@ export async function createStage(host, { reducedMotion = false, theme = 'dark' 
     time += dt;
     if (flight.active) stepFlight(dt);
     else controls.update(dt);
+    afterControls(dt);
     camera.updateMatrixWorld();
     for (let i = 0; i < frameFns.length; i++) {
       try { frameFns[i](dt, time); } catch (e) { console.error('[stage] frame callback failed', e); frameFns.splice(i--, 1); }
@@ -649,6 +780,8 @@ export async function createStage(host, { reducedMotion = false, theme = 'dark' 
     host.removeEventListener('wheel', onWheelCapture, { capture: true });
     host.removeEventListener('pointerdown', onPointerDown, { capture: true });
     host.removeEventListener('pointerleave', onPointerLeave);
+    window.removeEventListener('pointerup', onPointerEnd);
+    window.removeEventListener('pointercancel', onPointerEnd);
     canvas.removeEventListener('keydown', onKey);
     hintEl?.remove();
     lostEl?.remove();

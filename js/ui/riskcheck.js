@@ -8,7 +8,7 @@
 // Emits risk:change { items: [checked ids], warnings: [{ organ, title, item }] }.
 import { bus } from './busref.js';
 import { RISK_ITEMS } from '../../data/riskitems.js';
-import { html, uid, plural, sampleNote } from './util.js';
+import { html, uid, plural } from './util.js';
 import { icon } from './icons.js';
 import { createCiteContext } from './cite.js';
 import { organButton } from './overview.js';
@@ -30,7 +30,7 @@ export function mountRiskCheck(host, entry, ctx) {
 
   const formId = uid('risk');
   const statusId = uid('risk');
-  host.innerHTML = String(html`${entry?.sample ? sampleNote() : ''}
+  host.innerHTML = String(html`
   <div class="c-risk">
     <p class="c-risk__note" role="note">${icon('alert', { size: 20 })}<span><strong>This check only shows warnings.</strong> It cannot tell you that you are safe, and it never gives a dose. Talk to a clinician.</span></p>
     <div class="c-risk__grid">

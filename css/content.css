@@ -1,4 +1,4 @@
-/* PeptideScope: content sections, pickers, cards, tables, charts.
+/* PeptideScope: content sections, pickers, cards, tables and pictorial figures (no charts).
    Owner: content (v2 luxury pass: theme agent). Uses the shared tokens from css/tokens.css (--bg,
    --surface, --line, --text, --accent, --warn, --danger, ...). Derived colors are defined on the
    content scopes (not :root) so they follow whatever element carries the theme.
@@ -79,6 +79,9 @@
 .c-note { font-size: .8125rem; line-height: 1.6; color: var(--muted); max-width: 76ch; }
 .c-note--error { color: var(--c-danger-ink); }
 .c-link { display: inline-flex; align-items: center; gap: 6px; font-weight: 500; }
+.c-muted { color: var(--muted); }
+.c-figure { margin: 0; display: grid; gap: 14px; }
+.c-figcap { font-size: .8125rem; line-height: 1.6; color: var(--muted); max-width: 76ch; }
 
 /* ---------------------------------------------------------------- cards */
 
@@ -127,18 +130,6 @@
 .c-chip--estimate { border-style: dashed; border-color: color-mix(in oklab, var(--accent-2) 55%, transparent); color: color-mix(in oklab, var(--accent-2) 55%, var(--text)); }
 .c-chip--estimate .c-chip__mark { background: color-mix(in oklab, var(--accent-2) 18%, transparent); }
 
-.c-sample {
-  display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px;
-  padding: 9px 14px; border-radius: var(--c-radius-sm);
-  border: 1px dashed color-mix(in oklab, var(--warn) 50%, transparent);
-  background: color-mix(in oklab, var(--warn) 5%, transparent);
-  font-size: .8125rem; line-height: 1.5; color: var(--text-2);
-}
-.c-sample__tag {
-  font-size: .625rem; font-weight: 600; letter-spacing: .16em; font-feature-settings: var(--c-caps);
-  text-transform: uppercase; color: var(--c-warn-ink);
-}
-
 /* ---------------------------------------------------------------- tone pills (status / severity / verdict) */
 
 .c-status, .c-sev, .c-verdict {
@@ -152,8 +143,9 @@
 }
 .c-status--sm { padding: 1px 9px 1px 7px; gap: 6px; font-size: .6875rem; }
 
-/* approved: champagne · in trials: pale champagne outline · research only: bronze amber */
-.c-status--approved { --tone: var(--accent); }
+/* approved: champagne · approved outside the US: champagne ring · in trials: pale champagne outline ·
+   research only: bronze amber */
+.c-status--approved, .c-status--approved-abroad { --tone: var(--accent); }
 .c-status--in-trials { --tone: var(--accent-2); background: transparent; }
 .c-status--research-only { --tone: var(--warn); }
 
@@ -161,7 +153,9 @@
   width: 7px; height: 7px; flex: none; border-radius: 50%; background: currentColor;
 }
 .c-status--sm .c-status__shape { width: 6px; height: 6px; }
-/* approved: solid dot · in trials: half dot · research only: hollow diamond */
+/* approved: solid dot · approved outside the US: ring with a centre dot · in trials: half dot ·
+   research only: hollow diamond */
+.c-status--approved-abroad .c-status__shape { background: radial-gradient(circle, currentColor 0 26%, transparent 30%); box-shadow: inset 0 0 0 1.2px currentColor; }
 .c-status--in-trials .c-status__shape { background: linear-gradient(90deg, currentColor 50%, transparent 50%); box-shadow: inset 0 0 0 1.2px currentColor; }
 .c-status--research-only .c-status__shape { border-radius: 1px; background: transparent; box-shadow: inset 0 0 0 1.3px currentColor; transform: rotate(45deg) scale(.86); }
 
@@ -341,25 +335,59 @@
   .c-how__arrow { display: none; }
 }
 
-/* ---------------------------------------------------------------- stat tiles */
+.c-where { display: grid; gap: 18px; }
+.c-where__intro { display: grid; gap: 8px; }
+.c-where__grid { list-style: none; display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr)); }
+.c-target { display: flex; flex-direction: column; gap: 12px; }
+.c-target__head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px 14px; padding-bottom: 12px; border-bottom: 1px solid var(--c-hair-soft); }
+.c-target__organ { font-family: var(--c-serif); font-size: 1.375rem; line-height: 1.2; font-weight: 420; letter-spacing: -0.004em; color: var(--text); }
+.c-target__receptors { display: flex; flex-wrap: wrap; gap: 6px; }
+.c-receptor--sm { font-size: .8125rem; padding: 1px 10px; }
+.c-target__effect { font-size: .9375rem; line-height: 1.65; color: var(--text-2); }
+.c-target__lead { font-family: var(--c-serif); font-size: 1.125rem; font-style: italic; font-weight: 400; color: var(--text); }
+.c-target__foot { margin-top: auto; padding-top: 4px; }
 
-.c-stats { list-style: none; display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 160px), 1fr)); }
-.c-stat { display: flex; flex-direction: column; gap: 6px; padding: 20px; }
-.c-stat__label { font-size: .625rem; font-weight: 500; letter-spacing: .18em; font-feature-settings: var(--c-caps); text-transform: uppercase; color: var(--muted); }
-.c-stat__value {
-  font-family: var(--c-serif);
-  font-size: clamp(1.9rem, 3.4vw, 2.6rem); line-height: 1.04; font-weight: 360; letter-spacing: -0.012em;
-  font-variant-numeric: lining-nums tabular-nums;
-  color: var(--text); margin: 4px 0 6px;
+/* ---------------------------------------------------------------- pharmacology: plain-text timeline
+   A rail of stops (starts working → peak → half-life → mostly cleared). Not to scale, no curve: the
+   body animation and the scrubber show the timing; this is the words-and-figures version. */
+
+.c-pharm { display: grid; gap: clamp(28px, 4vw, 44px); }
+.c-when { display: grid; gap: 22px; }
+.c-when__kicker { color: var(--c-accent-ink); }
+.c-when__rail { list-style: none; display: grid; gap: 0 clamp(20px, 2.6vw, 36px); grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.c-when__stop { position: relative; display: flex; flex-direction: column; gap: 6px; padding-top: 38px; min-width: 0; }
+.c-when__stop::before {
+  content: ""; position: absolute; top: 6px; left: 14px; right: calc(-1 * clamp(20px, 2.6vw, 36px));
+  height: 1px; background: linear-gradient(90deg, var(--accent-line), color-mix(in oklab, var(--accent) 22%, transparent));
 }
-.c-stat__text { font-size: .875rem; line-height: 1.6; color: var(--text-2); }
-.c-stat__chips { margin-top: auto; padding-top: 4px; }
-.c-stat__chips .c-chip { margin-left: 0; }
-.c-stats--enf .c-stat__value { font-size: clamp(2.2rem, 4.4vw, 3.1rem); color: var(--c-accent-ink); }
-
-/* ---------------------------------------------------------------- pharmacology */
-
-.c-pharm { display: grid; gap: 20px; }
+.c-when__stop:last-child::before { right: 0; background: linear-gradient(90deg, var(--accent-line), transparent); }
+.c-when__mark { position: absolute; top: 0; left: 0; width: 13px; height: 13px; border-radius: 50%; border: 1px solid var(--accent); background: var(--bg); display: grid; place-items: center; }
+.c-when__dot { width: 5px; height: 5px; border-radius: 50%; background: var(--accent); }
+.c-when__stop--peak .c-when__mark { background: var(--gold-fill, var(--accent)); box-shadow: 0 0 0 4px var(--accent-soft); }
+.c-when__stop--peak .c-when__dot { background: var(--accent-ink); }
+.c-when__stop--clearance .c-when__mark { border-style: dashed; }
+.c-when__label {
+  font-size: .6875rem; font-weight: 500; letter-spacing: .16em; font-feature-settings: var(--c-caps);
+  text-transform: uppercase; color: var(--muted);
+}
+.c-when__value {
+  font-family: var(--c-serif); font-size: clamp(1.65rem, 2.6vw, 2.25rem); line-height: 1.08; font-weight: 360;
+  letter-spacing: -0.01em; font-variant-numeric: lining-nums tabular-nums; color: var(--text); margin-bottom: 6px; text-wrap: balance;
+}
+.c-when__value--sm { font-size: clamp(1.35rem, 2vw, 1.6rem); }
+.c-when__text { font-size: .875rem; line-height: 1.65; color: var(--text-2); }
+.c-when__chips { margin-top: 4px; }
+.c-when__chips .c-chip { margin-left: 0; }
+.c-when__extra { display: grid; grid-template-columns: 40px minmax(0, 1fr); gap: 16px; align-items: start; }
+.c-when__extraicon { width: 40px; height: 40px; display: grid; place-items: center; border-radius: 50%; color: var(--c-accent-ink); border: 1px solid var(--accent-line); }
+@media (max-width: 859px) {
+  .c-when__rail { grid-template-columns: 1fr; gap: 0; }
+  .c-when__stop { padding: 0 0 26px 34px; }
+  .c-when__stop:last-child { padding-bottom: 4px; }
+  .c-when__stop::before { top: 16px; bottom: -2px; left: 6px; right: auto; width: 1px; height: auto; background: linear-gradient(180deg, var(--accent-line), color-mix(in oklab, var(--accent) 22%, transparent)); }
+  .c-when__stop:last-child::before { display: none; }
+  .c-when__mark { top: 3px; }
+}
 .c-pharm__grid { display: grid; gap: 32px; margin-top: 14px; }
 @media (min-width: 900px) { .c-pharm__grid { grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: clamp(32px, 4.5vw, 64px); } }
 .c-pharm__steps .c-h3, .c-pharm__sites .c-h3 { margin-bottom: 16px; }
@@ -424,6 +452,9 @@
   font-size: .5625rem; font-weight: 500; letter-spacing: .18em; font-feature-settings: var(--c-caps); text-transform: uppercase; color: var(--muted);
 }
 .c-fxcard__dl { display: grid; gap: 14px; }
+.c-fxcard__also { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; }
+.c-fxcard__also .c-fxcard__k { display: inline; margin: 0 4px 0 0; }
+.c-fxcard__organ { font-size: .75rem; line-height: 1.5; padding: 0 9px; border-radius: 999px; color: var(--text-2); border: 1px solid var(--c-hair); }
 .c-fxcard__dl dd { margin: 0; font-size: .9375rem; line-height: 1.65; color: var(--text-2); }
 .c-fxcard__foot {
   display: grid; justify-items: start; gap: 10px;
@@ -476,7 +507,8 @@
   transition: background-color .3s var(--c-ease);
 }
 .c-flag__cta:hover { background: color-mix(in srgb, var(--danger) 64%, #000); }
-@media (min-width: 880px) { .c-flag__cta { align-self: flex-start; } }
+.c-flag__cta { align-self: flex-start; margin-left: 64px; }
+@media (max-width: 479px) { .c-flag__cta { align-self: stretch; margin-left: 0; } }
 
 .c-lines { display: grid; gap: 10px; }
 @media (min-width: 760px) { .c-lines { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
@@ -530,44 +562,185 @@
 }
 .c-callout--caveat { align-items: center; border-color: color-mix(in oklab, var(--accent-2) 36%, var(--line)); }
 
-/* ---------------------------------------------------------------- dose facts */
+/* ---------------------------------------------------------------- dose facts: journal-style tables
+   One row per outcome, one column per study group; the placebo column is quieter. No charts. */
 
-.c-dose { display: grid; gap: 20px; }
-.c-trial { display: grid; gap: 20px; }
-.c-trial__head { display: grid; gap: 6px; }
-.c-trial__meta { font-size: .8125rem; color: var(--muted); letter-spacing: .01em; }
-.c-figure { margin: 0; display: grid; gap: 14px; }
-.c-minis { display: grid; gap: 22px 32px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); }
-.c-mini { display: grid; gap: 10px; min-width: 0; }
-.c-mini__title { font-size: .625rem; font-weight: 500; letter-spacing: .18em; font-feature-settings: var(--c-caps); text-transform: uppercase; color: var(--text-2); }
-.c-figcap { font-size: .8125rem; line-height: 1.6; color: var(--muted); }
+.c-dose { display: grid; gap: clamp(18px, 2.4vw, 26px); }
+.c-trial { display: grid; gap: 18px; }
+.c-trial__head { display: grid; gap: 8px; max-width: 80ch; }
+.c-trial__kicker { color: var(--c-accent-ink); }
+.c-trial__name { font-size: clamp(1.3rem, 2vw, 1.6rem); }
+.c-trial__design { font-size: .875rem; line-height: 1.65; color: var(--muted); }
+.c-table.c-ttable { min-width: calc(13rem + var(--groups, 4) * 6.6rem); table-layout: fixed; }
+.c-ttable :is(thead th, td) { text-align: right; }
+.c-ttable .c-ttable__corner, .c-ttable tbody th { text-align: left; }
+.c-ttable .c-ttable__corner { width: 17rem; }
+.c-ttable thead th:not(.c-ttable__corner) {
+  font-size: .8125rem; font-weight: 500; letter-spacing: .005em; text-transform: none; font-feature-settings: normal;
+  color: var(--text); vertical-align: bottom; line-height: 1.35;
+}
+.c-ttable thead th.is-comparator { color: var(--muted); font-weight: 450; }
+.c-ttable tbody th { font-weight: 450; font-size: .875rem; line-height: 1.45; color: var(--text-2); }
+.c-ttable td { color: var(--text); font-weight: 500; white-space: normal; }
+.c-ttable td.is-comparator { color: var(--muted); font-weight: 400; }
+.c-ttable :is(td, thead th:not(.c-ttable__corner)).is-comparator { background: color-mix(in oklab, var(--text) 2.5%, transparent); }
+.c-ttable__cap {
+  caption-side: bottom; text-align: left; padding: 12px 16px; font-size: .8125rem; line-height: 1.55; color: var(--muted);
+  border-top: 1px solid var(--c-hair-soft);
+}
+@media (min-width: 560px) and (max-width: 719px) {
+  .c-ttable .c-ttable__corner { width: 10.5rem; }
+  .c-ttable :is(.c-ttable__corner, tbody th) {
+    position: sticky; left: 0; z-index: 1;
+    background: var(--surface); box-shadow: 1px 0 0 var(--c-hair-soft);
+  }
+  .c-table.c-ttable { min-width: calc(10.5rem + var(--groups, 4) * 6.2rem); }
+}
+/* phones: each outcome becomes a small block, with every value labelled by its study group */
+@media (max-width: 559px) {
+  .c-table-wrap.c-table-wrap--trial { overflow: visible; border: 0; border-radius: 0; }
+  .c-table.c-ttable { display: flex; flex-direction: column; min-width: 0; width: 100%; }
+  .c-table.c-ttable tbody { display: block; }
+  .c-table.c-ttable thead {
+    position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap;
+  }
+  .c-table.c-ttable tbody tr {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(66px, 1fr)); gap: 6px;
+    padding: 16px 0; border-top: 1px solid var(--c-hair-soft);
+  }
+  .c-table.c-ttable tbody tr:first-child { border-top: 1px solid var(--c-hair); }
+  .c-table.c-ttable tbody tr > * { border-bottom: 0; }
+  .c-table.c-ttable tbody tr:hover > * { background: none; }
+  .c-table.c-ttable tbody th {
+    grid-column: 1 / -1; position: static; width: auto; padding: 0 0 4px; background: none; box-shadow: none;
+    font-size: .875rem; font-weight: 500; color: var(--text); text-align: left;
+  }
+  .c-table.c-ttable td {
+    display: flex; flex-direction: column; justify-content: space-between; align-items: flex-start; gap: 6px; text-align: left;
+    padding: 8px 9px; border-radius: 8px; border: 1px solid var(--c-hair-soft); font-size: .875rem;
+  }
+  .c-table.c-ttable td.is-comparator { background: color-mix(in oklab, var(--text) 3%, transparent); }
+  .c-table.c-ttable td::before {
+    content: attr(data-group); font-size: .6875rem; line-height: 1.3; font-weight: 400; color: var(--muted); letter-spacing: .01em;
+  }
+  .c-table.c-ttable .c-ttable__cap { order: 2; display: block; padding: 14px 0 0; border-top: 1px solid var(--c-hair); }
+}
 
-/* ---------------------------------------------------------------- charts (SVG drawn by js/ui/charts.js)
-   champagne for the studied drug and the vials, muted ivory for comparators, an ivory reference
-   line, oxblood for "none of the drug found" */
+/* ---------------------------------------------------------------- gray market */
 
-.c-chart { width: 100%; min-width: 0; overflow: hidden; }
-.c-chart svg { display: block; max-width: 100%; height: auto; overflow: visible; }
-.c-svg text { font-family: var(--font-sans, inherit); }
-.c-svg-label { fill: var(--text-2); font-size: 12.5px; font-weight: 450; }
-.c-svg-label--muted { fill: var(--muted); }
-.c-svg-value { fill: var(--text); font-size: 12.5px; font-weight: 600; font-variant-numeric: tabular-nums; }
-.c-svg-tick { fill: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; letter-spacing: .02em; }
-.c-svg-axis { stroke: var(--line-strong); stroke-width: 1; shape-rendering: crispEdges; }
-.c-svg-grid { stroke: color-mix(in oklab, var(--line) 60%, transparent); stroke-width: 1; stroke-dasharray: 1 4; shape-rendering: crispEdges; }
-.c-svg-bar { fill: var(--accent); }
-.c-svg-bar--comparator { fill: color-mix(in oklab, var(--neutral) 42%, transparent); }
-.c-svg-bar--vial { fill: color-mix(in oklab, var(--accent) 84%, var(--drug)); }
-.c-svg-ref { stroke: var(--text); stroke-width: 1; stroke-dasharray: 5 3; }
-.c-svg-reflabel { fill: var(--text); font-size: 11.5px; font-weight: 500; letter-spacing: .02em; paint-order: stroke; stroke: var(--surface); stroke-width: 4px; stroke-linejoin: round; }
-.c-svg-none path { fill: none; stroke: var(--artery, var(--danger)); stroke-width: 2; stroke-linecap: round; }
+.c-gray { display: grid; gap: clamp(44px, 6vw, 80px); }
+.c-gray__lead { display: grid; gap: 22px; align-items: start; }
+@media (min-width: 980px) { .c-gray__lead { grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr); gap: clamp(32px, 5vw, 72px); } }
+.c-gray__headline {
+  position: relative; max-width: 20ch; padding-top: 22px;
+  font-family: var(--c-serif);
+  font-size: clamp(1.9rem, 4vw, 2.9rem); line-height: 1.08; font-weight: 380; letter-spacing: -0.012em;
+  color: var(--text); text-wrap: balance;
+}
+.c-gray__headline::before { content: ""; position: absolute; top: 0; left: 0; width: 64px; height: 1px; background: var(--accent); }
+.c-gray__lead .c-intro { padding-top: 22px; }
 
-.c-legend { list-style: none; display: flex; flex-wrap: wrap; gap: 8px 22px; font-size: .8125rem; color: var(--text-2); }
-.c-legend li { display: inline-flex; align-items: center; gap: 9px; }
-.c-legend__key { display: inline-block; flex: none; }
-.c-legend__key--bar { width: 10px; height: 12px; border-radius: 2px 2px 0 0; background: color-mix(in oklab, var(--accent) 84%, var(--drug)); }
-.c-legend__key--ref { width: 18px; height: 0; border-top: 1px dashed var(--text); }
-.c-legend__key--none { width: 12px; text-align: center; font-weight: 600; font-size: 1rem; line-height: 1; color: var(--artery, var(--danger)); }
+.c-gsec { display: grid; gap: 20px; }
+.c-gsec__head { display: grid; gap: 8px; max-width: 72ch; }
+.c-gsec__head .c-kicker { color: var(--c-accent-ink); }
+.c-gsec__head .c-h3 { font-size: clamp(1.45rem, 2.4vw, 1.9rem); }
+
+/* the tested vials, drawn as glass vials (SVG from js/ui/graymarket.js) */
+.c-vials { display: grid; gap: 26px; padding: clamp(24px, 3.4vw, 44px) clamp(18px, 3vw, 40px); }
+.c-vials__row {
+  list-style: none; display: grid; gap: 28px clamp(10px, 3vw, 44px); align-items: start;
+  grid-template-columns: repeat(var(--n, 4), minmax(0, 1fr));
+}
+@media (max-width: 559px) { .c-vials__row { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.c-vial { display: flex; flex-direction: column; align-items: center; text-align: center; min-width: 0; }
+.c-vial__art { width: clamp(76px, 8.4vw, 108px); aspect-ratio: 96 / 200; margin-bottom: 18px; }
+.c-vial__svg { display: block; width: 100%; height: 100%; overflow: visible; }
+.c-vial__fig {
+  font-family: var(--c-serif); font-size: clamp(1.75rem, 3vw, 2.5rem); line-height: 1; font-weight: 360;
+  letter-spacing: -0.012em; font-variant-numeric: lining-nums tabular-nums; color: var(--text);
+}
+.c-vial--none .c-vial__fig { font-style: italic; color: var(--c-danger-ink); }
+.c-vial__of { margin-top: 6px; font-size: .75rem; line-height: 1.4; color: var(--muted); max-width: 16ch; }
+.c-vial__name { margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--c-hair-soft); font-size: .8125rem; line-height: 1.4; font-weight: 500; color: var(--text-2); max-width: 20ch; }
+.c-vial__id {
+  display: inline-flex; align-items: center; gap: 6px; margin-top: 6px;
+  font-size: .5625rem; font-weight: 500; letter-spacing: .14em; font-feature-settings: var(--c-caps); text-transform: uppercase; color: var(--muted);
+}
+.c-vial__idmark { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); }
+
+.c-vial__glass-a { stop-color: var(--text); stop-opacity: .15; }
+.c-vial__glass-b { stop-color: var(--text); stop-opacity: .03; }
+.c-vial__heel { fill: none; stroke: var(--text); stroke-opacity: .22; stroke-width: 2.4; }
+.c-vial__shoulder { fill: none; stroke: #fff; stroke-opacity: .34; stroke-width: 1.4; stroke-linecap: round; }
+.c-vial__edge { fill: none; stroke: var(--text); stroke-opacity: .46; stroke-width: 1.1; }
+.c-vial__hl { fill: #fff; opacity: .26; }
+.c-vial__hl--thin { opacity: .16; }
+/* freeze-dried powder: ivory with a champagne cast, the same in both themes */
+.c-vial__stop-a { stop-color: color-mix(in oklab, var(--accent-2) 34%, #fff); }
+.c-vial__stop-b { stop-color: color-mix(in oklab, var(--accent-2) 72%, #fff); }
+.c-vial__cake { fill: color-mix(in oklab, var(--accent-2) 16%, #fff); stroke: var(--accent); stroke-opacity: .55; stroke-width: .7; }
+.c-vial__metal-a { stop-color: color-mix(in oklab, var(--accent) 82%, var(--bg)); }
+.c-vial__metal-b { stop-color: var(--accent-2); }
+.c-vial__crimpline { fill: none; stroke: var(--accent-ink); stroke-opacity: .28; stroke-width: .8; }
+.c-vial__flip { fill: color-mix(in oklab, var(--accent) 58%, var(--bg)); }
+.c-vial__shadow { fill: var(--text); opacity: .07; }
+.c-vial__label path { fill: none; stroke: var(--text); stroke-width: 1.1; stroke-linecap: round; }
+.c-vial__label { filter: drop-shadow(0 0 1.2px var(--bg)) drop-shadow(0 0 .6px var(--bg)); }
+.c-vial__none circle, .c-vial__none path { fill: none; stroke: var(--artery, var(--danger)); stroke-width: 1.8; stroke-linecap: round; }
+
+.c-vials__key { list-style: none; display: flex; flex-wrap: wrap; justify-content: center; gap: 10px 26px; font-size: .8125rem; color: var(--text-2); }
+.c-vials__key li { display: inline-flex; align-items: center; gap: 9px; }
+.c-vials__swatch { flex: none; display: inline-block; }
+.c-vials__swatch--fill { width: 12px; height: 14px; border-radius: 2px 2px 4px 4px; background: linear-gradient(180deg, color-mix(in oklab, var(--accent-2) 34%, #fff), color-mix(in oklab, var(--accent-2) 72%, #fff)); box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--accent) 50%, transparent); }
+.c-vials__swatch--line { width: 20px; height: 0; border-top: 1.2px solid var(--text); }
+.c-vials__swatch--none { width: 14px; height: 14px; border-radius: 50%; border: 1.6px solid var(--artery, var(--danger)); background: linear-gradient(135deg, transparent 45%, var(--artery, var(--danger)) 45% 57%, transparent 57%); }
+.c-vials__cap { text-align: center; margin-inline: auto; padding-top: 18px; border-top: 1px solid var(--c-hair-soft); width: 100%; max-width: none; }
+
+/* large independent testing figures (Finnrick) */
+.c-gfigs { list-style: none; display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr)); }
+.c-gfig { display: flex; flex-direction: column; gap: 12px; }
+.c-gfig__value {
+  font-family: var(--c-serif); font-size: clamp(2.1rem, 4vw, 3rem); line-height: 1; font-weight: 340;
+  letter-spacing: -0.014em; font-variant-numeric: lining-nums tabular-nums; color: var(--c-accent-ink); white-space: nowrap;
+}
+.c-gfig__value.is-word { font-style: italic; font-size: clamp(1.6rem, 3vw, 2.1rem); white-space: normal; }
+.c-gfig__text { font-size: .9375rem; line-height: 1.68; color: var(--text-2); }
+
+/* contamination and sterility */
+.c-gcards { list-style: none; display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 340px), 1fr)); }
+.c-gcard { display: flex; flex-direction: column; gap: 10px; }
+.c-gcard::before {
+  content: ""; position: absolute; left: 20px; right: 20px; top: -1px; height: 1px;
+  background: linear-gradient(90deg, var(--warn-line, var(--warn)), transparent);
+}
+.c-gcard__title { font-family: var(--c-serif); font-size: 1.25rem; line-height: 1.28; font-weight: 420; letter-spacing: -0.004em; color: var(--text); text-wrap: balance; }
+.c-gcard__text { font-size: .9375rem; line-height: 1.68; color: var(--text-2); }
+
+/* reported harms and enforcement: an editorial ledger of figure + account */
+.c-ledger { list-style: none; display: grid; border-top: 1px solid var(--c-hair); }
+.c-ledger__row {
+  display: grid; grid-template-columns: minmax(9rem, 13rem) minmax(0, 1fr); gap: clamp(18px, 3vw, 44px); align-items: start;
+  padding: clamp(18px, 2.4vw, 26px) 0; border-bottom: 1px solid var(--c-hair-soft);
+}
+.c-ledger__value {
+  font-family: var(--c-serif); font-size: clamp(2rem, 3.6vw, 2.75rem); line-height: 1; font-weight: 340;
+  letter-spacing: -0.014em; font-variant-numeric: lining-nums tabular-nums; color: var(--c-accent-ink);
+}
+.c-ledger__value.is-word { font-style: italic; font-size: clamp(1.4rem, 2.4vw, 1.75rem); line-height: 1.15; }
+.c-ledger--harm .c-ledger__value { color: color-mix(in oklab, var(--artery, var(--danger)) 78%, var(--text)); }
+.c-ledger__text { font-size: .9375rem; line-height: 1.7; color: var(--text-2); max-width: 74ch; }
+@media (max-width: 639px) {
+  .c-ledger__row { grid-template-columns: 1fr; gap: 10px; }
+}
+
+.c-gray__takeaway {
+  display: grid; grid-template-columns: 22px minmax(0, 1fr); gap: 14px; max-width: 72ch;
+  padding: clamp(20px, 2.6vw, 28px); border-radius: var(--c-radius);
+  border: 1px solid var(--warn-line, color-mix(in oklab, var(--warn) 40%, transparent));
+  background: color-mix(in oklab, var(--warn) 5%, var(--surface));
+  font-family: var(--c-serif); font-size: clamp(1.1rem, 1.6vw, 1.25rem); line-height: 1.55; font-weight: 400; color: var(--text);
+}
+.c-gray__takeaway .c-ico { color: var(--c-warn-ink); margin-top: 5px; }
 
 /* ---------------------------------------------------------------- tables */
 
@@ -577,7 +750,6 @@
   scrollbar-width: thin; scrollbar-color: var(--line) transparent;
 }
 .c-table { width: 100%; min-width: 520px; border-collapse: collapse; font-size: .875rem; line-height: 1.5; }
-.c-table__label { font-size: .625rem; font-weight: 500; letter-spacing: .18em; font-feature-settings: var(--c-caps); text-transform: uppercase; color: var(--text-2); margin-bottom: -8px !important; }
 .c-table :is(th, td) { padding: 12px 16px; text-align: left; vertical-align: top; border-bottom: 1px solid var(--c-hair-soft); }
 .c-table thead th {
   font-size: .5625rem; font-weight: 500; letter-spacing: .16em; font-feature-settings: var(--c-caps); text-transform: uppercase; color: var(--muted);
@@ -589,6 +761,11 @@
 .c-table tbody tr:hover > * { background: color-mix(in oklab, var(--accent) 3%, transparent); }
 .c-table .c-num { white-space: nowrap; color: var(--text); font-weight: 600; }
 .c-none { color: var(--c-danger-ink); font-weight: 600; }
+.c-vtable { table-layout: fixed; }
+.c-vtable thead th:nth-child(1) { width: 14rem; }
+.c-vtable thead th:nth-child(2) { width: 9.5rem; }
+.c-vtable thead th:nth-child(3) { width: 9.5rem; }
+.c-vtable { min-width: 680px; }
 
 .c-details > summary {
   display: inline-flex; align-items: center; gap: 9px; min-height: 40px; padding: 8px 16px;
@@ -672,28 +849,8 @@
 }
 .c-claim__text::before { content: "\201C"; color: var(--accent); padding-right: 1px; }
 .c-claim__text::after { content: "\201D"; color: var(--accent); padding-left: 1px; }
-.c-claim__ev { font-size: .9375rem; line-height: 1.65; color: var(--text-2); padding-top: 14px; border-top: 1px solid var(--c-hair-soft); margin-top: auto; }
+.c-claim__ev { font-size: .9375rem; line-height: 1.65; color: var(--text-2); padding-top: 14px; border-top: 1px solid var(--c-hair-soft); }
 .c-claim__evlabel { display: block; margin-bottom: 5px; font-size: .5625rem; font-weight: 500; letter-spacing: .18em; font-feature-settings: var(--c-caps); text-transform: uppercase; color: var(--muted); }
-
-/* ---------------------------------------------------------------- gray market */
-
-.c-gray { display: grid; gap: 22px; }
-.c-gray__headline {
-  position: relative; max-width: 22ch; padding-top: 22px;
-  font-family: var(--c-serif);
-  font-size: clamp(1.9rem, 4.2vw, 3rem); line-height: 1.08; font-weight: 380; letter-spacing: -0.012em;
-  color: var(--text); text-wrap: balance;
-}
-.c-gray__headline::before { content: ""; position: absolute; top: 0; left: 0; width: 64px; height: 1px; background: var(--accent); }
-.c-vials { gap: 18px; }
-.c-vials__head { display: grid; gap: 8px; }
-.c-vials__head .c-h3 { display: flex; align-items: center; gap: 10px; }
-.c-vials__head .c-h3 .c-ico { color: var(--c-accent-ink); }
-.c-gray__takeaway {
-  display: grid; grid-template-columns: 20px minmax(0, 1fr); gap: 12px; max-width: var(--c-measure);
-  font-size: 1.0625rem; line-height: 1.7; color: var(--text);
-}
-.c-gray__takeaway .c-ico { color: var(--c-warn-ink); margin-top: 4px; }
 
 /* ---------------------------------------------------------------- risk check */
 
@@ -776,7 +933,7 @@
   font-variant-numeric: lining-nums tabular-nums; color: var(--c-accent-ink);
   border: 1px solid var(--accent-line);
 }
-.c-src__body { display: grid; gap: 5px; min-width: 0; }
+.c-src__body { display: grid; gap: 5px; min-width: 0; align-content: start; }
 .c-src__title { font-size: .9375rem; line-height: 1.5; font-weight: 500; text-decoration: none; overflow-wrap: anywhere; }
 .c-body a.c-src__title { color: var(--text); }
 .c-body a.c-src__title:hover { text-decoration: underline; text-decoration-color: var(--accent); }
@@ -830,8 +987,9 @@ html[data-motion="reduce"] :is(.c-body, .c-picker, .c-sites) * { transition: non
 /* ---------------------------------------------------------------- forced colors */
 
 @media (forced-colors: active) {
-  .c-svg-bar, .c-legend__key--bar { fill: CanvasText; background: CanvasText; }
-  .c-svg-ref, .c-svg-none path { stroke: CanvasText; }
+  .c-vial__fill, .c-vial__cake { fill: CanvasText; }
+  .c-vial__edge, .c-vial__label path, .c-vial__none circle, .c-vial__none path { stroke: CanvasText; }
+  .c-vials__swatch--fill { background: CanvasText; }
   .c-pchip[aria-checked="true"], .c-site[aria-checked="true"], .c-rung--current { outline: 2px solid Highlight; }
 }
 

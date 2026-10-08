@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Anatomy Detail Sandbox</title>
-<meta name="description" content="Dev-only viewer for the close-up anatomy layer assets/anatomy/detail-male.glb over body.glb (Behind the Vial).">
+<meta name="description" content="Dev-only viewer for the PeptideScope close-up anatomy layer (assets/anatomy/detail-male.glb over body.glb).">
 <link rel="icon" href="data:,">
 <!--
   Dev-only viewer for the close-up detail layer. Serve the repo root (node tools/serve.mjs 8816) and open
@@ -42,7 +42,7 @@
 <body>
 <div id="host"></div>
 <div class="labels" id="labels" aria-hidden="true"></div>
-<div class="hud"><h1>Behind the Vial · close-up anatomy layer</h1><p id="stats" aria-live="polite">Loading…</p></div>
+<div class="hud"><h1>PeptideScope · close-up anatomy layer</h1><p id="stats" aria-live="polite">Loading…</p></div>
 <div id="err" role="alert"></div>
 <script type="module">
 import * as THREE from 'three';
@@ -182,6 +182,9 @@ const loader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
 const shown = (n) => (!only || only.has(n)) && !hide.has(n);
 const info = { meshes: {}, tris: 0 };
 const fetchJSON = (u) => fetch(u).then((r) => (r.ok ? r.json() : null)).catch(() => null);
+// Loading runs in a plain async function (no top-level await), so the page load event fires at once and headless
+// screenshots wait on body[data-ready] instead.
+async function main() {
 try {
   const [bodyG, detailG, atlas, lm] = await Promise.all([loader.loadAsync(BODY), loader.loadAsync(DETAIL), fetchJSON(ATLAS), fetchJSON(LANDMARKS)]);
   const atlasById = new Map((atlas?.structures || []).map((s) => [s.id, s]));
@@ -260,6 +263,8 @@ try {
   document.getElementById('err').textContent = `Failed to load: ${e.message}`;
   console.error(e);
 }
+}
+main();
 addEventListener('resize', () => { camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight); });
 </script>
 </body>

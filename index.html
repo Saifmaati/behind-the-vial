@@ -25,17 +25,25 @@
       var d = document.documentElement;
       function get(kind, key) { try { return window[kind].getItem(key); } catch (e) { return null; } }
       function mq(q) { try { return window.matchMedia(q).matches; } catch (e) { return false; } }
-      var t = get('localStorage', 'btv.theme');
+      var t = get('localStorage', 'peptidescope.theme');
       if (t !== 'light' && t !== 'dark') t = mq('(prefers-color-scheme: light)') ? 'light' : 'dark';
       d.setAttribute('data-theme', t);
-      var m = get('localStorage', 'btv.motion');
+      var m = get('localStorage', 'peptidescope.motion');
       var still = m === 'reduce' || (m !== 'full' && mq('(prefers-reduced-motion: reduce)'));
       if (still) d.setAttribute('data-motion', 'reduce');
       else if (m === 'full') d.setAttribute('data-motion', 'full');
-      // Preloader (theme agent): obsidian + one champagne progress line, never under reduced motion.
+      // Opened as a file: browsers block ES modules from file:// pages, so nothing below this script
+      // would ever run. Show the static page with the "open it from its web address" notice instead
+      // of a preloader and an intro that could never finish.
+      if (location.protocol === 'file:') {
+        d.setAttribute('data-file', '');
+        d.setAttribute('data-intro', 'skip');
+        return;
+      }
+      // Preloader: obsidian + one fine champagne progress line, never under reduced motion.
       if (!still && !/[?&]no-preload(?:[=&]|$)/.test(location.search)) d.setAttribute('data-preload', 'show');
       var h = location.hash, skip = /[?&]skip-intro(?:[=&]|$)/.test(location.search) ||
-        (h.length > 1 && h !== '#intro') || get('sessionStorage', 'btv.introSeen') === '1';
+        (h.length > 1 && h !== '#intro') || get('sessionStorage', 'peptidescope.introSeen') === '1';
       if (h === '#intro') skip = false;
       d.setAttribute('data-intro', skip ? 'skip' : 'show');
       d.classList.add('js');
@@ -126,29 +134,104 @@
       <svg class="preloader-mark" focusable="false"><use href="#i-vial"/></svg>
       <p class="preloader-word">Peptide<em>Scope</em></p>
       <div class="preloader-line"><span class="preloader-bar"></span></div>
-      <p class="preloader-caption">Education only</p>
+      <p class="preloader-caption">Independent education · Not a seller</p>
+      <p class="preloader-note"><span>Education only</span> · <span>Nothing for sale</span> · <span>Not medical advice</span> · <span>No dosing guidance</span></p>
     </div>
   </div>
 
-  <!-- ===================== Intro overlay ===================== -->
+  <!-- ===================== Intro overlay (scroll film: js/intro.js, css/intro.css) =====================
+       Everything that says what this is shows from the first frame, before any script or 3D:
+       the kicker, the title and tagline, the safety line and Skip, over a CSS/SVG still. -->
   <div id="intro" class="intro force-dark" role="dialog" aria-modal="false" aria-labelledby="intro-title" aria-describedby="intro-sub">
-    <div id="intro-canvas-host" class="intro-canvas-host" aria-hidden="true"></div>
-    <div class="intro-backdrop" aria-hidden="true"></div>
-    <button id="intro-skip" class="intro-skip" type="button">Skip intro</button>
-    <div class="intro-content">
-      <p class="intro-kicker">Independent education · Not a seller</p>
-      <h1 id="intro-title" class="intro-title">PeptideScope</h1>
-      <p class="intro-tagline brand-tagline">See what viral peptides really do inside your body.</p>
-      <p id="intro-sub" class="intro-sub">What actually happens inside the body after injecting a peptide that is trending online, and what the evidence really says.</p>
-      <div class="intro-actions">
-        <button id="intro-enter" class="btn btn--primary btn--lg" type="button">
-          <span class="btn-label">Enter the body</span>
-          <svg class="btn-icon" aria-hidden="true" focusable="false"><use href="#i-arrow"/></svg>
-        </button>
-        <button id="intro-facts" class="btn btn--ghost btn--lg" type="button">Read the facts first</button>
+    <div class="intro-stage">
+      <div class="intro-backdrop" aria-hidden="true">
+        <svg class="intro-still" viewBox="0 0 420 620" focusable="false">
+          <defs>
+            <radialGradient id="is-halo" cx="50%" cy="56%" r="52%"><stop offset="0" stop-color="#C8A96A" stop-opacity=".2"/><stop offset=".55" stop-color="#C8A96A" stop-opacity=".05"/><stop offset="1" stop-color="#C8A96A" stop-opacity="0"/></radialGradient>
+            <linearGradient id="is-glass" x1="0" x2="1"><stop offset="0" stop-color="#E6D3A3" stop-opacity=".22"/><stop offset=".16" stop-color="#E6D3A3" stop-opacity=".05"/><stop offset=".82" stop-color="#E6D3A3" stop-opacity=".03"/><stop offset="1" stop-color="#E6D3A3" stop-opacity=".18"/></linearGradient>
+            <linearGradient id="is-alu" x1="0" x2="1"><stop offset="0" stop-color="#6f6b66"/><stop offset=".3" stop-color="#e8e4dc"/><stop offset=".55" stop-color="#9a958e"/><stop offset="1" stop-color="#4c4945"/></linearGradient>
+            <linearGradient id="is-cap" x1="0" x2="1"><stop offset="0" stop-color="#2a1013"/><stop offset=".35" stop-color="#6a2a30"/><stop offset="1" stop-color="#250d10"/></linearGradient>
+            <linearGradient id="is-floor" x1="0" x2="1"><stop offset="0" stop-color="#C8A96A" stop-opacity="0"/><stop offset=".5" stop-color="#C8A96A" stop-opacity=".5"/><stop offset="1" stop-color="#C8A96A" stop-opacity="0"/></linearGradient>
+            <radialGradient id="is-drop"><stop offset="0" stop-color="#F1DDA8" stop-opacity=".95"/><stop offset=".35" stop-color="#F1DDA8" stop-opacity=".35"/><stop offset="1" stop-color="#F1DDA8" stop-opacity="0"/></radialGradient>
+          </defs>
+          <ellipse cx="200" cy="380" rx="215" ry="250" fill="url(#is-halo)"/>
+          <circle cx="200" cy="372" r="192" fill="none" stroke="#C8A96A" stroke-opacity=".14"/>
+          <circle cx="200" cy="372" r="142" fill="none" stroke="#C8A96A" stroke-opacity=".08"/>
+          <ellipse cx="170" cy="557" rx="74" ry="5" fill="#000" fill-opacity=".55"/>
+          <path d="M20 557.5 H400" stroke="url(#is-floor)"/>
+          <!-- vial: clear glass, white cake, plain label (no amount, no brand), aluminium crimp, flip-off cap -->
+          <path d="M119 552 Q170 545 221 552 V522 Q196 514 170 516 Q144 514 119 522 Z" fill="#F3EEE6" fill-opacity=".86"/>
+          <rect x="112.5" y="404" width="115" height="110" fill="#EFE9DE" fill-opacity=".92"/>
+          <rect x="120" y="412" width="100" height="94" fill="none" stroke="#2a2218" stroke-opacity=".5" stroke-width=".8"/>
+          <text x="170" y="448" text-anchor="middle" font-family="Inter, sans-serif" font-size="9.6" font-weight="800" fill="#1c1915" letter-spacing=".3">RESEARCH USE ONLY</text>
+          <text x="170" y="463" text-anchor="middle" font-family="Inter, sans-serif" font-size="7.4" font-weight="700" fill="#7b2a25" letter-spacing="1.2">NOT FOR HUMAN USE</text>
+          <path d="M140 474 H200" stroke="#2a2218" stroke-opacity=".45" stroke-width=".6"/>
+          <text x="170" y="490" text-anchor="middle" font-family="Inter, sans-serif" font-size="6.6" font-weight="500" fill="#3e382f" letter-spacing=".9">LOT 24A0917</text>
+          <path d="M131 318 V331 C131 347 112 347 112 366 V546 Q112 556 122 556 H218 Q228 556 228 546 V366 C228 347 209 347 209 331 V318" fill="url(#is-glass)" stroke="#E6D3A3" stroke-opacity=".7" stroke-width="1.1"/>
+          <path d="M118 372 V540" stroke="#F3EEE6" stroke-opacity=".38" stroke-width="2" stroke-linecap="round"/>
+          <path d="M223 380 V532" stroke="#F3EEE6" stroke-opacity=".16" stroke-width="1.2" stroke-linecap="round"/>
+          <rect x="121.5" y="290" width="97" height="31" rx="3" fill="url(#is-alu)"/>
+          <path d="M131 300 V321 M141 300 V321 M151 300 V321 M161 300 V321 M171 300 V321 M181 300 V321 M191 300 V321 M201 300 V321 M211 300 V321" stroke="#2b2926" stroke-opacity=".35" stroke-width=".7"/>
+          <rect x="122.5" y="262" width="95" height="29" rx="4.5" fill="url(#is-cap)"/>
+          <path d="M127 266 H213" stroke="#d9a8a0" stroke-opacity=".35" stroke-linecap="round"/>
+          <!-- syringe beside it: needle down, a single drop at the tip, graduations as plain lines -->
+          <g transform="translate(318 478) rotate(11)">
+            <rect x="-25.5" y="-800" width="51" height="636" rx="4" fill="url(#is-glass)" stroke="#E6D3A3" stroke-opacity=".6"/>
+            <path d="M-25 -196 H-13 M-25 -216 H-17 M-25 -236 H-17 M-25 -256 H-17 M-25 -276 H-17 M-25 -296 H-8 M-25 -316 H-17 M-25 -336 H-17 M-25 -356 H-17 M-25 -376 H-17 M-25 -396 H-13 M-25 -416 H-17 M-25 -436 H-17 M-25 -456 H-17" stroke="#E6D3A3" stroke-opacity=".55" stroke-width=".9"/>
+            <rect x="-23" y="-478" width="46" height="34" rx="3" fill="#15161a"/>
+            <path d="M-11 -164 L-17 -170 V-178 H17 V-170 L11 -164 L6 -100 H-6 Z" fill="#E6EBF0" fill-opacity=".2" stroke="#E6D3A3" stroke-opacity=".55" stroke-width=".9"/>
+            <path d="M0 -100 V-2" stroke="#e9e5de" stroke-width="2.4" stroke-linecap="round"/>
+            <path d="M-1.2 -2 L1.2 -9" stroke="#ffffff" stroke-opacity=".9" stroke-width="1"/>
+            <circle cx="0" cy="18" r="26" fill="url(#is-drop)"/>
+            <ellipse cx="0" cy="6" rx="5.2" ry="6" fill="#F1DDA8" fill-opacity=".55" stroke="#fff6e0" stroke-opacity=".7" stroke-width=".6"/>
+          </g>
+        </svg>
       </div>
-      <p class="intro-note"><span>Education only</span> · <span>Nothing for sale</span> · <span>Not medical advice</span> · <span>No dosing guidance</span></p>
+      <div id="intro-canvas-host" class="intro-canvas-host" aria-hidden="true"></div>
+      <div class="intro-scrim" aria-hidden="true"></div>
+      <div class="intro-labels" aria-hidden="true"></div>
+      <div class="intro-frame" aria-hidden="true"><span></span><span></span><span></span><span></span></div>
+
+      <div class="intro-top">
+        <p class="intro-kicker"><svg class="intro-kicker-mark" aria-hidden="true" focusable="false"><use href="#i-seal"/></svg><span>Independent education · Not a seller</span></p>
+        <button id="intro-skip" class="intro-skip" type="button">Skip intro</button>
+      </div>
+      <p class="intro-tag" aria-hidden="true">Illustration · not to scale</p>
+
+      <div class="intro-content intro-card">
+        <h1 id="intro-title" class="intro-title">PeptideScope</h1>
+        <p class="intro-tagline brand-tagline">See what viral peptides really do inside your body.</p>
+        <p id="intro-sub" class="intro-sub">What actually happens inside the body after injecting a peptide that is trending online, and what the evidence really says.</p>
+        <div class="intro-actions">
+          <button id="intro-enter" class="btn btn--primary btn--lg" type="button">
+            <span class="btn-label">Enter the body</span>
+            <svg class="btn-icon" aria-hidden="true" focusable="false"><use href="#i-arrow"/></svg>
+          </button>
+          <button id="intro-facts" class="btn btn--ghost btn--lg" type="button">Read the facts first</button>
+        </div>
+        <p class="intro-cue" aria-hidden="true"><span class="intro-cue-line"></span><span class="intro-cue-text">Scroll to follow one injection</span></p>
+      </div>
+
+      <ol class="intro-chapters" aria-label="The film, chapter by chapter">
+        <li class="intro-chapter"><p class="intro-ch-num">01 · The vial</p><p class="intro-ch-title">Sold online as a “research chemical”</p><p class="intro-ch-text">Not approved for use in people. Nothing on the label can tell you what, or how much, is really inside.</p></li>
+        <li class="intro-chapter"><p class="intro-ch-num">02 · The syringe</p><p class="intro-ch-title">One thin needle, one drop</p><p class="intro-ch-text">This film never shows how to mix, measure or inject. It follows what happens after.</p></li>
+        <li class="intro-chapter"><p class="intro-ch-num">03 · The site</p><p class="intro-ch-title">Into the skin of the belly</p><p class="intro-ch-text">Shots like this go under the skin of the belly, the thigh or the upper arm.</p></li>
+        <li class="intro-chapter"><p class="intro-ch-num">04 · Under the skin</p><p class="intro-ch-title">A small pool forms in the fat</p><p class="intro-ch-text">The drug sits in the fat layer as a depot, and seeps out slowly.</p></li>
+        <li class="intro-chapter"><p class="intro-ch-num">05 · Into the blood</p><p class="intro-ch-title">Through the walls of tiny blood vessels</p><p class="intro-ch-text">It slips into capillaries, and the blood carries it on toward the heart.</p></li>
+        <li class="intro-chapter"><p class="intro-ch-num">06 · Through the body</p><p class="intro-ch-title">It acts where its receptors are</p><p class="intro-ch-text">The blood takes it around the whole body. The organs that carry its receptors respond.</p></li>
+      </ol>
+
+      <div class="intro-foot">
+        <p class="intro-note"><span>Education only</span> · <span>Nothing for sale</span> · <span>Not medical advice</span> · <span>No dosing guidance</span></p>
+        <div class="intro-nav">
+          <button class="intro-prev" type="button" aria-label="Previous chapter"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M14.5 6.5 9 12l5.5 5.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+          <p class="intro-count" aria-hidden="true"><span class="intro-count-now">01</span><span class="intro-count-sep">/</span><span>06</span></p>
+          <span class="intro-progress" aria-hidden="true"><span></span></span>
+          <button class="intro-next" type="button" aria-label="Next chapter"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M9.5 6.5 15 12l-5.5 5.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+        </div>
+      </div>
     </div>
+    <div class="intro-track" aria-hidden="true"></div>
   </div>
 
   <!-- ===================== Header ===================== -->
@@ -193,6 +276,15 @@
     <noscript>
       <p class="noscript-note">Turn on JavaScript to see the interactive body and the cited facts. Education only. Not medical advice. No dosing guidance.</p>
     </noscript>
+    <!-- Shown only when the page was opened as a file (html[data-file], set by the boot script). -->
+    <aside id="file-notice" class="file-notice" aria-labelledby="file-notice-title">
+      <svg class="file-notice-icon" aria-hidden="true" focusable="false"><use href="#i-alert"/></svg>
+      <div class="file-notice-body">
+        <p id="file-notice-title" class="file-notice-title">Open PeptideScope from its web address</p>
+        <p>This copy was opened straight from a file on your computer. Browsers block the code that runs the 3D body, the timeline and the cited facts when a page is opened that way, so most of the page stays empty.</p>
+        <p>Open it at <a href="https://saifmaati.github.io/peptidescope/">saifmaati.github.io/peptidescope</a>, or serve this folder locally: run <code>npm run serve</code> in the project folder, then open the address it prints (127.0.0.1:8790).</p>
+      </div>
+    </aside>
 
     <!-- Explorer: the interactive body -->
     <section id="explorer" class="explorer" aria-labelledby="explorer-title">
@@ -251,21 +343,27 @@
               <span class="hud-corner hud-corner--br"></span>
               <span class="hud-ruler hud-ruler--y"></span>
               <span class="hud-ruler hud-ruler--x"></span>
-              <span class="hud-label hud-label--tl"><span class="hud-tl-kind">Anatomical model · </span><span id="hud-model">Visible Human Male · 1.75 m</span></span>
+              <span class="hud-label hud-label--tl"><span class="hud-tl-kind">Anatomical model · </span><span id="hud-model">Visible Human Male data</span></span>
               <span class="hud-label hud-label--tr"><span class="hud-dot"></span><span id="hud-phase">Standby</span></span>
               <span class="hud-label hud-label--bl" id="hud-hint">Drag to rotate · Scroll to zoom</span>
               <span class="hud-label hud-label--br">Site <span id="hud-site">not set</span></span>
             </div>
             <div id="callout-layer" class="callout-layer"></div>
-            <div id="stage-loading" class="stage-loading" role="status" hidden>
-              <span class="loader" aria-hidden="true"><span></span></span>
-              <span class="stage-loading-text">Preparing the 3D body…</span>
+            <!-- Loading: main.js drives the line from real progress (engine, anatomy download, scene build). -->
+            <div id="stage-loading" class="stage-loading" hidden>
+              <svg class="stage-loading-mark" aria-hidden="true" focusable="false"><use href="#i-figure"/></svg>
+              <div class="stage-progress" role="progressbar" aria-label="Loading the 3D body" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><span class="stage-progress-bar"></span></div>
+              <p class="stage-loading-text" role="status">Preparing the 3D body</p>
+              <p class="stage-loading-step" id="stage-loading-step">Loading the 3D engine</p>
             </div>
-            <div id="stage-fallback" class="stage-fallback" hidden>
+            <!-- Fallback: no WebGL 2, the scene failed, or the page was opened as a file. main.js adds a
+                 still image of the body (assets/img/body-poster.webp) when that file exists. -->
+            <div id="stage-fallback" class="stage-fallback" hidden data-poster="./assets/img/body-poster.webp">
               <div class="stage-fallback-inner">
                 <svg class="stage-fallback-icon" aria-hidden="true" focusable="false"><use href="#i-cube"/></svg>
-                <p class="stage-fallback-title">The 3D view isn’t available here</p>
+                <p class="stage-fallback-title" id="stage-fallback-title">The 3D view isn’t available here</p>
                 <p class="stage-fallback-text" id="stage-fallback-text">This browser or device couldn’t start 3D graphics (WebGL&nbsp;2). Everything else still works: the timeline, the side effects, and every cited fact below.</p>
+                <p class="stage-fallback-text stage-fallback-text--file">This page was opened as a file, and browsers block the 3D body there. Open it at <a href="https://saifmaati.github.io/peptidescope/">saifmaati.github.io/peptidescope</a> or from a local server (<code>npm run serve</code>).</p>
                 <a class="btn btn--ghost btn--sm" href="#overview">Read the facts</a>
               </div>
             </div>
@@ -295,8 +393,8 @@
               <p class="narration-text" id="narration-text">Pick a peptide and where it goes in, then press Inject to watch what happens inside the body.</p>
             </div>
             <dl class="readout">
-              <div class="readout-item"><dt>Time since injection</dt><dd id="readout-time">–</dd></div>
-              <div class="readout-item"><dt>Level in the blood</dt><dd id="readout-level">–</dd></div>
+              <div class="readout-item"><dt id="readout-time-label">Time since injection</dt><dd id="readout-time">Not started</dd></div>
+              <div class="readout-item"><dt>Stage</dt><dd id="readout-phase">Before the injection</dd></div>
             </dl>
           </section>
           <section class="panel panel--effects" aria-labelledby="effects-title">
@@ -355,7 +453,7 @@
       </section>
 
       <section id="gray-market" class="content-section" aria-labelledby="gray-market-title">
-        <header class="section-head"><p class="eyebrow eyebrow--section"><span class="eyebrow-num">09</span> <span class="eyebrow-label">Gray market</span></p><h2 id="gray-market-title">What’s really in the vial</h2><p class="lede">Independent labs tested vials bought online. Some held less than the label said, some more, and some none of the drug at all.</p></header>
+        <header class="section-head"><p class="eyebrow eyebrow--section"><span class="eyebrow-num">09</span> <span class="eyebrow-label">Gray market</span></p><h2 id="gray-market-title">What’s really in the vial</h2><p class="lede">Independent labs tested vials sold online. Some held less than the label said, some more, and some none of the drug at all.</p></header>
         <div class="section-body" data-render="gray-market"></div>
       </section>
 
@@ -388,7 +486,7 @@
       <div class="footer-meta">
         <p class="footer-status">
           <span class="seal"><svg class="seal-mark" aria-hidden="true" focusable="false"><use href="#i-seal"/></svg>Pharmacist review: pending</span>
-          <span class="footer-checked">Content checked <time datetime="2026-10-07">2026-10-07</time></span>
+          <span class="footer-checked">Sources re-checked <time datetime="2026-10-08">8 October 2026</time></span>
         </p>
         <ul class="footer-links">
           <li><a href="#sources">Sources</a></li>

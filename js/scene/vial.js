@@ -6,10 +6,10 @@
 //
 // What it is: the small clear "2R" serum vial that gray-market peptides are sold in (ISO 8362-1 2R
 // proportions): clear borosilicate glass with real wall thickness, a grey lyophilisation rubber
-// stopper, a crimped aluminium seal with a flip-off plastic button (muted colour), a white freeze-dried
+// stopper, a crimped aluminium seal with a flip-off plastic button (muted oxblood), a white freeze-dried
 // powder cake at the bottom and a minimal paper label that reads like a gray-market product
-// ("RESEARCH USE ONLY · NOT FOR HUMAN USE", a lot code). The label never shows an amount, a strength,
-// a brand or any preparation wording (a hard product rule).
+// ("RESEARCH USE ONLY", "NOT FOR HUMAN USE", a lot code). The label never shows an amount, a strength,
+// a brand, a price or any preparation or storage wording (a hard product rule).
 //
 // LOCAL FRAME AND REAL-WORLD SIZE (meters, before `scale`; group.scale = scale):
 //   - +Y is the vial axis; y = 0 is the lowest point of the glass (the heel ring it stands on); the axis
@@ -140,7 +140,7 @@ export function createVial(THREE, opts = {}) {
     name: 'vial-seal',
     color: 0xd9d6d0,
     metalness: 1,
-    roughness: 0.3,
+    roughness: 0.36,
     envMapIntensity,
     side: THREE.DoubleSide,
   }));
@@ -344,13 +344,12 @@ float ckCell(vec3 p) { // distance to the nearest Voronoi edge (approximate, 2D 
 
 // -------------------------------------------------------------------- label
 
+// The label is deliberately minimal: what a gray-market vial says about itself, and nothing else.
+// Never an amount, a strength, a brand, a price or any preparation or storage instruction.
 const LABEL_LINES = {
-  kicker: 'LYOPHILIZED POWDER',
   main: 'RESEARCH USE ONLY',
   warn: 'NOT FOR HUMAN USE',
   lot: 'LOT 24A0917',
-  exp: 'EXP 09 · 2027',
-  store: 'STORE COLD · PROTECT FROM LIGHT',
 };
 
 /** Canvas-drawn paper label. Redraws once the web font is available. Returns { texture, ready, dispose }. */
@@ -396,45 +395,27 @@ function makeLabelTexture(THREE) {
         g.fillText(s, x, y);
       }
     };
-    // hairline frame of the front panel
-    const panelW = 1060;
-    g.strokeStyle = 'rgba(40, 32, 20, 0.55)';
+    // front panel (about 115° of the wrap, so every line stays readable from the front)
+    const panelW = 800;
+    g.strokeStyle = 'rgba(40, 32, 20, 0.5)';
     g.lineWidth = 2;
-    g.strokeRect(cx - panelW / 2, 46, panelW, H - 92);
-    g.fillStyle = 'rgba(40, 32, 20, 0.85)';
-    g.fillRect(cx - panelW / 2, 46, panelW, 10);
+    g.strokeRect(cx - panelW / 2, 70, panelW, H - 140);
+    g.fillStyle = '#5a1f22';
+    g.fillRect(cx - panelW / 2, 70, panelW, 12);
+    g.fillRect(cx - panelW / 2, H - 82, panelW, 12);
 
-    text(LABEL_LINES.kicker, cx, 160, `600 38px ${sans}`, '#5a5246', 12);
-    text(LABEL_LINES.main, cx, 300, `800 104px ${sans}`, ink, 1);
-    text(LABEL_LINES.warn, cx, 392, `700 50px ${sans}`, '#7b2a25', 9);
-    g.fillStyle = 'rgba(40, 32, 20, 0.5)';
-    g.fillRect(cx - 380, 440, 760, 2);
-    text(LABEL_LINES.lot, cx - 190, 528, `500 40px ${sans}`, '#3e382f', 4);
-    text(LABEL_LINES.exp, cx + 190, 528, `500 40px ${sans}`, '#3e382f', 4);
-    text(LABEL_LINES.store, cx, 640, `500 30px ${sans}`, '#6b6355', 6);
-
-    // barcode on the right flank (random bars, purely decorative)
-    const bx = cx + panelW / 2 + 70, by = 150, bh = 420;
-    let x = bx;
-    const brnd = mulberry32(2409);
-    g.fillStyle = '#23201b';
-    while (x < bx + 300) {
-      const w = 3 + Math.floor(brnd() * 4) * 3;
-      if (brnd() > 0.42) g.fillRect(x, by, w, bh);
-      x += w + 3 + Math.floor(brnd() * 3) * 3;
-    }
-    text('2409 1170 4417', bx + 150, by + bh + 52, `500 32px ${sans}`, '#3e382f', 6);
-    // left flank: small print block (lines only, unreadable at viewing size)
-    g.fillStyle = 'rgba(40, 32, 20, 0.28)';
-    const lx = cx - panelW / 2 - 380;
-    for (let i = 0; i < 9; i++) g.fillRect(lx, 170 + i * 46, 300 - (i % 3) * 40, 8);
+    text(LABEL_LINES.main, cx, 318, `800 78px ${sans}`, ink, 2);
+    text(LABEL_LINES.warn, cx, 404, `700 44px ${sans}`, '#7b2a25', 10);
+    g.fillStyle = 'rgba(40, 32, 20, 0.45)';
+    g.fillRect(cx - 250, 460, 500, 2);
+    text(LABEL_LINES.lot, cx, 560, `500 40px ${sans}`, '#3e382f', 8);
     texture.needsUpdate = true;
   };
   draw();
   let ready = Promise.resolve();
   try {
     if (document.fonts && document.fonts.load) {
-      ready = Promise.all([document.fonts.load('800 104px "Inter"'), document.fonts.load('500 40px "Inter"')])
+      ready = Promise.all([document.fonts.load('800 78px "Inter"'), document.fonts.load('500 40px "Inter"')])
         .then(() => draw())
         .catch(() => {});
     }

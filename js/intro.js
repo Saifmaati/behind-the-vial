@@ -1,63 +1,78 @@
-// PeptideScope: cinematic landing (intro).
+// PeptideScope: scroll-driven film intro (intro).
 //
 // export function mountIntro(host /* #intro */, { reducedMotion, onEnter, onFacts }) → { dispose() }
 //
-// dispose() stops the loop, frees every GPU resource, calls renderer.dispose() + forceContextLoss() and
-// removes the canvas, so the 3D body never shares the GPU with a second live WebGL context.
+// The intro is a short "product film" that the visitor scrubs by scrolling, rendered live in WebGL:
+//   01 the vial      a lifelike gray-market peptide vial on obsidian (no amount, no brand on the label)
+//   02 the syringe   an insulin-type syringe beside it, a single drop at the needle tip (never mixing,
+//                    drawing up, measuring, volumes or needle angles)
+//   03 the site      a lifelike human body (real anatomy skin, close-up on the belly landmark)
+//   04 under skin    a cut block of tissue: skin, the fat layer, muscle; the depot pooling in the fat
+//   05 the blood     along a capillary that widens into a vein: red cells, the drug as champagne light
+//   06 the body      pull back to the whole see-through body; the drug travels the real vessel paths to
+//                    the heart and out to the organs that have its receptors, which light up
+//   end              PeptideScope, the tagline, "Enter the body" / "Read the facts first", the safety line
 //
-// The DOM (title, sub, buttons, note, skip) is written by index.html. This module:
-//   - renders a WebGL scene into #intro-canvas-host (procedural glowing vasculature with flowing blood
-//     cells, the realistic syringe from ./scene/syringe.js, a drop at the needle tip, bloom, grade),
-//   - stages the DOM text in sync with the 3D clock through classes on #intro,
-//   - wires #intro-enter / #intro-facts / #intro-skip and the keys (Enter → onEnter, Escape → skip,
-//     which also calls onEnter).
-// It calls onEnter / onFacts immediately and plays a short 3D push while the host fades out (main.js
-// owns the fade through html[data-intro="leaving"] and calls dispose() afterwards). If nobody calls
-// dispose(), rendering stops by itself ~1.2 s after leaving.
+// SCROLL. #intro is the scroll container (a full-screen sticky stage plus a tall, empty track), so the
+// page behind never moves; the page's own scroll position is untouched and restored if anything moved
+// it. Scroll position is smoothed with a critically damped follow, like a video scrub.
+// KEYS. Space / PageDown / ArrowDown / ArrowRight: next chapter; Shift+Space / PageUp / ArrowUp /
+// ArrowLeft: previous; Home / End; Enter (nothing focused) enters; Escape skips. Focusing a button of
+// the end card jumps there, so keyboard users never tab onto an invisible control.
+// REDUCED MOTION. No scrubbing and no ambient motion: the same chapters become still frames that change
+// instantly at chapter boundaries (scroll, keys or the Back / Next buttons). It follows opts.reducedMotion
+// at mount, then the bus event motion:change { reducedMotion } live (html[data-motion], then the media
+// query, when the option is missing).
+// FIRST FRAME. Everything that says what this is (kicker "Independent education · Not a seller", the
+// title and tagline, the line "Education only · Nothing for sale · Not medical advice · No dosing
+// guidance", Skip) is static HTML in index.html, visible before any script or 3D has loaded, over a
+// CSS/SVG still. Without WebGL the intro stays that still title card (fully usable, no scroll track).
+// TEARDOWN. dispose() stops the loop, frees every geometry, material, texture and render target, calls
+// renderer.dispose() + forceContextLoss() and removes the canvas, so the 3D body never shares the GPU with
+// a second live WebGL context. If nobody calls dispose(), rendering stops by itself ~1.2 s after leaving.
 //
-// Storyboard (seconds on the intro clock, which starts at the first rendered frame):
-//   0–2.2   black → one capillary draws itself as a hairline of light; HUD ticks fade in
-//   2.2–7   slow pull-back: the light spreads through a branching network (arteries coral, veins blue,
-//           capillary fringe) receding into depth fog; blood cells flow at a resting heart rhythm
-//   4.8–9   the syringe glides in from the dark, rim-lit; liquid faintly luminous; a drop beads at the tip;
-//           focus racks from the vessels to the syringe
-//   7.6–11  kicker, title (tracking in), sub, buttons, note
-//   12+     idle loop: slow drift, flow continues
-// Reduced motion: one composed still, everything visible at once, no camera moves. It follows
-// opts.reducedMotion at mount and then the bus event motion:change { reducedMotion } (main.js), so the
-// header toggle or an OS setting change switches between the still and the idle loop without a reload.
-// Performance: no allocations in the frame loop; the loop pauses while the tab is hidden and stops for good
-// ~1.2 s after leaving (or at once on dispose).
+// Classes on #intro (css/intro.css): .intro--js, .intro--film (scroll film active), .intro--webgl (canvas
+// shows), .intro--no-webgl (static still), .intro--still (reduced motion), .intro--end (end card),
+// .intro--leaving. Per-frame values go into CSS custom properties on the elements themselves.
+// Dev only: host.__intro = { seek(p, { instant }), state } and the returned object's `_state`.
 
 import { bus } from './bus.js';
 
-const STAGES = [
-  ['hud', 0.45], ['kicker', 7.7], ['title', 8.0], ['sub', 9.3], ['actions', 10.2], ['note', 10.8], ['idle', 12.0],
+// ---------------------------------------------------------------------------------------------- film map
+// All positions are fractions of the scroll track (0 = top, 1 = end card fully in).
+const OPEN_OUT = [0.018, 0.058];       // opening title fades out
+const END_IN = [0.9, 0.938];           // end card fades in
+const CHAPTERS = [
+  { id: 'vial', from: 0.052, to: 0.168, stop: 0.108 },
+  { id: 'syringe', from: 0.178, to: 0.292, stop: 0.238 },
+  { id: 'site', from: 0.33, to: 0.456, stop: 0.404 },
+  { id: 'skin', from: 0.494, to: 0.606, stop: 0.556 },
+  { id: 'blood', from: 0.646, to: 0.762, stop: 0.712 },
+  { id: 'body', from: 0.8, to: 0.894, stop: 0.858 },
 ];
-const STILL_T = 12.6;          // composed frame used for reduced motion
-const LATE_START_T = 9.4;      // where the 3D starts if it arrives after the text was already shown
-const TEXT_DEADLINE_MS = 4500; // show the text anyway if the 3D sequence has not started by then
-const HEART_PERIOD = 60 / 62;  // resting heart rhythm, ~62 per minute
-const KEY_INTENSITY = 0.95;    // front key on the syringe: white plastic reads white, stays under the bloom threshold
-const FILL_INTENSITY = 0.52;   // ambient fill (only lit materials: the syringe and the drop)
-const BLOOM_THRESHOLD = 0.8;   // only light sources (vessels, cells, glints, the bevel flash) bloom; lit plastic does not
-const BEVEL_INTENSITY = 0.3;   // bevel light, as illuminance at the tip (a polished facet needs very little)
+// keyboard / button stops and the reduced-motion still frames (0 = opening, last = end card)
+const STOPS = [0, ...CHAPTERS.map((c) => c.stop), 1];
+// shots: which 3D set is on screen; neighbours overlap during a dissolve
+const SHOTS = [
+  { set: 'studio', from: 0, to: 0.322 },
+  { set: 'body', from: 0.296, to: 0.49 },
+  { set: 'tissue', from: 0.462, to: 0.642 },
+  { set: 'blood', from: 0.614, to: 0.798 },
+  { set: 'glass', from: 0.772, to: 1.01 },
+];
+const SMOOTH = 5.2;                    // scroll follow rate (1/s); higher = snappier
+const TEXT_DEADLINE_MS = 6000;         // if the 3D is not ready by then the still stays (text is static anyway)
 
-const PARTS = [
-  ['kicker', '.intro-kicker'],
-  ['title', '#intro-title'],
-  ['sub', '#intro-sub, .intro-sub'],
-  ['actions', '.intro-actions'],
-  ['note', '.intro-note, .intro-disclaimer, [data-intro-note]'],
-];
+const clamp01 = (x) => (x < 0 ? 0 : x > 1 ? 1 : x);
+const sstep = (a, b, x) => { const t = clamp01((x - a) / (b - a)); return t * t * (3 - 2 * t); };
+const window01 = (from, to, p, f = 0.022) => sstep(from - f * 0.2, from + f, p) * (1 - sstep(to - f, to + f * 0.2, p));
 
 export function mountIntro(host, opts = {}) {
   const noop = { dispose() {} };
   if (!host || typeof host.querySelector !== 'function') return noop;
-
   const { onEnter, onFacts } = opts;
+  const debug = opts.debug || null;
   let reducedMotion = typeof opts.reducedMotion === 'boolean' ? opts.reducedMotion : prefersReducedMotion();
-  const debug = opts.debug || null; // dev only: { t: seconds, freeze: bool }
 
   const $ = (sel) => host.querySelector(sel);
   const cleanups = [];
@@ -67,190 +82,354 @@ export function mountIntro(host, opts = {}) {
 
   let disposed = false;
   let leaving = false;
-  let lateText = false;
-  let gl = null; // the 3D runtime once it exists
+  let gl = null;
+  const savedPageScroll = { x: window.scrollX || 0, y: window.scrollY || 0 };
 
-  // ---------------------------------------------------------------- DOM
+  // ------------------------------------------------------------------------------------------- DOM
+  const stage = $('.intro-stage') || host;
   let canvasHost = $('#intro-canvas-host');
-  let createdCanvasHost = false;
   if (!canvasHost) {
     canvasHost = document.createElement('div');
     canvasHost.id = 'intro-canvas-host';
+    canvasHost.className = 'intro-canvas-host';
     canvasHost.setAttribute('aria-hidden', 'true');
-    host.prepend(canvasHost);
-    createdCanvasHost = true;
+    stage.prepend(canvasHost);
   }
-  const tagged = [];
-  for (const [name, sel] of PARTS) {
-    const el = $(sel);
-    if (el && !el.hasAttribute('data-intro-part')) { el.setAttribute('data-intro-part', name); tagged.push(el); }
+  let track = $('.intro-track');
+  const createdTrack = !track;
+  if (!track) {
+    track = document.createElement('div');
+    track.className = 'intro-track';
+    track.setAttribute('aria-hidden', 'true');
+    host.append(track);
   }
+  const els = {
+    card: $('.intro-card'),
+    actions: $('.intro-actions'),
+    cue: $('.intro-cue'),
+    chapters: [...host.querySelectorAll('.intro-chapter')],
+    progress: $('.intro-progress'),
+    count: $('.intro-count-now'),
+    prev: $('.intro-prev'),
+    next: $('.intro-next'),
+    labels: $('.intro-labels'),
+    skip: $('#intro-skip'),
+    enter: $('#intro-enter'),
+    facts: $('#intro-facts'),
+  };
+  const endControls = [els.enter, els.facts].filter(Boolean);
 
-  const hud = buildHud();
-  canvasHost.append(hud);
-
+  const webglLikely = !debug?.no3d && hasWebGL2();
   host.hidden = false;
   host.classList.add('intro--js');
   host.classList.toggle('intro--still', reducedMotion);
-  if (!reducedMotion) host.classList.add('intro--seq');
+  if (webglLikely) host.classList.add('intro--film');
+  else host.classList.add('intro--no-webgl');
 
-  const stageDone = new Set();
-  function setStage(name) {
-    if (stageDone.has(name)) return;
-    stageDone.add(name);
-    host.classList.add(`intro--s-${name}`);
+  // ------------------------------------------------------------------------------------------- scroll
+  const S = { target: 0, shown: 0, chapter: -1, stop: 0, endShown: false, lastDom: null };
+  const maxScroll = () => Math.max(1, host.scrollHeight - host.clientHeight);
+  const readTarget = () => { S.target = clamp01(host.scrollTop / maxScroll()); };
+  host.scrollTop = 0;
+
+  function stopIndexFor(p) {
+    // reduced motion: the still shown is the last stop the visitor has scrolled to (midpoints switch)
+    let i = 0;
+    for (let k = 1; k < STOPS.length; k++) if (p >= (STOPS[k - 1] + STOPS[k]) / 2) i = k;
+    return i;
   }
-  function revealAll() { for (let i = 0; i < STAGES.length; i++) setStage(STAGES[i][0]); nextStage = STAGES.length; }
-  let nextStage = 0; // index of the next stage the 3D clock has to reach (no per-frame iteration)
-  if (reducedMotion) revealAll();
+  function filmP() { return reducedMotion ? STOPS[stopIndexFor(S.target)] : S.shown; }
 
-  // ---------------------------------------------------------------- buttons + keys
+  function scrollToP(p, { instant = false } = {}) {
+    const top = Math.round(clamp01(p) * maxScroll());
+    host.scrollTo({ top, behavior: 'auto' });
+    readTarget();
+    if (instant || reducedMotion) S.shown = S.target;
+    wake();
+  }
+  function step(dir) {
+    const p = reducedMotion ? STOPS[stopIndexFor(S.target)] : S.target;
+    let i = dir > 0 ? STOPS.findIndex((s) => s > p + 0.004) : findLastIndex(STOPS, (s) => s < p - 0.004);
+    if (i < 0) i = dir > 0 ? STOPS.length - 1 : 0;
+    scrollToP(STOPS[i]);
+  }
+
+  // ------------------------------------------------------------------------------------------- text
+  // Per-frame: opacities of the opening card, captions and end card, the progress line and chapter count.
+  // Writes go straight to element styles and only when a value changed.
+  const domCache = new Map();
+  const setVar = (el, name, v) => {
+    if (!el) return;
+    const key = el;
+    let c = domCache.get(key);
+    if (!c) { c = {}; domCache.set(key, c); }
+    const r = Math.round(v * 1000) / 1000;
+    if (c[name] === r) return;
+    c[name] = r;
+    el.style.setProperty(name, String(r));
+    if (name === '--o') el.classList.toggle('is-off', r <= 0.001);
+  };
+  function updateText(p) {
+    const still = reducedMotion;
+    const idx = stopIndexFor(S.target);
+    const open = still ? (idx === 0 ? 1 : 0) : 1 - sstep(OPEN_OUT[0], OPEN_OUT[1], p);
+    const end = still ? (idx === STOPS.length - 1 ? 1 : 0) : sstep(END_IN[0], END_IN[1], p);
+    setVar(els.card, '--o', Math.max(open, end));
+    setVar(els.cue, '--o', still ? 0 : open * (1 - sstep(0.004, 0.03, p)));
+    setVar(els.actions, '--o', end);
+    host.classList.toggle('intro--end', end > 0.6);
+    host.classList.toggle('intro--opening', open > 0.5);
+    for (let i = 0; i < els.chapters.length; i++) {
+      const c = CHAPTERS[i];
+      const o = c ? (still ? (idx === i + 1 ? 1 : 0) : window01(c.from, c.to, p)) : 0;
+      setVar(els.chapters[i], '--o', o);
+      els.chapters[i].classList.toggle('is-on', o > 0.5);
+    }
+    let chapter = 0;
+    for (let i = 0; i < CHAPTERS.length; i++) if (p >= CHAPTERS[i].from - 0.02) chapter = i + 1;
+    if (p >= END_IN[0]) chapter = CHAPTERS.length;
+    if (still) chapter = Math.min(CHAPTERS.length, Math.max(idx, 0));
+    if (chapter !== S.chapter) {
+      S.chapter = chapter;
+      if (els.count) els.count.textContent = String(Math.max(1, chapter)).padStart(2, '0');
+      host.dataset.chapter = String(chapter);
+    }
+    setVar(els.progress, '--p', still ? idx / (STOPS.length - 1) : p);
+    if (els.prev) els.prev.disabled = (still ? idx : S.target) <= 0.001;
+    if (els.next) els.next.disabled = (still ? idx === STOPS.length - 1 : S.target >= 0.999);
+  }
+
+  // ------------------------------------------------------------------------------------------- loop
+  // One rAF loop drives the smoothing, the text and (once ready) the 3D. Without 3D it only runs while
+  // the scroll is settling.
+  let raf = 0;
+  let lastNow = 0;
+  let clock = 0;
+  function wake() { if (!raf && !disposed && !document.hidden) { lastNow = 0; raf = requestAnimationFrame(frame); } }
+  function frame(now) {
+    raf = 0;
+    if (disposed) return;
+    const rawDt = lastNow ? (now - lastNow) / 1000 : 0;
+    const dt = lastNow ? Math.min(0.1, rawDt) : 1 / 60;
+    lastNow = now;
+    if (!reducedMotion && !(debug && debug.freeze)) clock += dt;
+    const before = S.shown;
+    if (reducedMotion) S.shown = S.target;
+    else {
+      const k = 1 - Math.exp(-SMOOTH * dt);
+      S.shown += (S.target - S.shown) * k;
+      if (Math.abs(S.target - S.shown) < 0.00005) S.shown = S.target;
+    }
+    const p = filmP();
+    updateText(p);
+    let keep = Math.abs(S.shown - S.target) > 0 || S.shown !== before;
+    if (gl && gl.ready) {
+      gl.render(p, clock, dt, rawDt);
+      keep = keep || (!reducedMotion && gl.animating && !(debug && debug.freeze));
+    }
+    if (keep && !leavingStopped) raf = requestAnimationFrame(frame);
+  }
+  let leavingStopped = false;
+
+  on(host, 'scroll', () => { readTarget(); wake(); }, { passive: true });
+  on(document, 'visibilitychange', () => { if (!document.hidden) wake(); });
+  on(window, 'resize', () => { readTarget(); wake(); });
+
+  // ------------------------------------------------------------------------------------------- leave
   function leave(reason) {
     if (leaving || disposed) return;
     leaving = true;
     host.classList.add('intro--leaving');
-    if (gl) gl.beginExit();
-    later(() => { if (gl) gl.stop(); }, reducedMotion ? 0 : 1200);
+    gl?.beginExit();
+    later(() => { leavingStopped = true; gl?.stop(); }, reducedMotion ? 0 : 1200);
+    restorePageScroll();
     const cb = reason === 'facts' ? (onFacts || onEnter) : onEnter;
     try { cb?.({ reason }); } catch (err) { console.error('[intro] callback failed', err); }
   }
-  const enterBtn = $('#intro-enter');
-  const factsBtn = $('#intro-facts');
-  const skipBtn = $('#intro-skip');
-  if (enterBtn) on(enterBtn, 'click', () => leave('enter'));
-  if (factsBtn) on(factsBtn, 'click', () => leave('facts'));
-  if (skipBtn) on(skipBtn, 'click', () => leave('skip'));
+  function restorePageScroll() {
+    if ((window.scrollY || 0) !== savedPageScroll.y || (window.scrollX || 0) !== savedPageScroll.x) {
+      window.scrollTo(savedPageScroll.x, savedPageScroll.y);
+    }
+  }
+  if (els.enter) on(els.enter, 'click', () => leave('enter'));
+  if (els.facts) on(els.facts, 'click', () => leave('facts'));
+  if (els.skip) on(els.skip, 'click', () => leave('skip'));
+  if (els.prev) on(els.prev, 'click', () => step(-1));
+  if (els.next) on(els.next, 'click', () => step(1));
+
   on(document, 'keydown', (e) => {
-    if (leaving || disposed || host.hidden || e.defaultPrevented) return;
-    if (e.altKey || e.ctrlKey || e.metaKey || e.shiftKey || e.isComposing) return;
+    if (leaving || disposed || host.hidden || e.defaultPrevented || e.isComposing) return;
+    if (e.altKey || e.ctrlKey || e.metaKey) return;
+    const t = e.target;
+    const interactive = t && t.closest && t.closest('button, a[href], input, select, textarea, summary, [contenteditable=""], [contenteditable="true"], [role="button"], [role="link"]');
+    const typing = t && t.closest && t.closest('input, select, textarea, [contenteditable=""], [contenteditable="true"]');
     if (e.key === 'Escape') { leave('skip'); return; }
+    if (e.shiftKey && e.key !== ' ') return;
     if (e.key === 'Enter') {
-      const t = e.target;
-      const interactive = t && t.closest && t.closest('button, a[href], input, select, textarea, summary, [contenteditable=""], [contenteditable="true"], [role="button"], [role="link"]');
-      if (interactive) return; // let the focused control do its own thing
+      if (interactive) return; // a focused control handles its own Enter
       e.preventDefault();
       leave('enter');
+      return;
     }
+    if (typing || !host.classList.contains('intro--film')) return;
+    const next = (e.key === ' ' && !e.shiftKey && !interactive) || e.key === 'PageDown' || e.key === 'ArrowDown' || e.key === 'ArrowRight';
+    const prev = (e.key === ' ' && e.shiftKey && !interactive) || e.key === 'PageUp' || e.key === 'ArrowUp' || e.key === 'ArrowLeft';
+    if (next || prev) { e.preventDefault(); step(next ? 1 : -1); return; }
+    if (e.key === 'Home') { e.preventDefault(); scrollToP(0); return; }
+    if (e.key === 'End') { e.preventDefault(); scrollToP(1); }
   });
-  // Keyboard users get everything at once (no waiting for the reveal to reach the buttons).
-  on(host, 'focusin', (e) => { if (e.target && e.target !== skipBtn) revealAll(); });
+  // Keyboard focus on an end-card control (or any intro control while the card is hidden) jumps to the
+  // end card, so focus never lands on something invisible.
+  on(host, 'focusin', (e) => {
+    if (!host.classList.contains('intro--film')) return;
+    if (endControls.includes(e.target) && S.target < END_IN[1]) scrollToP(1, { instant: true });
+  });
 
-  // Live motion preference (header toggle, OS setting): still frame ⇄ idle loop, never a restart.
+  // Live motion preference (header toggle, OS setting): still chapters ⇄ scrubbed film, never a restart.
   function setReducedMotion(rm) {
     rm = !!rm;
     if (rm === reducedMotion || leaving || disposed) return;
     reducedMotion = rm;
     host.classList.toggle('intro--still', rm);
-    host.classList.remove('intro--seq');
-    revealAll();
+    if (!rm) S.shown = S.target;
     gl?.setReducedMotion(rm);
+    wake();
   }
   cleanups.push(bus.on('motion:change', (d) => setReducedMotion(d && d.reducedMotion)));
 
-  // Show the text even if WebGL is slow or missing.
-  if (!reducedMotion) {
-    later(() => { if (!gl || !gl.ready) { lateText = true; revealAll(); } }, debug?.textDeadlineMs ?? TEXT_DEADLINE_MS);
+  // ------------------------------------------------------------------------------------------- 3D
+  readTarget();
+  updateText(filmP());
+  if (webglLikely) {
+    start3D().catch((err) => {
+      if (disposed) return;
+      console.warn('[intro] 3D unavailable, keeping the still title card.', err);
+      fallbackToStill();
+    });
+    later(() => { if (!gl || !gl.ready) host.classList.add('intro--slow'); }, TEXT_DEADLINE_MS);
+  }
+  function fallbackToStill() {
+    host.classList.remove('intro--film', 'intro--webgl');
+    host.classList.add('intro--no-webgl');
+    host.scrollTop = 0;
+    readTarget();
+    S.shown = 0;
+    updateText(0);
   }
 
-  // ---------------------------------------------------------------- 3D
-  start3D().catch((err) => {
-    if (disposed) return;
-    console.warn('[intro] 3D unavailable, showing the static intro.', err);
-    host.classList.add('intro--no-webgl');
-    revealAll();
-  });
-
   async function start3D() {
-    const [THREE, composerMod, renderPassMod, bloomMod, passMod, syringeMod] = await Promise.all([
+    const [THREE, composerMod, bloomMod, passMod, syringeMod, vialMod, gltfMod, meshoptMod] = await Promise.all([
       import('three'),
       import('three/addons/postprocessing/EffectComposer.js'),
-      import('three/addons/postprocessing/RenderPass.js'),
       import('three/addons/postprocessing/UnrealBloomPass.js'),
       import('three/addons/postprocessing/Pass.js'),
       import('./scene/syringe.js'),
+      import('./scene/vial.js'),
+      import('three/addons/loaders/GLTFLoader.js'),
+      import('three/addons/libs/meshopt_decoder.module.js'),
     ]);
     if (disposed || leaving) return;
     gl = createRuntime({
       THREE,
       EffectComposer: composerMod.EffectComposer,
-      RenderPass: renderPassMod.RenderPass,
       UnrealBloomPass: bloomMod.UnrealBloomPass,
       Pass: passMod.Pass,
       FullScreenQuad: passMod.FullScreenQuad,
       createSyringe: syringeMod.createSyringe,
+      createVial: vialMod.createVial,
+      GLTFLoader: gltfMod.GLTFLoader,
+      MeshoptDecoder: meshoptMod.MeshoptDecoder,
     }, {
-      canvasHost, reducedMotion, debug,
-      onFirstFrame() {
-        host.classList.add('intro--webgl');
-      },
+      canvasHost,
+      labelsHost: els.labels,
+      reducedMotion,
+      quality: debug && Number.isFinite(debug.quality) ? debug.quality : null,
       onReady() {
-        host.classList.add('intro--playing');
+        if (disposed) return;
+        host.classList.add('intro--webgl');
+        wake();
       },
-      onTime(t) {
-        while (nextStage < STAGES.length && t >= STAGES[nextStage][1]) setStage(STAGES[nextStage++][0]);
-      },
-      lateStart: () => (lateText ? LATE_START_T : 0),
+      onLost() { if (!disposed) fallbackToStill(); },
+      wake,
     });
   }
+
+  if (debug && Number.isFinite(debug.p)) later(() => scrollToP(debug.p, { instant: true }), 0);
+
+  const dev = {
+    seek(p, o = {}) { scrollToP(p, { instant: o.instant !== false }); },
+    get state() {
+      return { target: +S.target.toFixed(4), shown: +S.shown.toFixed(4), chapter: S.chapter, reducedMotion,
+        film: host.classList.contains('intro--film'), ...(gl ? gl.state() : { started: false }) };
+    },
+  };
+  host.__intro = dev;
 
   function dispose() {
     if (disposed) return;
     disposed = true;
+    if (raf) cancelAnimationFrame(raf);
+    raf = 0;
     for (const id of timers) clearTimeout(id);
     timers.clear();
     for (const fn of cleanups.splice(0)) { try { fn(); } catch { /* ignore */ } }
     try { gl?.dispose(); } catch (err) { console.warn('[intro] dispose failed', err); }
     gl = null;
-    hud.remove();
-    for (const el of tagged) el.removeAttribute('data-intro-part');
-    host.classList.remove('intro--js', 'intro--seq', 'intro--still', 'intro--webgl', 'intro--playing', 'intro--no-webgl', 'intro--leaving',
-      ...STAGES.map(([n]) => `intro--s-${n}`));
-    if (createdCanvasHost) canvasHost.remove();
+    restorePageScroll();
+    try { host.scrollTop = 0; } catch { /* detached */ }
+    for (const [el] of domCache) { for (const n of ['--o', '--p']) el.style.removeProperty(n); el.classList.remove('is-off', 'is-on'); }
+    host.classList.remove('intro--js', 'intro--film', 'intro--still', 'intro--webgl', 'intro--no-webgl', 'intro--leaving',
+      'intro--end', 'intro--opening', 'intro--slow');
+    delete host.dataset.chapter;
+    if (createdTrack) track.remove();
+    if (els.labels) els.labels.textContent = '';
+    if (host.__intro === dev) delete host.__intro;
   }
 
   return {
     dispose,
-    /** dev helpers (not part of the contract) */
-    get _state() { return gl ? gl.state() : { started: false }; },
+    /** dev helper (not part of the contract) */
+    get _state() { return dev.state; },
   };
 }
 
-// ==================================================================== HUD (decorative, aria-hidden)
+function findLastIndex(arr, fn) { for (let i = arr.length - 1; i >= 0; i--) if (fn(arr[i])) return i; return -1; }
 
-function buildHud() {
-  const hud = document.createElement('div');
-  hud.className = 'ihud';
-  hud.setAttribute('aria-hidden', 'true');
-  hud.innerHTML = `
-    <span class="ihud-corner ihud-corner--tl"></span><span class="ihud-corner ihud-corner--tr"></span>
-    <span class="ihud-corner ihud-corner--bl"></span><span class="ihud-corner ihud-corner--br"></span>
-    <span class="ihud-ruler ihud-ruler--l"></span><span class="ihud-ruler ihud-ruler--r"></span>
-    <div class="ihud-label"><span class="ihud-dot"></span><span>Simulated view</span><span class="ihud-sep">/</span><span>Blood vessels under the skin</span></div>
-    <div class="ihud-legend">
-      <span class="ihud-key ihud-key--a">Arteries</span>
-      <span class="ihud-key ihud-key--v">Veins</span>
-      <span class="ihud-key ihud-key--c">Capillaries</span>
-    </div>
-    <div class="ihud-ecg">
-      <svg viewBox="0 0 160 28" preserveAspectRatio="none" focusable="false">
-        <path class="ihud-ecg-base" d="M0 16 H160"/>
-        <path class="ihud-ecg-trace" pathLength="100" d="M0 16 H22 l3 -2 l3 2 H40 l2 3 l4 -15 l4 19 l3 -5 H66 q6 -6 12 0 H102 l3 -2 l3 2 H120 l2 3 l4 -15 l4 19 l3 -5 H146 q6 -6 12 0 H160"/>
-      </svg>
-      <span>Resting heart rhythm</span>
-    </div>`;
-  return hud;
+function prefersReducedMotion() {
+  const m = document.documentElement.dataset.motion;
+  if (m === 'reduce') return true;
+  if (m === 'full') return false;
+  try { return matchMedia('(prefers-reduced-motion: reduce)').matches; } catch { return false; }
 }
 
-// ==================================================================== 3D runtime
+function hasWebGL2() {
+  if (/[?&]no3d(?:[=&]|$)/.test(location.search)) return false;
+  return typeof window.WebGL2RenderingContext === 'function';
+}
+
+// ============================================================================================ 3D runtime
+
+const BODY_URL = new URL('../assets/anatomy/body.glb', import.meta.url).href;
+const LANDMARKS_URL = new URL('../assets/anatomy/landmarks.json', import.meta.url).href;
+
+// Luxury palette in linear light (THREE.Color converts these sRGB hex values).
+const HEX = {
+  obsidian: 0x0a0a0b,
+  champagne: 0xc8a96a,
+  champagnePale: 0xe6d3a3,
+  drug: 0xf1dda8,
+  artery: 0xc4524a,
+  vein: 0x5b7db8,
+  ivory: 0xf3eee6,
+};
 
 function createRuntime(mods, cfg) {
-  const t0 = performance.now();
-  const { THREE, EffectComposer, RenderPass, UnrealBloomPass, Pass, FullScreenQuad, createSyringe } = mods;
-  const { canvasHost, debug } = cfg;
+  const { THREE, EffectComposer, UnrealBloomPass, Pass, FullScreenQuad } = mods;
+  const { canvasHost, labelsHost } = cfg;
   let reducedMotion = cfg.reducedMotion;
-  const V3 = THREE.Vector3;
+  const t0 = performance.now();
 
-  // ---------------------------------------------------------------- renderer
+  // ------------------------------------------------------------------------------------- renderer
   const canvas = document.createElement('canvas');
   canvas.className = 'intro-canvas';
   canvasHost.prepend(canvas);
@@ -266,396 +445,234 @@ function createRuntime(mods, cfg) {
     return { w: Math.max(1, Math.round(r.width || innerWidth)), h: Math.max(1, Math.round(r.height || innerHeight)) };
   };
   let { w: W, h: H } = size();
-  const small = Math.min(W, H) < 700;
-  const pixelRatio = Math.min(window.devicePixelRatio || 1, 1.5);
+  const phone = Math.min(W, H) < 700;
+  const basePR = Math.min(window.devicePixelRatio || 1, phone ? 1.5 : 1.6);
+  // quality ladder: a device that cannot keep up steps down (sharpness first, then anti-aliasing), and
+  // as a last resort stops the ambient motion so frames are only drawn while the visitor scrolls
+  const QUALITY = [
+    { pr: basePR, samples: phone ? 2 : 4 },
+    { pr: Math.min(basePR, 1.25), samples: 2 },
+    { pr: 1, samples: 0 },
+    { pr: 0.75, samples: 0 },
+  ];
+  let qLevel = cfg.quality != null ? Math.max(0, Math.min(QUALITY.length - 1, cfg.quality)) : 0;
+  const qPinned = cfg.quality != null;
+  let pixelRatio = QUALITY[qLevel].pr;
+  const samples = QUALITY[qLevel].samples;
   renderer.setPixelRatio(pixelRatio);
   renderer.setSize(W, H, false);
   renderer.setClearColor(0x000000, 1);
+  renderer.autoClear = false;
   renderer.outputColorSpace = THREE.SRGBColorSpace;
-  renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 1.0;
+  renderer.toneMapping = THREE.NoToneMapping; // the final pass tone maps
 
-  const scene = new THREE.Scene();
-  scene.background = new THREE.Color(0x000000);
-  const camera = new THREE.PerspectiveCamera(32, W / H, 0.02, 120);
+  const disposables = new Set();
+  const track = (x) => { if (x) disposables.add(x); return x; };
 
-  // Studio-on-black environment (strip softboxes behind the subject give the glass its rim highlights).
-  // Built in prepare(), while the screen is still black, because PMREM filtering stalls the GPU briefly.
-  let envRT = null;
-  scene.environmentIntensity = 0;
-  let tEnv = 0;
-  // ---------------------------------------------------------------- vasculature
-  const net = buildVasculature(THREE, 20261007);
-  const tNet = performance.now() - t0;
-  const shared = {
-    uRes: { value: new THREE.Vector2(W * pixelRatio, H * pixelRatio) },
-    uMinPx: { value: 1.15 * pixelRatio },
-    uFocus: { value: 2 },
-    uCoc: { value: 6 },
-    uMaxBlur: { value: 10 * pixelRatio },
-    uReveal: { value: -1 },
-    uFog: { value: 0.07 },
-    uFogStart: { value: 3.0 },
-    uBeat: { value: 0 },
-    uFlow: { value: 0 },
-    uTime: { value: 0 },
-    uFrontColor: { value: new THREE.Color(1.0, 0.92, 0.88) },
-    uGain: { value: 1 },
-  };
-  const ARTERY = new THREE.Color().setRGB(1.0, 0.15, 0.1);
-  const VEIN = new THREE.Color().setRGB(0.05, 0.2, 1.0);
-  const groups = { 0: [], 1: [], 2: [] };
-  for (const v of net.vessels) groups[v.kind].push(v);
-  const ribbonMeshes = [
-    makeRibbons(THREE, groups[0], shared, { colorA: ARTERY, colorB: ARTERY, intensity: 1.55, pulse: 0.5 }),
-    makeRibbons(THREE, groups[1], shared, { colorA: VEIN, colorB: VEIN, intensity: 1.45, pulse: 0.12 }),
-    makeRibbons(THREE, groups[2], shared, { colorA: ARTERY, colorB: VEIN, intensity: 0.6, pulse: 0.25 }),
-  ];
-  for (const m of ribbonMeshes) scene.add(m);
-  const cells = makeCells(THREE, net, shared, small ? 2200 : 4200);
-  scene.add(cells.points);
-  const flow = { a: 0, v: 0, c: 0 };
+  // ------------------------------------------------------------------------------------- shared assets
+  const pmrem = new THREE.PMREMGenerator(renderer);
+  const studioScene = buildStudio(THREE);
+  const envRT = pmrem.fromScene(studioScene, 0, 0.1, 100, { size: 256 });
+  disposeObject(studioScene);
+  pmrem.dispose();
+  const env = envRT.texture;
+  const skinTex = track(makeSkinTexture(THREE, phone ? 384 : 512));
+  skinTex.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
+  const ctx = { THREE, mods, env, skinTex, track, phone, labels: [], makeLabel };
 
-  // ---------------------------------------------------------------- syringe + drop
-  const syr = createSyringe(THREE, { scale: 1, tickColor: 0xc4ccd6 });
-  syr.setCapOn(false);
-  syr.setPlunger(0.5);
-  syr.setLiquid(0.43);
-  syr.setGlow(0);
-  const syringeRoot = new THREE.Group();
-  syringeRoot.add(syr.group);
-  scene.add(syringeRoot);
-  // center the syringe on its visual middle so it rotates and floats around it
-  const syrLength = syr.dims.lengthPlungerIn + 0.5 * syr.dims.plungerTravel;
-  syr.group.position.y = -syrLength * 0.5;
+  // ------------------------------------------------------------------------------------- labels (DOM)
+  function makeLabel(text, side = 'r', cls = '') {
+    if (!labelsHost) return null;
+    const el = document.createElement('span');
+    el.className = `intro-label intro-label--${side}${cls ? ` ${cls}` : ''}`;
+    el.innerHTML = '<i class="intro-label-dot"></i><i class="intro-label-line"></i><span class="intro-label-text"></span>';
+    el.querySelector('.intro-label-text').textContent = text;
+    labelsHost.append(el);
+    return { el, o: -1, x: NaN, y: NaN };
+  }
+  const tmpV = new THREE.Vector3();
+  function placeLabels(set, weight) {
+    for (const lab of set.labels) {
+      const o = weight * (lab.vis ? lab.vis() : 1);
+      const L = lab.label;
+      if (!L) continue;
+      if (o <= 0.01) {
+        if (L.o !== 0) { L.el.style.opacity = '0'; L.o = 0; }
+        continue;
+      }
+      tmpV.copy(lab.anchor).applyMatrix4(lab.matrix || IDENTITY).project(set.camera);
+      if (tmpV.z > 1 || tmpV.z < -1) { L.el.style.opacity = '0'; L.o = 0; continue; }
+      const x = Math.round((tmpV.x * 0.5 + 0.5) * W * 10) / 10;
+      const y = Math.round((-tmpV.y * 0.5 + 0.5) * H * 10) / 10;
+      if (x !== L.x || y !== L.y) { L.el.style.transform = `translate3d(${x}px, ${y}px, 0)`; L.x = x; L.y = y; }
+      const oo = Math.round(o * 100) / 100;
+      if (oo !== L.o) { L.el.style.opacity = String(oo); L.o = oo; }
+    }
+  }
+  function hideLabels(set) {
+    for (const lab of set.labels) if (lab.label && lab.label.o !== 0) { lab.label.el.style.opacity = '0'; lab.label.o = 0; }
+  }
+  const IDENTITY = new THREE.Matrix4();
 
-  const rim = new THREE.DirectionalLight(0xffffff, 0);
-  const rim2 = new THREE.DirectionalLight(0xbfe9ff, 0);
-  // soft key from the camera's upper left: white plastic reads as white plastic, the ink reads
-  const key = new THREE.DirectionalLight(0xf7f8fa, 0);
-  // a small light placed on the bevel's mirror direction, so the ground facet flashes like real steel
-  const bevelLight = new THREE.PointLight(0xffffff, 0, 1, 2);
-  // the studio environment is black between its strips: a little ambient keeps the plastic's shadow side white
-  const fill = new THREE.AmbientLight(0xffffff, 0);
-  scene.add(rim, rim.target, rim2, rim2.target, key, key.target, bevelLight, fill);
-
-  const dropMat = new THREE.MeshPhysicalMaterial({
-    color: 0xffffff, roughness: 0.02, metalness: 0, transmission: 1, ior: 1.333, thickness: 1.6,
-    attenuationColor: new THREE.Color(0xd7f7ff), attenuationDistance: 2.5,
-    emissive: new THREE.Color(0x6fdcff), emissiveIntensity: 0.0, envMapIntensity: 2.6,
-  });
-  const drop = new THREE.Mesh(new THREE.SphereGeometry(1, 40, 28), dropMat);
-  drop.visible = false;
-  scene.add(drop);
-  const glint = new THREE.Sprite(new THREE.SpriteMaterial({
-    map: radialTexture(THREE), color: new THREE.Color(0.75, 0.95, 1.0), blending: THREE.AdditiveBlending,
-    transparent: true, depthWrite: false, depthTest: false, opacity: 0,
-  }));
-  glint.renderOrder = 50;
-  scene.add(glint);
-  // the drop reads as liquid through two small lights: a specular point and the caustic it focuses
-  const dotTex = radialTexture(THREE, [[0, 1], [0.32, 0.92], [0.55, 0.3], [1, 0]]);
-  const sparkle = new THREE.Sprite(new THREE.SpriteMaterial({
-    map: dotTex, color: new THREE.Color(1, 1, 1), blending: THREE.AdditiveBlending,
-    transparent: true, depthWrite: false, depthTest: false, opacity: 0,
-  }));
-  const caustic = new THREE.Sprite(new THREE.SpriteMaterial({
-    map: dotTex, color: new THREE.Color(0.55, 0.9, 1.0), blending: THREE.AdditiveBlending,
-    transparent: true, depthWrite: false, depthTest: false, opacity: 0,
-  }));
-  sparkle.renderOrder = caustic.renderOrder = 51;
-  scene.add(sparkle, caustic);
-
-  // ---------------------------------------------------------------- post
-  const rt = new THREE.WebGLRenderTarget(W * pixelRatio, H * pixelRatio, { type: THREE.HalfFloatType, samples: small ? 2 : 4 });
+  // ------------------------------------------------------------------------------------- post
+  const rt = new THREE.WebGLRenderTarget(W * pixelRatio, H * pixelRatio, { type: THREE.HalfFloatType, samples });
   const composer = new EffectComposer(renderer, rt);
   composer.setPixelRatio(pixelRatio);
   composer.setSize(W, H);
-  composer.addPass(new RenderPass(scene, camera));
-  const bloom = new UnrealBloomPass(new THREE.Vector2(W * pixelRatio, H * pixelRatio), 0.9, 0.55, BLOOM_THRESHOLD);
-  composer.addPass(bloom); // UnrealBloomPass already works at half resolution internally
+  const film = makeFilmPass(THREE, Pass, FullScreenQuad, W * pixelRatio, H * pixelRatio, samples);
+  composer.addPass(film.pass);
+  const bloom = new UnrealBloomPass(new THREE.Vector2(W * pixelRatio, H * pixelRatio), 0.55, 0.62, 0.92);
+  composer.addPass(bloom);
   const finalPass = makeFinalPass(THREE, Pass, FullScreenQuad);
   composer.addPass(finalPass);
 
-  // ---------------------------------------------------------------- choreography
-  const tmp = { v: new V3(), v2: new V3(), v3: new V3(), q: new THREE.Quaternion(), m: new THREE.Matrix4() };
-  const BEVEL_N = new V3(0, -1, 1 / Math.tan(THREE.MathUtils.degToRad(12))).normalize(); // syringe.js lancet facet
-  let layout = computeLayout();
-
+  // ------------------------------------------------------------------------------------- layout
+  const L = { W, H, aspect: W / H, portrait: W / H < 0.85, fit: 1, sx: 0, sy: 0, phone };
   function computeLayout() {
-    const aspect = W / H;
-    const tall = aspect < 0.95;
-    const fov = tall ? 50 : aspect < 1.3 ? 40 : 32;
-    const fov0 = fov * 0.6; // slight telephoto at the start, widening during the pull-back
-    const tanV = Math.tan(THREE.MathUtils.degToRad(fov / 2));
-    const tanH = tanV * aspect;
-    const tanV0 = Math.tan(THREE.MathUtils.degToRad(fov0 / 2));
-    const tanH0 = tanV0 * aspect;
-    // opening shot: frame the hero capillary across the screen
-    const chord = net.heroB.clone().sub(net.heroA);
-    const chordLen = chord.length();
-    const C = chord.normalize();
-    const zAxis = new V3(0, 0, 1);
-    const back = zAxis.clone().addScaledVector(C, -C.dot(zAxis)).normalize(); // perpendicular to the chord, toward +Z
-    const dist0 = Math.max(0.75, (chordLen * 0.62) / Math.min(tanH0, tanV0 * 1.6));
-    const P0 = net.heroMid.clone().addScaledVector(back, dist0).add(new V3(0, 0.04, 0));
-    // final shot
-    const M = net.heroMid;
-    const Tf = M.clone().add(tall ? new V3(1.2, 0.8, -7.5) : new V3(2.4, -1.7, -7.5));
-    const Pf = M.clone().add(tall ? new V3(0.8, -1.0, 8.2) : new V3(1.6, -1.25, 9.6));
-    const Pmid = P0.clone().lerp(Pf, 0.42).add(new V3(-1.4, 0.7, 0.3));
-    const path = new THREE.CatmullRomCurve3([P0.clone(), P0.clone().lerp(Pmid, 0.5), Pmid, Pf.clone()], false, 'centripetal');
+    L.W = W; L.H = H; L.aspect = W / H; L.portrait = L.aspect < 0.85;
+    L.fit = L.aspect >= 1.15 ? 1 : L.aspect >= 0.85 ? 1.12 : Math.min(1.75, 0.62 / L.aspect + 0.12);
+  }
+  computeLayout();
+  function lensShift(p) {
+    const card = Math.max(1 - sstep(0.02, 0.07, p), sstep(0.88, 0.93, p));
+    const wide = sstep(0.85, 1.25, L.aspect); // 0 portrait … 1 landscape
+    L.sx = wide * (0.1 + 0.095 * card);
+    L.sy = (1 - wide) * (0.1 + 0.07 * card);
+  }
+  function applyCamera(cam, fov) {
+    cam.aspect = W / H;
+    if (fov) cam.fov = fov;
+    cam.setViewOffset(W, H, -L.sx * W, L.sy * H, W, H);
+    cam.updateProjectionMatrix();
+  }
+  ctx.L = L;
+  ctx.applyCamera = applyCamera;
+  ctx.pixelRatio = pixelRatio;
 
-    // final camera basis → syringe anchor in screen space
-    const cam = new THREE.PerspectiveCamera(fov, aspect, 0.02, 120);
-    cam.position.copy(Pf);
-    cam.lookAt(Tf);
-    cam.updateMatrixWorld();
-    const right = new V3().setFromMatrixColumn(cam.matrixWorld, 0);
-    const up = new V3().setFromMatrixColumn(cam.matrixWorld, 1);
-    const fwd = new V3().setFromMatrixColumn(cam.matrixWorld, 2).negate();
-    const D = tall ? 4.0 : 4.4;
-    const ndc = tall ? [0.1, 0.5] : aspect < 1.3 ? [0.38, 0.22] : [0.5, 0.14];
-    const anchor = Pf.clone().addScaledVector(fwd, D)
-      .addScaledVector(right, ndc[0] * D * tanH)
-      .addScaledVector(up, ndc[1] * D * tanV);
-    const visH = 2 * D * tanV;
-    const visW = visH * aspect;
-    // on-screen angle of the barrel axis (from +X, counter-clockwise), needle pointing the other way
-    const phi = THREE.MathUtils.degToRad(tall ? 33 : 52);
-    const lenWorld = tall ? Math.min(visW * 0.98, visH * 0.5) : aspect < 1.3 ? visH * 0.76 : visH * 0.86;
-    const scale = lenWorld / syrLength;
-    const axis = right.clone().multiplyScalar(Math.cos(phi)).addScaledVector(up, Math.sin(phi)).addScaledVector(fwd, tall ? 0.22 : 0.32).normalize();
-    // local +Z (graduations, bevel) turned mostly toward the camera, a little to the side for depth
-    const toCam = fwd.clone().negate().addScaledVector(right, -0.42);
-    const zDir = toCam.addScaledVector(axis, -toCam.dot(axis)).normalize();
-    const xDir = new V3().crossVectors(axis, zDir).normalize();
-    const finalQuat = new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().makeBasis(xDir, axis, zDir));
-    const enterOffset = right.clone().multiplyScalar(tall ? visW * 1.1 : visW * 0.62).addScaledVector(up, tall ? visH * 0.06 : -visH * 0.16).addScaledVector(fwd, 1.4);
-    const enterQuat = new THREE.Quaternion().setFromAxisAngle(fwd, -0.42).multiply(finalQuat.clone());
-    const blur = tall ? 0.6 : 1;
-    const light = tall ? 0.6 : 1;
-    const keyK = tall ? 0.8 : 1; // phones: the same bloom covers relatively more of a small frame
-    return { aspect, tall, blur, light, keyK, fov, fov0, P0, dist0, Pf, Tf, path, M, C, anchor, scale, finalQuat, enterOffset, enterQuat, right, up, fwd, D };
+  // ------------------------------------------------------------------------------------- sets
+  const sets = {};
+  const order = ['studio', 'body', 'tissue', 'blood', 'glass'];
+  sets.studio = createStudioSet(ctx);
+  sets.tissue = createTissueSet(ctx);
+  sets.blood = createBloodSet(ctx);
+  // body + glass share the anatomy GLB, loaded in the background
+  const bodyPromise = loadBody(THREE, mods).then((body) => {
+    if (disposedRt) { disposeBodyData(body); return; }
+    bodyData = body;
+    sets.body = createBodySet(ctx, body);
+    sets.glass = createGlassSet(ctx, body);
+    return Promise.all([compileSet(sets.body), compileSet(sets.glass)]);
+  }).catch((err) => { console.warn('[intro] anatomy unavailable; the film uses its other shots.', err); });
+  let bodyData = null;
+
+  async function compileSet(set) {
+    if (!set || set.compiled) return;
+    set.update(set.prime ?? 0.5, 0, 0, L);
+    try {
+      if (typeof renderer.compileAsync === 'function') await renderer.compileAsync(set.scene, set.camera);
+      else renderer.compile(set.scene, set.camera);
+    } catch { /* compile lazily */ }
+    set.compiled = true;
   }
 
-  // rim lights sit behind the syringe relative to the final camera; the key sits in front
-  function placeLights() {
-    const L = layout;
-    rim.position.copy(L.anchor).addScaledVector(L.right, 3.2).addScaledVector(L.up, 0.6).addScaledVector(L.fwd, 4.5);
-    rim.target.position.copy(L.anchor);
-    rim2.position.copy(L.anchor).addScaledVector(L.right, -3).addScaledVector(L.up, -0.5).addScaledVector(L.fwd, 3.5);
-    rim2.target.position.copy(L.anchor);
-    key.position.copy(L.anchor).addScaledVector(L.right, -2.6).addScaledVector(L.up, 3.2).addScaledVector(L.fwd, -4.5);
-    key.target.position.copy(L.anchor);
-    // bevel: tip and facet normal in the final pose, light along the mirror of the view direction
-    const tipW = tmp.v.copy(syr.tip).add(tmp.v2.set(0, syr.group.position.y, 0)).multiplyScalar(L.scale).applyQuaternion(L.finalQuat).add(L.anchor);
-    const n = tmp.v2.copy(BEVEL_N).applyQuaternion(L.finalQuat);
-    const view = tmp.v3.copy(L.Pf).sub(tipW).normalize();
-    const mirror = view.multiplyScalar(-1).reflect(n).normalize(); // reflect(-V, N)
-    const reach = 0.004 * L.scale;                                  // 4 mm from the tip, in world units
-    bevelLight.position.copy(tipW).addScaledVector(mirror, reach);
-    bevelLight.distance = reach * 2.2;                              // never reaches the hub (12.7 mm up)
-    bevelLight.userData.reach = reach;
+  function resolveSet(name) {
+    // a shot whose set is not ready yet borrows the nearest earlier ready one
+    let i = order.indexOf(name);
+    while (i > 0 && !(sets[order[i]] && sets[order[i]].compiled)) i--;
+    return sets[order[i]];
   }
-  placeLights();
 
-  const E = {
-    smooth: (x) => x * x * (3 - 2 * x),
-    smoother: (x) => x * x * x * (x * (x * 6 - 15) + 10),
-    inOutCubic: (x) => (x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2),
-    outCubic: (x) => 1 - Math.pow(1 - x, 3),
-    outExpo: (x) => (x >= 1 ? 1 : 1 - Math.pow(2, -10 * x)),
-    outQuint: (x) => 1 - Math.pow(1 - x, 5),
-    inQuad: (x) => x * x,
-  };
-  const seg = (t, a, b) => Math.min(1, Math.max(0, (t - a) / (b - a)));
-  const lerp = (a, b, k) => a + (b - a) * k;
-  const beat = (p) => {
-    p -= Math.floor(p);
-    return Math.exp(-(((p - 0.06) / 0.045) ** 2)) + 0.35 * Math.exp(-(((p - 0.3) / 0.07) ** 2));
-  };
-
-  const camTarget = new V3();
+  // ------------------------------------------------------------------------------------- render
   let exitAt = -1;
-
-  function update(t, dt, realDt) {
-    const L = layout;
-    // ---- camera
-    const k0 = seg(t, 0, 2.3);
-    const kPull = E.smoother(seg(t, 2.1, 7.6));
-    if (kPull <= 0) {
-      camera.position.copy(L.P0).addScaledVector(L.C, 0.05 * E.smooth(k0)).addScaledVector(L.fwd, 0.03 * k0);
-      camTarget.copy(L.M).addScaledVector(L.C, 0.05 * E.smooth(k0));
-    } else {
-      L.path.getPointAt(kPull, camera.position);
-      const kt = E.smoother(seg(t, 2.1, 7.0));
-      camTarget.copy(L.M).addScaledVector(L.C, 0.05).lerp(L.Tf, kt);
-    }
-    // idle drift (slow, small)
-    const kIdle = E.smooth(seg(t, 7.0, 11.0));
-    if (kIdle > 0) {
-      const d = t - 7;
-      camera.position.addScaledVector(L.right, Math.sin(d * 0.11) * 0.22 * kIdle)
-        .addScaledVector(L.up, Math.sin(d * 0.077 + 1.3) * 0.12 * kIdle)
-        .addScaledVector(L.fwd, Math.sin(d * 0.05) * 0.25 * kIdle);
-    }
-    // exit push
-    if (exitAt >= 0) {
-      const ke = E.inQuad(Math.min(1, (t - exitAt) / 0.7));
-      camera.position.lerp(L.anchor, 0.28 * ke);
-      finalPass.uniforms.uFade.value = 1 - ke;
-      bloom.strength = 0.9 + 0.9 * ke;
-    }
-    const fovNow = lerp(L.fov0, L.fov, kPull);
-    if (Math.abs(camera.fov - fovNow) > 1e-4) { camera.fov = fovNow; camera.updateProjectionMatrix(); }
-    camera.lookAt(camTarget);
-    if (debug && debug.view) { const [vx, vy, vw, vh] = debug.view; camera.setViewOffset(W, H, vx * W, vy * H, vw * W, vh * H); }
-    camera.updateMatrixWorld();
-
-    // ---- reveal: hero hairline first, then the network
-    const kDraw = E.inOutCubic(seg(t, 0.35, 2.25));
-    const kNet = seg(t, 2.25, 6.9);
-    const netReveal = net.heroLen + (net.maxReveal + 1 - net.heroLen) * (0.55 * E.inQuad(kNet) + 0.45 * E.smooth(kNet));
-    shared.uReveal.value = t < 0.35 ? -1 : kNet > 0 ? netReveal : net.heroLen * kDraw;
-
-    // ---- focus: follow the hero point, then rack to the syringe
-    const dHero = camera.position.distanceTo(L.M);
-    const dSyr = camera.position.distanceTo(syringeRoot.position);
-    const kRack = E.inOutCubic(seg(t, 6.6, 8.8));
-    shared.uFocus.value = lerp(dHero, dSyr, kRack);
-    shared.uGain.value = lerp(1, 0.8, kRack); // the background settles back as focus moves to the syringe
-    const blurScale = H * pixelRatio / 900;
-    shared.uCoc.value = lerp(lerp(4.5, 2.6, kPull), 4.6 * L.blur, kRack) * blurScale;
-
-    // ---- heart + flow
-    shared.uTime.value = t;
-    shared.uBeat.value = t / HEART_PERIOD;
-    const b = beat(t / HEART_PERIOD);
-    flow.a += dt * (0.55 + 0.9 * b);
-    flow.v += dt * 1.0;
-    flow.c += dt * 1.0;
-    shared.uFlow.value = flow.a;
-    cells.uniforms.uFlowA.value = flow.a;
-    cells.uniforms.uFlowV.value = flow.v;
-    cells.uniforms.uFlowC.value = flow.c;
-
-    // ---- syringe
-    const kIn = seg(t, 4.8, 9.4);
-    const kPos = E.outExpo(kIn);
-    const kRot = E.outQuint(kIn);
-    syringeRoot.visible = t > 4.7;
-    syringeRoot.scale.setScalar(L.scale);
-    syringeRoot.position.copy(L.anchor).addScaledVector(L.enterOffset, 1 - kPos);
-    syringeRoot.quaternion.copy(L.enterQuat).slerp(L.finalQuat, kRot);
-    if (t > 9) {
-      const d = t - 9;
-      const f = E.smooth(seg(t, 9, 11));
-      syringeRoot.position.addScaledVector(L.up, Math.sin(d * 0.62) * 0.018 * f).addScaledVector(L.right, Math.sin(d * 0.41) * 0.01 * f);
-      tmp.q.setFromAxisAngle(L.fwd, Math.sin(d * 0.33) * 0.012 * f);
-      syringeRoot.quaternion.premultiply(tmp.q);
-    }
-    // it arrives as a rim-lit silhouette, then the studio light comes up
-    const kLight = E.smooth(seg(t, 5.2, 8.6));
-    const kRim = E.smooth(seg(t, 4.8, 6.4));
-    scene.environmentIntensity = 0.14 * kRim + 0.9 * kLight;
-    rim.intensity = (1.0 * kRim + 0.6 * kLight) * L.light;
-    rim2.intensity = (0.5 * kRim + 0.4 * kLight) * L.light;
-    key.intensity = KEY_INTENSITY * kLight * L.keyK;
-    fill.intensity = FILL_INTENSITY * kLight;
-    const reach = bevelLight.userData.reach || 1;
-    bevelLight.intensity = BEVEL_INTENSITY * reach * reach * E.smooth(seg(t, 6.0, 8.4));
-    syr.setGlow(0.5 * E.smooth(seg(t, 6.2, 9.0)));
-    syringeRoot.updateMatrixWorld(true);
-
-    // ---- drop beading at the tip
-    const kDrop = seg(t, 7.9, 9.3);
-    drop.visible = syringeRoot.visible && kDrop > 0;
-    if (drop.visible) {
-      const tipW = tmp.v.copy(syr.tip).applyMatrix4(syr.group.matrixWorld);
-      const rd = 0.00085 * L.scale * (0.15 + 0.85 * easeOutBack(kDrop));
-      const wob = 1 + 0.06 * Math.sin(t * 11) * Math.exp(-(t - 8.6) * 1.6) * (t > 8.6 ? 1 : 0);
-      drop.scale.set(rd / wob, rd * 1.12 * wob, rd / wob);
-      drop.position.copy(tipW).add(tmp.v2.set(0, -rd * 0.92, 0));
-      dropMat.emissiveIntensity = 0.22 * E.smooth(kDrop);
-      // the glint flares once as the drop forms, then breathes softly
-      const flare = Math.exp(-(((t - 9.15) / 0.35) ** 2));
-      glint.material.opacity = Math.min(1, 0.85 * flare + 0.22 * E.smooth(seg(t, 9.0, 10.0)) * (0.8 + 0.2 * Math.sin(t * 2.1)));
-      glint.position.copy(drop.position).addScaledVector(L.up, rd * 0.35).addScaledVector(L.right, -rd * 0.3).addScaledVector(L.fwd, -rd * 1.2);
-      glint.scale.setScalar(rd * (5 + 7 * flare));
-      const kd = E.smooth(kDrop);
-      sparkle.material.opacity = 0.95 * kd;
-      sparkle.scale.setScalar(rd * 0.62);
-      sparkle.position.copy(drop.position).addScaledVector(L.up, rd * 0.5).addScaledVector(L.right, -rd * 0.42).addScaledVector(L.fwd, -rd * 1.1);
-      caustic.material.opacity = 0.42 * kd * (0.9 + 0.1 * Math.sin(t * 1.7));
-      caustic.scale.setScalar(rd * 1.05);
-      caustic.position.copy(drop.position).addScaledVector(L.up, -rd * 0.6).addScaledVector(L.right, rd * 0.3).addScaledVector(L.fwd, -rd * 1.1);
-    } else {
-      glint.material.opacity = 0;
-      sparkle.material.opacity = 0;
-      caustic.material.opacity = 0;
-    }
-    if (debug && window.__introDebug?.override) window.__introDebug.override(t);
-  }
-
-  const setupMs = performance.now() - t0;
-  if (debug) window.__introDebug = { scene, camera, sparkle, caustic, glint, drop, syr };
-  // ---------------------------------------------------------------- loop
-  let raf = 0;
-  let running = false;
-  let started = false;
   let stopped = false;
-  let last = 0;
-  const debugT = debug && Number.isFinite(debug.t);
-  let clock = debugT ? debug.t : 0;
-  let firstFrameMs = -1;
-  if (reducedMotion) clock = STILL_T;
+  let disposedRt = false;
+  let ready = false;
+  let lastShot = { a: null, b: null };
+  let frames = 0;
+  let clockNow = 0;
+  const state = { p: 0, a: '', b: '', mix: 0 };
 
-  function frame(now) {
-    raf = 0;
-    if (!running) return;
-    const realDt = last ? Math.min(0.25, (now - last) / 1000) : 1 / 60;
-    last = now;
-    const dt = debug && debug.freeze ? 0 : realDt;
-    clock += dt;
-    renderAt(clock, dt, realDt);
-    if (running) raf = requestAnimationFrame(frame);
-  }
-
-  function renderAt(t, dt, realDt, warmup = false) {
-    update(t, dt, realDt);
-    finalPass.uniforms.uTime.value = t;
-    finalPass.uniforms.uFadeIn.value = warmup ? 0 : reducedMotion ? 1 : Math.min(1, t / 0.4);
-    composer.render(dt);
-    if (!started) {
-      started = true;
-      firstFrameMs = performance.now() - t0;
-      cfg.onFirstFrame?.();
+  function shotFor(p) {
+    let a = null, b = null, mix = 0;
+    for (let i = 0; i < SHOTS.length; i++) {
+      const s = SHOTS[i];
+      if (p >= s.from && p < s.to) {
+        const next = SHOTS[i + 1];
+        a = s.set;
+        if (next && p >= next.from) { b = next.set; mix = sstep(next.from, s.to, p); }
+        break;
+      }
     }
-    if (!warmup) cfg.onTime?.(t);
+    if (!a) a = SHOTS[SHOTS.length - 1].set;
+    return { a, b, mix };
   }
 
-  function play() {
-    if (running || stopped || reducedMotion || !ready) return;
-    running = true;
-    last = 0;
-    raf = requestAnimationFrame(frame);
+  let slowFrames = 0;
+  let lowFps = false;
+  function setQuality(level) {
+    qLevel = level;
+    const q = QUALITY[level];
+    pixelRatio = q.pr;
+    ctx.pixelRatio = pixelRatio;
+    renderer.setPixelRatio(pixelRatio);
+    for (const target of [composer.renderTarget1, composer.renderTarget2]) { target.samples = q.samples; target.dispose(); }
+    composer.setPixelRatio(pixelRatio);
+    composer.setSize(W, H);
+    film.setSamples(q.samples);
+    film.setSize(W * pixelRatio, H * pixelRatio);
   }
-  function pause() {
-    running = false;
-    if (raf) cancelAnimationFrame(raf);
-    raf = 0;
-  }
-  function renderStill() {
-    if (stopped || !ready) return;
-    // a couple of frames so transmission / bloom buffers settle
-    renderAt(STILL_T, 0, 0);
-    renderAt(STILL_T, 0, 0);
+  function adapt(rawDt) {
+    // only frames drawn back to back say anything about speed
+    if (qPinned || !(rawDt > 0) || rawDt > 1.5 || frames < 8) return;
+    if (rawDt > 0.05) slowFrames += rawDt > 0.2 ? 3 : 1; else slowFrames = Math.max(0, slowFrames - 1);
+    if (slowFrames < 6) return;
+    slowFrames = 0;
+    if (qLevel < QUALITY.length - 1) setQuality(qLevel + 1);
+    else if (rawDt > 0.12) lowFps = true;
   }
 
-  const onVisibility = () => { if (document.hidden) pause(); else if (!reducedMotion) play(); };
-  document.addEventListener('visibilitychange', onVisibility);
+  function render(p, t, dt, rawDt) {
+    if (stopped || disposedRt) return;
+    adapt(rawDt);
+    clockNow = t;
+    lensShift(p);
+    const shot = shotFor(p);
+    let A = resolveSet(shot.a);
+    let B = shot.b ? resolveSet(shot.b) : null;
+    let mix = shot.mix;
+    if (B === A) { B = null; mix = 0; }
+    if (B && mix >= 0.995) { A = B; B = null; mix = 0; }
+    const dts = reducedMotion ? 0 : dt;
+    A.update(p, t, dts, L);
+    if (B && mix > 0.002) B.update(p, t, dts, L);
+    else B = null;
+    film.shot.a = A; film.shot.b = B; film.shot.mix = mix;
+    // exit: a short push and fade while main.js fades the overlay
+    let fade = 1;
+    if (exitAt >= 0) {
+      const ke = Math.min(1, (performance.now() - exitAt) / 700);
+      fade = 1 - ke * ke;
+      bloom.strength = 0.55 + 0.6 * ke;
+    }
+    finalPass.uniforms.uFade.value = fade;
+    finalPass.uniforms.uTime.value = t;
+    finalPass.uniforms.uFadeIn.value = Math.min(1, frames / 6);
+    bloom.strength = exitAt >= 0 ? bloom.strength : (A.bloom ?? 0.55) * (1 - mix) + (B ? (B.bloom ?? 0.55) * mix : 0);
+    composer.render(dts);
+    frames++;
+    // labels follow the shot on screen
+    for (const name of order) {
+      const s = sets[name];
+      if (!s) continue;
+      if (s === A) placeLabels(s, B ? 1 - mix : 1);
+      else if (s === B) placeLabels(s, mix);
+      else hideLabels(s);
+    }
+    if (lastShot.a !== A) lastShot.a = A;
+    state.p = p; state.a = A.name; state.b = B ? B.name : ''; state.mix = mix;
+  }
 
+  // ------------------------------------------------------------------------------------- resize / context
   let resizeQueued = 0;
   const ro = typeof ResizeObserver === 'function' ? new ResizeObserver(() => {
     if (resizeQueued) return;
@@ -666,77 +683,45 @@ function createRuntime(mods, cfg) {
       W = s.w; H = s.h;
       renderer.setSize(W, H, false);
       composer.setSize(W, H);
-      layout = computeLayout();
-      camera.aspect = W / H;
-      camera.fov = layout.fov;
-      camera.updateProjectionMatrix();
-      shared.uRes.value.set(W * pixelRatio, H * pixelRatio);
-      placeLights();
-      if (reducedMotion || !running) renderStill();
+      film.setSize(W * pixelRatio, H * pixelRatio);
+      computeLayout();
+      cfg.wake?.();
     });
   }) : null;
   ro?.observe(canvasHost);
-
-  const onLost = (e) => { e.preventDefault(); pause(); stopped = true; canvasHost.closest('#intro')?.classList.add('intro--no-webgl'); };
+  const onLost = (e) => { e.preventDefault(); stopped = true; cfg.onLost?.(); };
   canvas.addEventListener('webglcontextlost', onLost);
 
-  camera.fov = layout.fov;
-  camera.aspect = W / H;
-  camera.updateProjectionMatrix();
-
-  // First a black frame (the canvas is live at once), then the environment and every shader the
-  // sequence will need, so nothing compiles mid-animation. Only then does the clock start.
-  let ready = false;
-  async function prepare() {
-    renderAt(reducedMotion ? STILL_T : clock, 0, 0, true);
-    await new Promise((r) => requestAnimationFrame(() => r()));
-    if (disposedRt) return;
-    const te = performance.now();
-    const pmrem = new THREE.PMREMGenerator(renderer);
-    const envScene = buildStudio(THREE);
-    envRT = pmrem.fromScene(envScene, 0, 0.1, 100, { size: 128 }); // soft strips: 128 px is plenty
-    disposeObject(envScene);
-    pmrem.dispose();
-    scene.environment = envRT.texture;
-    tEnv = performance.now() - te;
-    const vis = [syringeRoot.visible, drop.visible];
-    syringeRoot.visible = true;
-    drop.visible = true;
-    try {
-      if (typeof renderer.compileAsync === 'function') await renderer.compileAsync(scene, camera);
-      else renderer.compile(scene, camera);
-    } catch { /* compile lazily instead */ }
-    syringeRoot.visible = vis[0];
-    drop.visible = vis[1];
+  // ------------------------------------------------------------------------------------- prepare
+  (async () => {
+    await Promise.race([sets.studio.labelReady, new Promise((r) => setTimeout(r, 900))]);
+    await compileSet(sets.studio);
     if (disposedRt) return;
     ready = true;
     readyMs = performance.now() - t0;
-    // the text was already shown (slow device): join the sequence where the syringe has arrived
-    if (!debugT && !reducedMotion) clock = Math.max(clock, cfg.lateStart?.() || 0);
     cfg.onReady?.();
-    if (reducedMotion) renderStill();
-    else if (!document.hidden) play();
-  }
+    await compileSet(sets.tissue);
+    await compileSet(sets.blood);
+    cfg.wake?.();
+    await bodyPromise;
+    cfg.wake?.();
+  })().catch((err) => { console.warn('[intro] prepare failed', err); ready = true; cfg.onReady?.(); });
   let readyMs = -1;
-  prepare().catch((err) => { console.warn('[intro] prepare failed', err); ready = true; if (reducedMotion) renderStill(); else play(); });
 
-  // ---------------------------------------------------------------- teardown
-  let disposedRt = false;
+  // ------------------------------------------------------------------------------------- teardown
   function dispose() {
     if (disposedRt) return;
     disposedRt = true;
-    pause();
     stopped = true;
     if (resizeQueued) cancelAnimationFrame(resizeQueued);
-    document.removeEventListener('visibilitychange', onVisibility);
     canvas.removeEventListener('webglcontextlost', onLost);
     ro?.disconnect();
-    syr.dispose();
-    disposeObject(scene);
-    cells.texture.dispose();
-    envRT?.dispose();
-    glint.material.map?.dispose();
-    dotTex.dispose();
+    for (const name of order) { try { sets[name]?.dispose(); } catch (err) { console.warn('[intro] set dispose', err); } }
+    if (bodyData) disposeBodyData(bodyData);
+    for (const d of disposables) { try { d.dispose(); } catch { /* gone */ } }
+    disposables.clear();
+    envRT.dispose();
+    film.dispose();
     for (const p of composer.passes) p.dispose?.();
     composer.dispose?.();
     rt.dispose();
@@ -744,697 +729,82 @@ function createRuntime(mods, cfg) {
     renderer.dispose();
     renderer.forceContextLoss();
     canvas.remove();
+    if (labelsHost) labelsHost.textContent = '';
   }
 
   return {
-    get started() { return started; },
     get ready() { return ready; },
-    beginExit() {
-      if (reducedMotion) return;
-      exitAt = clock;
-    },
-    stop() { pause(); stopped = true; },
-    setReducedMotion(rm) {
-      reducedMotion = !!rm;
-      if (stopped) return;
-      if (reducedMotion) {
-        pause();
-        clock = STILL_T;
-        renderStill();
-      } else {
-        clock = Math.max(clock, STILL_T);
-        if (!document.hidden) play();
-      }
-    },
+    get animating() { return !reducedMotion && !stopped && !lowFps; },
+    render,
+    beginExit() { if (!reducedMotion) exitAt = performance.now(); },
+    stop() { stopped = true; },
+    setReducedMotion(rm) { reducedMotion = !!rm; },
     dispose,
-    state: () => ({ started, ready, firstFrameMs: Math.round(firstFrameMs), setupMs: Math.round(setupMs), envMs: Math.round(tEnv), netMs: Math.round(tNet), readyMs: Math.round(readyMs), clock, running, reveal: shared.uReveal.value, maxReveal: net.maxReveal, vessels: net.vessels.length, focus: shared.uFocus.value }),
+    state: () => ({
+      ready, frames, readyMs: Math.round(readyMs), shot: `${state.a}${state.b ? `→${state.b} ${state.mix.toFixed(2)}` : ''}`,
+      sets: order.filter((n) => sets[n]?.compiled).join(','), px: `${W}x${H}@${pixelRatio}`, t: +clockNow.toFixed(2),
+      quality: qLevel, lowFps,
+    }),
   };
 }
 
-function prefersReducedMotion() {
-  const m = document.documentElement.dataset.motion;
-  if (m === 'reduce') return true;
-  if (m === 'full') return false;
-  try { return matchMedia('(prefers-reduced-motion: reduce)').matches; } catch { return false; }
-}
+// ============================================================================================ post passes
 
-function easeOutBack(x) {
-  const c1 = 1.4, c3 = c1 + 1;
-  return 1 + c3 * Math.pow(x - 1, 3) + c1 * Math.pow(x - 1, 2);
-}
-
-function disposeObject(root) {
-  root.traverse((o) => {
-    if (o.geometry) o.geometry.dispose();
-    const mats = Array.isArray(o.material) ? o.material : o.material ? [o.material] : [];
-    for (const m of mats) {
-      for (const k of Object.keys(m)) {
-        const v = m[k];
-        if (v && v.isTexture) v.dispose();
-      }
-      if (m.uniforms) for (const u of Object.values(m.uniforms)) if (u && u.value && u.value.isTexture) u.value.dispose();
-      m.dispose();
-    }
+/** Renders the current shot (set A), and during a dissolve set B on top with a slow push-in. */
+function makeFilmPass(THREE, Pass, FullScreenQuad, w, h, samples) {
+  const rtB = new THREE.WebGLRenderTarget(w, h, { type: THREE.HalfFloatType, samples });
+  const material = new THREE.ShaderMaterial({
+    name: 'IntroDissolve',
+    uniforms: { tB: { value: rtB.texture }, uMix: { value: 0 }, uZoom: { value: 1 } },
+    vertexShader: /* glsl */`
+      varying vec2 vUv;
+      void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
+    fragmentShader: /* glsl */`
+      uniform sampler2D tB;
+      uniform float uMix;
+      uniform float uZoom;
+      varying vec2 vUv;
+      void main() {
+        vec2 uv = (vUv - 0.5) / uZoom + 0.5;
+        gl_FragColor = vec4(texture2D(tB, uv).rgb, uMix);
+      }`,
+    transparent: true,
+    depthTest: false,
+    depthWrite: false,
   });
-}
-
-// ==================================================================== studio environment (for reflections)
-
-function buildStudio(THREE) {
-  const s = new THREE.Scene();
-  s.background = new THREE.Color(0x000000);
-  const geo = new THREE.PlaneGeometry(1, 1);
-  const panel = (x, y, z, w, h, color, intensity) => {
-    const m = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: new THREE.Color(color).multiplyScalar(intensity), side: THREE.DoubleSide }));
-    m.position.set(x, y, z);
-    m.scale.set(w, h, 1);
-    m.lookAt(0, 0, 0);
-    s.add(m);
+  const quad = new FullScreenQuad(material);
+  const pass = new Pass();
+  pass.needsSwap = false;
+  const shot = { a: null, b: null, mix: 0 };
+  pass.render = function render(renderer, writeBuffer, readBuffer) {
+    const { a, b, mix } = shot;
+    if (!a) return;
+    renderer.setRenderTarget(readBuffer);
+    renderer.setClearColor(a.clear, 1);
+    renderer.clear();
+    renderer.render(a.scene, a.camera);
+    if (b && mix > 0.002) {
+      renderer.setRenderTarget(rtB);
+      renderer.setClearColor(b.clear, 1);
+      renderer.clear();
+      renderer.render(b.scene, b.camera);
+      renderer.setRenderTarget(readBuffer);
+      const e = mix * mix * (3 - 2 * mix);
+      material.uniforms.uMix.value = e;
+      material.uniforms.uZoom.value = 1.0 + 0.07 * (1 - e) * (1 - e);
+      quad.render(renderer);
+    }
   };
-  panel(-3.4, 0.6, -3.8, 1.1, 9, 0xe8f2ff, 6.5);  // rim strip, left-behind
-  panel(3.8, 1.2, -3.3, 0.8, 9, 0xfff6ec, 8.0);   // rim strip, right-behind
-  panel(0.2, 6.0, -0.8, 6.5, 2.4, 0xffffff, 2.6); // overhead softbox
-  panel(0, 1.0, 6.0, 9, 4, 0xbcd6ff, 0.22);       // faint front fill
-  panel(-3.2, -3.0, 1.2, 2.2, 2.2, 0x56d6ff, 0.9); // low cyan kicker
-  return s;
-}
-
-// ==================================================================== vasculature generator
-
-function mulberry32(seed) {
-  let a = seed >>> 0;
-  return function rand() {
-    a = (a + 0x6d2b79f5) >>> 0;
-    let t = a;
-    t = Math.imul(t ^ (t >>> 15), t | 1);
-    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
-
-function buildVasculature(THREE, seed) {
-  const V3 = THREE.Vector3;
-  const rng = mulberry32(seed);
-  const R = (a, b) => a + (b - a) * rng();
-  const B = { x: 15, y: 9.5, zMin: -34, zMax: 0.7 };
-  const R_MIN = 0.0115;
-  const SPACING = 0.07;
-  const vessels = [];
-
-  const randUnit = () => {
-    const z = R(-1, 1), t = R(0, Math.PI * 2), s = Math.sqrt(1 - z * z);
-    return new V3(s * Math.cos(t), s * Math.sin(t), z);
-  };
-  const perpendicular = (d) => new V3().crossVectors(d, Math.abs(d.y) < 0.9 ? new V3(0, 1, 0) : new V3(1, 0, 0)).normalize();
-  const steer = (p) => {
-    const s = new V3();
-    if (p.x > B.x) s.x -= p.x - B.x; else if (p.x < -B.x) s.x += -B.x - p.x;
-    if (p.y > B.y) s.y -= p.y - B.y; else if (p.y < -B.y) s.y += -B.y - p.y;
-    if (p.z > B.zMax) s.z -= (p.z - B.zMax) * 3; else if (p.z < B.zMin) s.z += B.zMin - p.z;
-    return s.multiplyScalar(0.7);
-  };
-  function path(start, dir, len, wander, spacing = SPACING) {
-    const n = Math.max(3, Math.ceil(len / 0.38));
-    const ctrl = [start.clone()];
-    const d = dir.clone().normalize();
-    const p = start.clone();
-    for (let i = 1; i <= n; i++) {
-      d.addScaledVector(randUnit(), wander).add(steer(p)).normalize();
-      p.addScaledVector(d, len / n);
-      ctrl.push(p.clone());
-    }
-    const curve = new THREE.CatmullRomCurve3(ctrl, false, 'centripetal');
-    const count = Math.max(4, Math.ceil(len / spacing));
-    return { pts: curve.getSpacedPoints(count), endDir: d.clone() };
-  }
-  function addVessel(kind, pts, r0, r1, flowDir, rJoin = 0) {
-    const arc = [0];
-    for (let i = 1; i < pts.length; i++) arc.push(arc[i - 1] + pts[i].distanceTo(pts[i - 1]));
-    const len = arc[arc.length - 1] || 1e-6;
-    // linear taper, flaring smoothly into the parent at the junction (no visible step)
-    const flare = Math.min(len * 0.3, r0 * 9);
-    const rad = arc.map((a) => {
-      const base = r0 + (r1 - r0) * (a / len);
-      if (!rJoin || rJoin <= base) return base;
-      const k = Math.min(1, a / flare);
-      return base + (rJoin - base) * (1 - k * k * (3 - 2 * k));
-    });
-    const v = { id: vessels.length, kind, pts, rad, arc, len, conns: [], flow: flowDir, seed: rng() };
-    vessels.push(v);
-    return v;
-  }
-  function connect(a, aArc, b, bArc, cost = 0) {
-    a.conns.push({ arc: aArc, to: b.id, toArc: bArc, cost });
-    b.conns.push({ arc: bArc, to: a.id, toArc: aArc, cost });
-  }
-  // companion vein: follows the artery on a parallel-transported side offset
-  function companion(art, n0, parentVein, parentIdx) {
-    const pts = art.pts;
-    const frames = [];
-    let n = n0.clone();
-    const out = [];
-    const phase = R(0, 6.28), freq = R(2.5, 5);
-    for (let i = 0; i < pts.length; i++) {
-      const t = (i < pts.length - 1 ? pts[i + 1].clone().sub(pts[i]) : pts[i].clone().sub(pts[i - 1])).normalize();
-      n.addScaledVector(t, -n.dot(t)).normalize();
-      frames.push(n.clone());
-      const rA = art.rad[i];
-      const off = rA * 4.4 + 0.02;
-      const b = new V3().crossVectors(t, n);
-      out.push(pts[i].clone().addScaledVector(n, off).addScaledVector(b, Math.sin(art.arc[i] * freq + phase) * rA * 0.8));
-    }
-    if (parentVein) {
-      const p0 = parentVein.pts[parentIdx];
-      const delta = p0.clone().sub(out[0]);
-      const m = Math.min(out.length, 6);
-      for (let i = 0; i < m; i++) out[i].addScaledVector(delta, 1 - i / m);
-    }
-    const vein = addVessel(1, out, art.rad[0] * 1.32, art.rad[art.rad.length - 1] * 1.32, -1);
-    vein.rad = art.rad.map((r) => r * 1.32);
-    vein.frames = frames;
-    if (parentVein) connect(parentVein, parentVein.arc[parentIdx], vein, 0);
-    return vein;
-  }
-
-  const terminals = [];
-  const roots = [];
-  function grow(start, dir, r, gen, parent) {
-    const len = Math.min(3.3, Math.max(0.3, r * R(30, 44)));
-    const { pts, endDir } = path(start, dir, len, r > 0.04 ? 0.15 : 0.24);
-    const rEnd = r * 0.86;
-    const rJoin = parent ? Math.min(parent.art.rad[parent.idx] * 0.9, r * 1.6) : 0;
-    const art = addVessel(0, pts, r, rEnd, 1, rJoin);
-    let n0;
-    if (parent) {
-      connect(parent.art, parent.art.arc[parent.idx], art, 0);
-      n0 = parent.vein.frames[parent.idx].clone();
-    } else {
-      n0 = perpendicular(endDir).applyAxisAngle(endDir.clone(), R(0, 6.28));
-    }
-    const vein = companion(art, n0, parent ? parent.vein : null, parent ? parent.idx : 0);
-    if (!parent) roots.push({ art, vein });
-
-    // side branch partway along
-    if (r > 0.02 && rng() < 0.62) {
-      const i = Math.floor(R(0.28, 0.72) * (pts.length - 1));
-      const t = pts[i + 1].clone().sub(pts[i]).normalize();
-      const ax = perpendicular(t).applyAxisAngle(t, R(0, 6.28));
-      grow(pts[i], t.clone().applyAxisAngle(ax, R(0.9, 1.35)), r * R(0.34, 0.52), gen + 1, { art, vein, idx: i });
-    }
-    const last = pts.length - 1;
-    if (rEnd > R_MIN && gen < 16) {
-      const a = R(0.76, 0.9), b = Math.cbrt(1 - a * a * a);
-      const ax = perpendicular(endDir).applyAxisAngle(endDir, R(0, 6.28));
-      grow(pts[last], endDir.clone().applyAxisAngle(ax, R(0.18, 0.42)), rEnd * a, gen + 1, { art, vein, idx: last });
-      grow(pts[last], endDir.clone().applyAxisAngle(ax, -R(0.5, 0.95)), rEnd * b, gen + 1, { art, vein, idx: last });
-    } else {
-      terminals.push({ art, vein, dir: endDir.clone(), A: pts[last].clone(), V: vein.pts[last].clone() });
-    }
-  }
-
-  const TRUNKS = [
-    [[-16, -6.0, -1.6], [1, 0.36, 0.1], 0.085],
-    [[16, 7.5, -8], [-1, -0.36, 0.14], 0.1],
-    [[4, -11, -17], [-0.15, 1, 0.12], 0.115],
-    [[-13, 10.5, -21], [0.55, -0.72, 0.18], 0.11],
-    [[13, -9.5, -28], [-0.6, 0.66, 0.1], 0.125],
-  ];
-  for (const [p, d, r] of TRUNKS) grow(new V3(...p), new V3(...d), r, 0, null);
-  // the trunks meet off-screen: virtual links so the reveal can spread everywhere
-  for (let i = 0; i < roots.length; i++) {
-    connect(roots[i].art, 0, roots[i].vein, roots[i].vein.len, 1.2);
-    if (i > 0) connect(roots[i - 1].art, 0, roots[i].art, 0, 3.5);
-  }
-
-  // capillary fringe: loops from each arteriole end to its venule, plus links to neighbours
-  const capR = 0.0022;
-  function capillary(A, V, d, reach, art, vein, otherVeinEnd) {
-    const out = randUnit().addScaledVector(d, 1.3).normalize();
-    const c1 = A.clone().addScaledVector(d, reach * 0.35).addScaledVector(randUnit(), reach * 0.22);
-    const mid = A.clone().lerp(V, 0.5).addScaledVector(out, reach).addScaledVector(randUnit(), reach * 0.18);
-    const c2 = V.clone().addScaledVector(d, reach * 0.35).addScaledVector(randUnit(), reach * 0.22);
-    const curve = new THREE.CatmullRomCurve3([A.clone(), c1, mid, c2, V.clone()], false, 'centripetal');
-    const len = curve.getLength();
-    const pts = curve.getSpacedPoints(Math.max(6, Math.ceil(len / 0.035)));
-    const cap = addVessel(2, pts, capR, capR, 1);
-    connect(art, art.len, cap, 0);
-    connect(cap, cap.len, vein, otherVeinEnd ?? vein.len);
-    return cap;
-  }
-  for (const T of terminals) {
-    const k = 1 + Math.floor(rng() * 2);
-    for (let i = 0; i < k; i++) capillary(T.A, T.V, T.dir, R(0.16, 0.42), T.art, T.vein);
-  }
-  for (let i = 0; i < terminals.length; i++) {
-    const T = terminals[i];
-    let best = -1, bd = Infinity;
-    for (let j = 0; j < terminals.length; j++) {
-      if (j === i) continue;
-      const d = terminals[j].V.distanceTo(T.A);
-      if (d > 0.35 && d < 1.1 && d < bd) { bd = d; best = j; }
-    }
-    if (best >= 0 && rng() < 0.8) {
-      const U = terminals[best];
-      const dir = U.V.clone().sub(T.A).normalize().add(T.dir.clone().multiplyScalar(0.4)).normalize();
-      capillary(T.A, U.V, dir, R(0.12, 0.3), T.art, U.vein);
-    }
-  }
-
-  // hero capillary: a long, graceful link that draws itself first
-  const H = new V3(-1.6, -0.3, 0.1);
-  let hero = null;
-  {
-    const cand = terminals
-      .map((T) => ({ T, d: T.A.distanceTo(H) + Math.max(0, T.A.z - 0.5) * 4 }))
-      .sort((a, b) => a.d - b.d)
-      .slice(0, 12);
-    let best = null;
-    for (const { T, d: dT } of cand) {
-      for (const U of terminals) {
-        if (U === T) continue;
-        const c = U.V.clone().sub(T.A);
-        const L = c.length();
-        if (L < 0.9 || L > 1.6) continue;
-        c.normalize();
-        const score = dT * 0.6 + Math.abs(c.y) * 1.2 + Math.abs(c.z) * 1.6 - c.x * 0.9 + Math.abs(L - 1.25);
-        if (!best || score < best.score) best = { T, U, score };
-      }
-    }
-    const T = best ? best.T : cand[0].T;
-    const U = best ? best.U : cand[0].T;
-    const A = T.A.clone();
-    const Vend = U.V.clone();
-    let ctrl;
-    if (best) {
-      const c = Vend.clone().sub(A);
-      const side = new V3().crossVectors(c, new V3(0, 0, 1)).normalize();
-      ctrl = [A, A.clone().addScaledVector(c, 0.22).addScaledVector(side, 0.07), A.clone().addScaledVector(c, 0.5).addScaledVector(side, -0.05).add(new V3(0, 0, 0.03)),
-        A.clone().addScaledVector(c, 0.78).addScaledVector(side, 0.06), Vend];
-    } else {
-      const out = new V3(1, 0.1, 0).normalize();
-      ctrl = [A, A.clone().addScaledVector(out, 0.4), A.clone().addScaledVector(out, 0.75).add(new V3(0, 0.08, 0)), Vend.clone().addScaledVector(out, 0.4), Vend];
-    }
-    const curve = new THREE.CatmullRomCurve3(ctrl, false, 'centripetal');
-    const len = curve.getLength();
-    const pts = curve.getSpacedPoints(Math.max(24, Math.ceil(len / 0.02)));
-    hero = addVessel(2, pts, 0.0019, 0.0019, 1);
-    hero.hero = true;
-    connect(T.art, T.art.len, hero, 0);
-    connect(hero, hero.len, U.vein, U.vein.len);
-  }
-
-  // reveal distance along the vessel graph, starting at the hero capillary's arterial end
-  const arrivals = vessels.map(() => []);
-  const heap = [];
-  const push = (n) => {
-    heap.push(n);
-    let i = heap.length - 1;
-    while (i > 0) { const p = (i - 1) >> 1; if (heap[p].d <= heap[i].d) break; [heap[p], heap[i]] = [heap[i], heap[p]]; i = p; }
-  };
-  const pop = () => {
-    const top = heap[0];
-    const end = heap.pop();
-    if (heap.length) {
-      heap[0] = end;
-      let i = 0;
-      for (;;) {
-        const l = 2 * i + 1, r = l + 1;
-        let m = i;
-        if (l < heap.length && heap[l].d < heap[m].d) m = l;
-        if (r < heap.length && heap[r].d < heap[m].d) m = r;
-        if (m === i) break;
-        [heap[m], heap[i]] = [heap[i], heap[m]];
-        i = m;
-      }
-    }
-    return top;
-  };
-  // The hero draws alone (reveal = its own arc length); the rest of the network lights up from both of
-  // its ends once it is complete, spreading along the vessels.
-  for (const c of hero.conns) push({ d: 0, v: c.to, arc: c.toArc });
-  while (heap.length) {
-    const { d, v, arc } = pop();
-    const arr = arrivals[v];
-    if (arr.some((a) => a.d + Math.abs(a.arc - arc) <= d + 1e-6)) continue;
-    arr.push({ arc, d });
-    for (const c of vessels[v].conns) if (c.to !== hero.id) push({ d: d + Math.abs(c.arc - arc) + c.cost, v: c.to, arc: c.toArc });
-  }
-  let maxReveal = 0;
-  for (const v of vessels) {
-    if (v === hero) { v.reveal = v.arc.slice(); continue; }
-    const arr = arrivals[v.id];
-    v.reveal = v.arc.map((s) => {
-      let m = Infinity;
-      for (const a of arr) m = Math.min(m, a.d + Math.abs(s - a.arc));
-      return hero.len + m;
-    });
-    for (const r of v.reveal) if (Number.isFinite(r)) maxReveal = Math.max(maxReveal, r);
-  }
-  for (const v of vessels) v.reveal = v.reveal.map((r) => (Number.isFinite(r) ? r : maxReveal));
-
-  const heroMid = hero.pts[Math.floor(hero.pts.length / 2)].clone();
   return {
-    vessels,
-    hero,
-    heroLen: hero.len,
-    heroA: hero.pts[0].clone(),
-    heroB: hero.pts[hero.pts.length - 1].clone(),
-    heroMid,
-    maxReveal,
+    pass,
+    shot,
+    setSize(w2, h2) { rtB.setSize(w2, h2); },
+    setSamples(n) { rtB.samples = n; rtB.dispose(); },
+    dispose() { rtB.dispose(); material.dispose(); quad.dispose(); },
   };
 }
 
-// ==================================================================== ribbons (screen-space glowing lines)
-
-const RIBBON_VERT = /* glsl */`
-  attribute vec3 aPrev;
-  attribute vec3 aNext;
-  attribute float aSide;
-  attribute vec4 aA;      // x: arc length, y: radius, z: reveal distance, w: u (0..1 along)
-  attribute float aSeed;
-  uniform vec2 uRes;
-  uniform float uMinPx;
-  uniform float uFocus;
-  uniform float uCoc;
-  uniform float uMaxBlur;
-  varying float vSide;
-  varying float vHalf;
-  varying float vCore;
-  varying float vBlur;
-  varying float vEnergy;
-  varying float vDepth;
-  varying vec4 vA;
-  varying float vSeed;
-  vec2 toScreen(vec4 c) { return c.xy / max(c.w, 1e-4) * 0.5 * uRes; }
-  void main() {
-    vec4 mv = modelViewMatrix * vec4(position, 1.0);
-    vec4 c = projectionMatrix * mv;
-    vec2 s = toScreen(c);
-    vec2 sp = toScreen(projectionMatrix * (modelViewMatrix * vec4(aPrev, 1.0)));
-    vec2 sn = toScreen(projectionMatrix * (modelViewMatrix * vec4(aNext, 1.0)));
-    vec2 d1 = s - sp;
-    vec2 d2 = sn - s;
-    float l1 = length(d1);
-    float l2 = length(d2);
-    vec2 dir = (l1 > 1e-4 ? d1 / l1 : vec2(0.0)) + (l2 > 1e-4 ? d2 / l2 : vec2(0.0));
-    float ld = length(dir);
-    dir = ld > 1e-4 ? dir / ld : vec2(1.0, 0.0);
-    vec2 nrm = vec2(-dir.y, dir.x);
-    float depth = max(-mv.z, 1e-3);
-    float pxPerUnit = projectionMatrix[1][1] * 0.5 * uRes.y / depth;
-    float core = aA.y * pxPerUnit;
-    float coreC = max(core, uMinPx * 0.5);
-    float blur = min(uCoc * abs(depth - uFocus) / depth, uMaxBlur);
-    float halfW = coreC + blur * 1.6 + 1.25;
-    vEnergy = core / coreC;
-    vHalf = halfW;
-    vCore = coreC;
-    vBlur = blur;
-    vSide = aSide;
-    vDepth = depth;
-    vA = aA;
-    vSeed = aSeed;
-    s += nrm * aSide * halfW;
-    gl_Position = vec4(s / (0.5 * uRes) * c.w, c.z, c.w);
-  }`;
-
-const RIBBON_FRAG = /* glsl */`
-  uniform vec3 uColorA;
-  uniform vec3 uColorB;
-  uniform float uIntensity;
-  uniform float uPulse;
-  uniform float uReveal;
-  uniform float uFog;
-  uniform float uFogStart;
-  uniform float uBeat;
-  uniform float uFlow;
-  uniform vec3 uFrontColor;
-  uniform float uGain;
-  varying float vSide;
-  varying float vHalf;
-  varying float vCore;
-  varying float vBlur;
-  varying float vEnergy;
-  varying float vDepth;
-  varying vec4 vA;
-  varying float vSeed;
-  float beatShape(float p) {
-    p = fract(p);
-    return exp(-pow((p - 0.06) / 0.045, 2.0)) + 0.35 * exp(-pow((p - 0.30) / 0.07, 2.0));
-  }
-  void main() {
-    float rev = uReveal - vA.z;
-    if (rev < 0.0) discard;
-    float x = abs(vSide) * vHalf;
-    float sharp = 1.0 - smoothstep(vCore - 0.85, vCore + 0.85, x);
-    float t = clamp(x / vCore, 0.0, 1.0);
-    float ts = clamp(vSide * vHalf / vCore, -1.0, 1.0);
-    // a lit, translucent tube: glowing volume, brighter wall, and a soft specular streak off-centre
-    float vol = sqrt(max(1.0 - t * t, 0.0));
-    float tube = 0.3 + 0.55 * vol + 0.45 * pow(t, 6.0) + 0.55 * exp(-pow((ts + 0.42) / 0.17, 2.0));
-    float profSharp = sharp * mix(1.0, tube, smoothstep(2.0, 6.0, vCore));
-    float sigma = vCore + vBlur * 0.55;
-    float gauss = exp(-0.5 * x * x / (sigma * sigma)) * (vCore / sigma);
-    float bf = clamp(vBlur / (vCore + 1.0), 0.0, 1.0);
-    float prof = mix(profSharp, gauss, bf);
-    float pulse = 1.0 + uPulse * beatShape(uBeat - vA.x * 0.08);
-    float shimmer = 0.86 + 0.14 * sin(vA.x * 24.0 - uFlow * 8.0 + vSeed * 6.2831);
-    vec3 col = mix(uColorA, uColorB, smoothstep(0.1, 0.9, vA.w)) * uIntensity * pulse * shimmer;
-    float head = exp(-rev * 6.0) * min(1.0, 3.0 / vCore);
-    col = col * smoothstep(0.0, 0.05, rev) + uFrontColor * head * 2.2;
-    col /= 1.0 + 0.12 * max(vCore - 6.0, 0.0);
-    col *= exp(-uFog * max(vDepth - uFogStart, 0.0));
-    gl_FragColor = vec4(col * prof * vEnergy * uGain, 1.0);
-  }`;
-
-function makeRibbons(THREE, list, shared, { colorA, colorB, intensity, pulse }) {
-  let nPts = 0, nIdx = 0;
-  for (const v of list) { nPts += v.pts.length; nIdx += (v.pts.length - 1) * 6; }
-  const nV = nPts * 2;
-  const pos = new Float32Array(nV * 3), prev = new Float32Array(nV * 3), next = new Float32Array(nV * 3);
-  const side = new Float32Array(nV), aA = new Float32Array(nV * 4), seed = new Float32Array(nV);
-  const index = new Uint32Array(nIdx);
-  let vi = 0, ii = 0;
-  for (const v of list) {
-    const n = v.pts.length;
-    const base = vi;
-    for (let i = 0; i < n; i++) {
-      const p = v.pts[i], pp = v.pts[Math.max(0, i - 1)], pn = v.pts[Math.min(n - 1, i + 1)];
-      for (let s = -1; s <= 1; s += 2) {
-        pos.set([p.x, p.y, p.z], vi * 3);
-        prev.set([pp.x, pp.y, pp.z], vi * 3);
-        next.set([pn.x, pn.y, pn.z], vi * 3);
-        side[vi] = s;
-        aA.set([v.arc[i], v.rad[i], v.reveal[i], v.arc[i] / v.len], vi * 4);
-        seed[vi] = v.seed;
-        vi++;
-      }
-    }
-    for (let i = 0; i < n - 1; i++) {
-      const a = base + i * 2, b = a + 1, c = a + 2, d = a + 3;
-      index[ii++] = a; index[ii++] = b; index[ii++] = c;
-      index[ii++] = b; index[ii++] = d; index[ii++] = c;
-    }
-  }
-  const geo = new THREE.BufferGeometry();
-  geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-  geo.setAttribute('aPrev', new THREE.BufferAttribute(prev, 3));
-  geo.setAttribute('aNext', new THREE.BufferAttribute(next, 3));
-  geo.setAttribute('aSide', new THREE.BufferAttribute(side, 1));
-  geo.setAttribute('aA', new THREE.BufferAttribute(aA, 4));
-  geo.setAttribute('aSeed', new THREE.BufferAttribute(seed, 1));
-  geo.setIndex(new THREE.BufferAttribute(index, 1));
-  const mat = new THREE.ShaderMaterial({
-    uniforms: {
-      ...shared,
-      uColorA: { value: colorA.clone() },
-      uColorB: { value: colorB.clone() },
-      uIntensity: { value: intensity },
-      uPulse: { value: pulse },
-    },
-    vertexShader: RIBBON_VERT,
-    fragmentShader: RIBBON_FRAG,
-    // opaque list + additive blending: drawn before the transmissive glass, so the barrel refracts them
-    transparent: false,
-    blending: THREE.AdditiveBlending,
-    depthWrite: false,
-    depthTest: true,
-    side: THREE.DoubleSide,
-  });
-  const mesh = new THREE.Mesh(geo, mat);
-  mesh.frustumCulled = false;
-  mesh.renderOrder = 10;
-  return mesh;
-}
-
-// ==================================================================== blood cells (GPU path following)
-
-const CELL_VERT = /* glsl */`
-  attribute vec4 aPath;   // x: first point, y: point count, z: path length, w: kind
-  attribute vec4 aP;      // x: phase, y: speed, z: lane angle, w: lane radius
-  attribute float aSize;
-  uniform sampler2D uPaths;
-  uniform float uTexW;
-  uniform float uFlowA;
-  uniform float uFlowV;
-  uniform float uFlowC;
-  uniform vec2 uRes;
-  uniform float uMinPx;
-  uniform float uFocus;
-  uniform float uCoc;
-  uniform float uMaxBlur;
-  uniform float uReveal;
-  varying float vEnergy;
-  varying float vBlurF;
-  varying float vShow;
-  varying float vKind;
-  varying float vDepth;
-  vec4 fetchT(float i) {
-    float x = mod(i, uTexW);
-    float y = floor(i / uTexW);
-    return texelFetch(uPaths, ivec2(int(x), int(y)), 0);
-  }
-  void main() {
-    float flow = aPath.w < 0.5 ? uFlowA : (aPath.w < 1.5 ? uFlowV : uFlowC);
-    float u = fract(aP.x + flow * aP.y / aPath.z);
-    float fi = u * (aPath.y - 1.0);
-    float i0 = floor(fi);
-    float f = fi - i0;
-    float i1 = min(i0 + 1.0, aPath.y - 1.0);
-    vec4 a0 = fetchT((aPath.x + i0) * 2.0);
-    vec4 a1 = fetchT((aPath.x + i1) * 2.0);
-    float r0 = fetchT((aPath.x + i0) * 2.0 + 1.0).x;
-    float r1 = fetchT((aPath.x + i1) * 2.0 + 1.0).x;
-    vec3 p = mix(a0.xyz, a1.xyz, f);
-    float rad = mix(a0.w, a1.w, f);
-    vec3 tn = a1.xyz - a0.xyz;
-    tn = length(tn) > 1e-6 ? normalize(tn) : vec3(0.0, 1.0, 0.0);
-    vec3 up = abs(tn.y) < 0.9 ? vec3(0.0, 1.0, 0.0) : vec3(1.0, 0.0, 0.0);
-    vec3 b1 = normalize(cross(tn, up));
-    vec3 b2 = cross(tn, b1);
-    p += (b1 * cos(aP.z) + b2 * sin(aP.z)) * rad * aP.w * 0.7;
-    vec4 mv = modelViewMatrix * vec4(p, 1.0);
-    float depth = max(-mv.z, 1e-3);
-    float pxPerUnit = projectionMatrix[1][1] * 0.5 * uRes.y / depth;
-    float sz = aSize * pxPerUnit;
-    float szC = max(sz, uMinPx);
-    float blur = min(uCoc * abs(depth - uFocus) / depth, uMaxBlur);
-    float total = szC + 2.0 * blur;
-    gl_PointSize = total + 1.0;
-    vEnergy = (sz / szC) * (szC * szC) / (total * total);
-    vBlurF = clamp(2.0 * blur / total, 0.0, 1.0);
-    vShow = smoothstep(0.0, 0.2, uReveal - mix(r0, r1, f));
-    vKind = aPath.w;
-    vDepth = depth;
-    gl_Position = projectionMatrix * mv;
-  }`;
-
-const CELL_FRAG = /* glsl */`
-  uniform float uFog;
-  uniform float uFogStart;
-  uniform float uGain;
-  varying float vEnergy;
-  varying float vBlurF;
-  varying float vShow;
-  varying float vKind;
-  varying float vDepth;
-  void main() {
-    if (vShow <= 0.001) discard;
-    vec2 q = gl_PointCoord * 2.0 - 1.0;
-    float r = length(q);
-    if (r > 1.0) discard;
-    float disc = 1.0 - smoothstep(0.8, 1.0, r);
-    float rimB = smoothstep(0.5, 0.92, r) * disc;
-    float bokeh = disc * 0.7 + rimB * 0.55;
-    float dotS = exp(-r * r * 3.2) * (0.75 + 0.25 * smoothstep(0.15, 0.6, r));
-    float shape = mix(dotS, bokeh, vBlurF);
-    vec3 col = vKind < 0.5 ? vec3(1.0, 0.42, 0.34) * 2.6 : (vKind < 1.5 ? vec3(0.36, 0.52, 1.0) * 1.9 : vec3(0.85, 0.5, 1.0) * 1.1);
-    col *= exp(-uFog * max(vDepth - uFogStart, 0.0));
-    gl_FragColor = vec4(col * uGain, shape * vEnergy * vShow);
-  }`;
-
-function makeCells(THREE, net, shared, count) {
-  // pick which vessels carry cells, weighted by length and calibre
-  const pool = [];
-  let total = 0;
-  for (const v of net.vessels) {
-    if (v.hero) continue;
-    const w = v.kind === 2 ? v.len * 0.06 : v.len * (0.25 + v.rad[0] * 22);
-    pool.push({ v, w });
-    total += w;
-  }
-  const rng = mulberry32(99);
-  const chosen = new Map();
-  const cum = new Float64Array(pool.length);
-  let acc = 0;
-  for (let k = 0; k < pool.length; k++) { acc += pool[k].w; cum[k] = acc; }
-  for (let i = 0; i < count; i++) {
-    const x = rng() * total;
-    let lo = 0, hi = pool.length - 1;
-    while (lo < hi) { const mid = (lo + hi) >> 1; if (cum[mid] < x) lo = mid + 1; else hi = mid; }
-    const v = pool[lo].v;
-    chosen.set(v, (chosen.get(v) || 0) + 1);
-  }
-  // pack the chosen paths: two texels per point (xyz + radius, reveal)
-  const TEXW = 1024;
-  let nPts = 0;
-  for (const v of chosen.keys()) nPts += v.pts.length;
-  const texH = Math.max(1, Math.ceil((nPts * 2) / TEXW));
-  const data = new Float32Array(TEXW * texH * 4);
-  const aPath = new Float32Array(count * 4), aP = new Float32Array(count * 4), aSize = new Float32Array(count);
-  const pos = new Float32Array(count * 3);
-  let pi = 0, ci = 0;
-  for (const [v, n] of chosen) {
-    const first = pi;
-    for (let i = 0; i < v.pts.length; i++) {
-      const p = v.pts[i];
-      data.set([p.x, p.y, p.z, v.rad[i]], (pi * 2) * 4);
-      data.set([v.reveal[i], v.arc[i], 0, 0], (pi * 2 + 1) * 4);
-      pi++;
-    }
-    for (let j = 0; j < n; j++) {
-      const speed = v.kind === 0 ? 0.75 + rng() * 0.6 : v.kind === 1 ? -(0.45 + rng() * 0.35) : 0.1 + rng() * 0.1;
-      aPath.set([first, v.pts.length, v.len, v.kind], ci * 4);
-      aP.set([rng(), speed, rng() * Math.PI * 2, Math.sqrt(rng())], ci * 4);
-      aSize[ci] = v.kind === 2 ? 0.008 : 0.013 + rng() * 0.012;
-      const p = v.pts[0];
-      pos.set([p.x, p.y, p.z], ci * 3);
-      ci++;
-    }
-  }
-  const tex = new THREE.DataTexture(data, TEXW, texH, THREE.RGBAFormat, THREE.FloatType);
-  tex.minFilter = THREE.NearestFilter;
-  tex.magFilter = THREE.NearestFilter;
-  tex.generateMipmaps = false;
-  tex.needsUpdate = true;
-  const geo = new THREE.BufferGeometry();
-  geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-  geo.setAttribute('aPath', new THREE.BufferAttribute(aPath, 4));
-  geo.setAttribute('aP', new THREE.BufferAttribute(aP, 4));
-  geo.setAttribute('aSize', new THREE.BufferAttribute(aSize, 1));
-  const uniforms = {
-    uRes: shared.uRes, uMinPx: shared.uMinPx, uFocus: shared.uFocus, uCoc: shared.uCoc, uMaxBlur: shared.uMaxBlur,
-    uReveal: shared.uReveal, uFog: shared.uFog, uFogStart: shared.uFogStart, uGain: shared.uGain,
-    uPaths: { value: tex }, uTexW: { value: TEXW },
-    uFlowA: { value: 0 }, uFlowV: { value: 0 }, uFlowC: { value: 0 },
-  };
-  const mat = new THREE.ShaderMaterial({
-    uniforms,
-    vertexShader: CELL_VERT,
-    fragmentShader: CELL_FRAG,
-    transparent: false,
-    blending: THREE.AdditiveBlending,
-    depthWrite: false,
-    depthTest: true,
-  });
-  const points = new THREE.Points(geo, mat);
-  points.frustumCulled = false;
-  points.renderOrder = 11;
-  return { points, uniforms, texture: tex };
-}
-
-// ==================================================================== final pass: tone map, grade, vignette, grain
-
+/** Tone map (ACES), sRGB, a warm obsidian lift, vignette, fine grain and a hint of lens fringing. */
 function makeFinalPass(THREE, Pass, FullScreenQuad) {
   const uniforms = {
     tDiffuse: { value: null },
@@ -1442,14 +812,14 @@ function makeFinalPass(THREE, Pass, FullScreenQuad) {
     uTime: { value: 0 },
     uFade: { value: 1 },
     uFadeIn: { value: 0 },
-    uVignette: { value: 0.42 },
-    uGrain: { value: 0.035 },
-    uCA: { value: 0.0016 },
+    uVignette: { value: 0.46 },
+    uGrain: { value: 0.03 },
+    uCA: { value: 0.0012 },
   };
   const material = new THREE.RawShaderMaterial({
     name: 'IntroFinal',
     uniforms,
-    defines: { ACES_FILMIC_TONE_MAPPING: '', SRGB_TRANSFER: '' },
+    defines: { SRGB_TRANSFER: '' },
     vertexShader: /* glsl */`
       precision highp float;
       uniform mat4 modelViewMatrix;
@@ -1474,18 +844,20 @@ function makeFinalPass(THREE, Pass, FullScreenQuad) {
       void main() {
         vec2 c = vUv - 0.5;
         float r2 = dot(c, c);
-        vec2 off = c * uCA * (0.4 + 2.2 * r2);
+        vec2 off = c * uCA * (0.3 + 2.0 * r2);
         vec3 col;
         col.r = texture2D(tDiffuse, vUv + off).r;
         col.g = texture2D(tDiffuse, vUv).g;
         col.b = texture2D(tDiffuse, vUv - off).b;
         col = ACESFilmicToneMapping(col);
         vec4 o = sRGBTransferOETF(vec4(col, 1.0));
-        float vig = 1.0 - uVignette * smoothstep(0.08, 0.72, r2 * 1.6);
-        o.rgb *= vig;
+        // obsidian lift: blacks sit on a warm near-black, never pure #000
+        o.rgb = o.rgb * (1.0 - vec3(0.034, 0.032, 0.03)) + vec3(0.034, 0.032, 0.03);
+        float vig = 1.0 - uVignette * smoothstep(0.1, 0.78, r2 * 1.55);
+        o.rgb = mix(vec3(0.02, 0.019, 0.018), o.rgb, vig);
         float g = hash(vUv * 1024.0 + fract(uTime * 7.13) * 91.7) - 0.5;
-        o.rgb += g * uGrain * (0.35 + 0.65 * (1.0 - o.g));
-        o.rgb *= uFade * uFadeIn;
+        o.rgb += g * uGrain * (0.4 + 0.6 * (1.0 - o.g));
+        o.rgb = mix(vec3(0.039, 0.039, 0.043), o.rgb, uFade * uFadeIn);
         gl_FragColor = vec4(max(o.rgb, 0.0), 1.0);
       }`,
   });
@@ -1494,18 +866,609 @@ function makeFinalPass(THREE, Pass, FullScreenQuad) {
   pass.uniforms = uniforms;
   pass.render = function render(renderer, writeBuffer, readBuffer) {
     uniforms.tDiffuse.value = readBuffer.texture;
-    uniforms.toneMappingExposure.value = renderer.toneMappingExposure;
     if (this.renderToScreen) {
       renderer.setRenderTarget(null);
       quad.render(renderer);
     } else {
       renderer.setRenderTarget(writeBuffer);
-      if (this.clear) renderer.clear();
+      renderer.clear();
       quad.render(renderer);
     }
   };
   pass.dispose = function dispose() { material.dispose(); quad.dispose(); };
   return pass;
+}
+
+// ============================================================================================ shared helpers
+
+function disposeObject(root) {
+  root.traverse((o) => {
+    if (o.geometry && !o.userData.sharedGeometry) o.geometry.dispose();
+    const mats = Array.isArray(o.material) ? o.material : o.material ? [o.material] : [];
+    for (const m of mats) {
+      for (const k of Object.keys(m)) {
+        const v = m[k];
+        if (v && v.isTexture && !v.userData?.shared) v.dispose();
+      }
+      if (m.uniforms) for (const u of Object.values(m.uniforms)) if (u && u.value && u.value.isTexture && !u.value.userData?.shared) u.value.dispose();
+      m.dispose();
+    }
+  });
+}
+
+function mulberry32(seed) {
+  let a = seed >>> 0;
+  return function rand() {
+    a = (a + 0x6d2b79f5) >>> 0;
+    let t = a;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+/** Monotone cubic keyframe track: keys = [[t, v0, v1, …], …] (t ascending). Returns (t, out) → out. */
+function makeTrack(keys) {
+  const n = keys.length;
+  const dims = keys[0].length - 1;
+  const T = keys.map((k) => k[0]);
+  const slopes = [];
+  for (let d = 0; d < dims; d++) {
+    const v = keys.map((k) => k[d + 1]);
+    const delta = [];
+    for (let i = 0; i < n - 1; i++) delta.push((v[i + 1] - v[i]) / (T[i + 1] - T[i]));
+    const m = new Array(n);
+    m[0] = 0; m[n - 1] = 0; // ease in and out at the ends
+    for (let i = 1; i < n - 1; i++) {
+      if (delta[i - 1] * delta[i] <= 0) m[i] = 0;
+      else {
+        const w1 = 2 * (T[i + 1] - T[i]) + (T[i] - T[i - 1]);
+        const w2 = (T[i + 1] - T[i]) + 2 * (T[i] - T[i - 1]);
+        m[i] = (w1 + w2) / (w1 / delta[i - 1] + w2 / delta[i]);
+      }
+    }
+    slopes.push(m);
+  }
+  return function evaluate(t, out) {
+    let i = 0;
+    if (t <= T[0]) { for (let d = 0; d < dims; d++) out[d] = keys[0][d + 1]; return out; }
+    if (t >= T[n - 1]) { for (let d = 0; d < dims; d++) out[d] = keys[n - 1][d + 1]; return out; }
+    while (i < n - 2 && t > T[i + 1]) i++;
+    const h = T[i + 1] - T[i];
+    const s = (t - T[i]) / h;
+    const s2 = s * s, s3 = s2 * s;
+    const h00 = 2 * s3 - 3 * s2 + 1, h10 = s3 - 2 * s2 + s, h01 = -2 * s3 + 3 * s2, h11 = s3 - s2;
+    for (let d = 0; d < dims; d++) {
+      out[d] = h00 * keys[i][d + 1] + h10 * h * slopes[d][i] + h01 * keys[i + 1][d + 1] + h11 * h * slopes[d][i + 1];
+    }
+    return out;
+  };
+}
+
+/** Orbit helper: position = target + dist · (direction from azimuth/elevation in the given basis). */
+function orbit(out, target, dist, azDeg, elDeg, fwd, up, right) {
+  const az = azDeg * Math.PI / 180, el = elDeg * Math.PI / 180;
+  const ce = Math.cos(el);
+  out.copy(target)
+    .addScaledVector(fwd, dist * ce * Math.cos(az))
+    .addScaledVector(right, dist * ce * Math.sin(az))
+    .addScaledVector(up, dist * Math.sin(el));
+  return out;
+}
+
+/** Studio-on-black environment: soft strips and an overhead box; warm, never blue. */
+function buildStudio(THREE) {
+  const s = new THREE.Scene();
+  s.background = new THREE.Color(0x000000);
+  const geo = new THREE.PlaneGeometry(1, 1);
+  const panel = (x, y, z, w, h, color, intensity) => {
+    const m = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: new THREE.Color(color).multiplyScalar(intensity), side: THREE.DoubleSide }));
+    m.position.set(x, y, z);
+    m.scale.set(w, h, 1);
+    m.lookAt(0, 0, 0);
+    s.add(m);
+  };
+  panel(-3.6, 0.8, -3.4, 1.0, 9, 0xfff3e2, 6.0);   // tall strip, left behind
+  panel(3.9, 1.0, -3.0, 0.8, 9, 0xffe9cc, 7.5);    // tall strip, right behind
+  panel(0.2, 6.0, -0.6, 6.5, 2.4, 0xfffaf2, 2.4);  // overhead softbox
+  panel(-4.2, 1.6, 3.4, 2.2, 5.5, 0xfff4e6, 1.2);  // front-left key box
+  panel(0, 1.0, 6.0, 9, 4, 0xf4e6d0, 0.16);        // faint front fill
+  panel(3.0, -2.6, 1.6, 2.4, 1.4, 0xc8a96a, 0.7);  // low champagne kicker
+  return s;
+}
+
+/** Warm three-point light rig for the sandbox product views. */
+function addStudioLights(THREE, scene) {
+  const key = new THREE.DirectionalLight(0xfff1e0, 2.2);
+  key.position.set(-0.35, 0.55, 0.5);
+  const rimL = new THREE.DirectionalLight(0xfdf6ee, 2.4);
+  rimL.position.set(-0.5, 0.25, -0.55);
+  const rimR = new THREE.DirectionalLight(0xffe3bd, 3.0);
+  rimR.position.set(0.55, 0.35, -0.45);
+  const fill = new THREE.AmbientLight(0xfff6ea, 0.12);
+  scene.add(key, rimL, rimR, fill);
+  return { key, rimL, rimR, fill };
+}
+
+export const __dev = { buildStudio, addStudioLights };
+
+/**
+ * Tileable skin micro-relief (pores, fine furrows, gentle undulation), drawn once on the CPU.
+ * RGBA8: rg = normal xy, b = cavity (1 flat, lower in pores and furrows), a = 1. One tile ≈ 10 mm of skin.
+ */
+function makeSkinTexture(THREE, N = 512) {
+  const rnd = mulberry32(20261008);
+  const h = new Float32Array(N * N);
+  const cav = new Float32Array(N * N);
+  // tileable value noise
+  function lattice(P, seed) {
+    const r = mulberry32(seed);
+    const v = new Float32Array(P * P);
+    for (let i = 0; i < v.length; i++) v[i] = r();
+    return (x, y) => {
+      const fx = (x / N) * P, fy = (y / N) * P;
+      const ix = Math.floor(fx), iy = Math.floor(fy);
+      let tx = fx - ix, ty = fy - iy;
+      tx = tx * tx * (3 - 2 * tx); ty = ty * ty * (3 - 2 * ty);
+      const a = v[((iy % P) * P) + (ix % P)], b = v[((iy % P) * P) + ((ix + 1) % P)];
+      const c = v[(((iy + 1) % P) * P) + (ix % P)], d = v[(((iy + 1) % P) * P) + ((ix + 1) % P)];
+      return a + (b - a) * tx + (c - a) * ty + (a - b - c + d) * tx * ty;
+    };
+  }
+  const n1 = lattice(6, 3), n2 = lattice(13, 5), n3 = lattice(29, 7);
+  // jittered feature points on tileable grids
+  function points(G, seed) {
+    const r = mulberry32(seed);
+    const pts = new Float32Array(G * G * 3);
+    for (let i = 0; i < G * G; i++) { pts[i * 3] = r(); pts[i * 3 + 1] = r(); pts[i * 3 + 2] = r(); }
+    return pts;
+  }
+  const PG = 22, pores = points(PG, 11);   // pores ≈ 0.45 mm apart
+  const FG = 7, furrows = points(FG, 13);  // furrow plateaus ≈ 1.4 mm
+  const F2G = 15, furrows2 = points(F2G, 17);
+  function worley(x, y, G, pts) {
+    const cs = N / G;
+    const cx = Math.floor(x / cs), cy = Math.floor(y / cs);
+    let f1 = 1e9, f2 = 1e9, w = 0;
+    for (let j = -1; j <= 1; j++) {
+      for (let i = -1; i <= 1; i++) {
+        const gx = cx + i, gy = cy + j;
+        const wx = ((gx % G) + G) % G, wy = ((gy % G) + G) % G;
+        const k = (wy * G + wx) * 3;
+        const px = (gx + 0.15 + 0.7 * pts[k]) * cs, py = (gy + 0.15 + 0.7 * pts[k + 1]) * cs;
+        const d = Math.hypot(px - x, py - y);
+        if (d < f1) { f2 = f1; f1 = d; w = pts[k + 2]; } else if (d < f2) f2 = d;
+      }
+    }
+    return [f1 / cs, f2 / cs, w];
+  }
+  for (let y = 0; y < N; y++) {
+    for (let x = 0; x < N; x++) {
+      const i = y * N + x;
+      let v = 0.5 * n1(x, y) + 0.3 * n2(x, y) + 0.2 * n3(x, y);
+      v *= 0.55;
+      const [p1, , pw] = worley(x, y, PG, pores);
+      const pr = 0.13 + 0.09 * pw;
+      const pore = p1 < pr ? Math.pow(1 - p1 / pr, 2) : 0;
+      const [a1, a2] = worley(x, y, FG, furrows);
+      const fur = Math.max(0, 1 - (a2 - a1) / 0.07);
+      const [b1, b2] = worley(x, y, F2G, furrows2);
+      const fur2 = Math.max(0, 1 - (b2 - b1) / 0.09);
+      v -= 0.9 * pore + 0.42 * fur * fur + 0.18 * fur2 * fur2;
+      h[i] = v;
+      cav[i] = 1 - Math.min(1, 0.85 * pore + 0.35 * fur + 0.12 * fur2);
+    }
+  }
+  const data = new Uint8Array(N * N * 4);
+  const k = 2.6;
+  for (let y = 0; y < N; y++) {
+    for (let x = 0; x < N; x++) {
+      const i = y * N + x;
+      const dx = h[y * N + ((x + 1) % N)] - h[y * N + ((x - 1 + N) % N)];
+      const dy = h[((y + 1) % N) * N + x] - h[((y - 1 + N) % N) * N + x];
+      let nx = -dx * k, ny = -dy * k;
+      const l = Math.hypot(nx, ny, 1);
+      nx /= l; ny /= l;
+      data[i * 4] = Math.round((nx * 0.5 + 0.5) * 255);
+      data[i * 4 + 1] = Math.round((ny * 0.5 + 0.5) * 255);
+      data[i * 4 + 2] = Math.round(cav[i] * 255);
+      data[i * 4 + 3] = 255;
+    }
+  }
+  void rnd;
+  const tex = new THREE.DataTexture(data, N, N, THREE.RGBAFormat, THREE.UnsignedByteType);
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  tex.magFilter = THREE.LinearFilter;
+  tex.minFilter = THREE.LinearMipmapLinearFilter;
+  tex.generateMipmaps = true;
+  tex.colorSpace = THREE.NoColorSpace;
+  tex.needsUpdate = true;
+  tex.userData.shared = true;
+  return tex;
+}
+
+const GLSL_NOISE = /* glsl */`
+  float psH(vec3 p) { p = fract(p * 0.3183099 + 0.1); p *= 17.0; return fract(p.x * p.y * p.z * (p.x + p.y + p.z)); }
+  float psN(vec3 x) {
+    vec3 i = floor(x); vec3 f = fract(x); f = f * f * (3.0 - 2.0 * f);
+    return mix(mix(mix(psH(i), psH(i + vec3(1,0,0)), f.x), mix(psH(i + vec3(0,1,0)), psH(i + vec3(1,1,0)), f.x), f.y),
+               mix(mix(psH(i + vec3(0,0,1)), psH(i + vec3(1,0,1)), f.x), mix(psH(i + vec3(0,1,1)), psH(i + vec3(1,1,1)), f.x), f.y), f.z);
+  }
+  // cellular: x = F1, y = F2, z = cell id
+  vec3 psV(vec3 p) {
+    vec3 i = floor(p); vec3 f = fract(p);
+    float d1 = 8.0, d2 = 8.0, id = 0.0;
+    for (int z = -1; z <= 1; z++) for (int y = -1; y <= 1; y++) for (int x = -1; x <= 1; x++) {
+      vec3 g = vec3(float(x), float(y), float(z));
+      vec3 o = vec3(psH(i + g), psH(i + g + 19.1), psH(i + g + 37.7));
+      float d = length(g + 0.15 + 0.7 * o - f);
+      if (d < d1) { d2 = d1; d1 = d; id = psH(i + g + 71.3); } else if (d < d2) d2 = d;
+    }
+    return vec3(d1, d2, id);
+  }`;
+
+/**
+ * Lifelike skin on a MeshPhysicalMaterial: triplanar micro-relief from the skin texture (world space,
+ * `scale` = texture tiles per world unit), cavity darkening, soft mottling, a warm wrap-light term that
+ * reads as light scattering under the skin, and an optional champagne reticle drawn on the surface.
+ */
+function makeSkinMaterial(THREE, skinTex, { scale, mottleScale, color = 0xc49377, reticle = false, envMapIntensity = 0.55 } = {}) {
+  const mat = new THREE.MeshPhysicalMaterial({
+    name: 'intro-skin',
+    color,
+    roughness: 0.5,
+    metalness: 0,
+    specularIntensity: 0.55,
+    sheen: 0.5,
+    sheenRoughness: 0.55,
+    sheenColor: new THREE.Color(0xf2c6b0),
+    clearcoat: 0.08,
+    clearcoatRoughness: 0.35,
+    envMapIntensity,
+  });
+  const u = {
+    uSkinMap: { value: skinTex },
+    uSkinScale: { value: scale },
+    uMottleScale: { value: mottleScale },
+    uDetail: { value: 1.0 },
+    uWrap: { value: 0.6 },
+    uScatter: { value: new THREE.Color(1.0, 0.36, 0.22) },
+    uSite: { value: new THREE.Vector3() },
+    uSiteN: { value: new THREE.Vector3(0, 0, 1) },
+    uSiteT: { value: new THREE.Vector3(1, 0, 0) },
+    uReticle: { value: 0 },
+    uRingR: { value: 0.009 },
+    uRingW: { value: 0.00012 },
+    uRingColor: { value: new THREE.Color(HEX.champagnePale).multiplyScalar(2.4) },
+  };
+  mat.userData.uniforms = u;
+  mat.defines = { ...(mat.defines || {}), ...(reticle ? { SKIN_RETICLE: '' } : {}) };
+  mat.onBeforeCompile = (sh) => {
+    Object.assign(sh.uniforms, u);
+    sh.vertexShader = sh.vertexShader
+      .replace('#include <common>', '#include <common>\nvarying vec3 vSkW;')
+      .replace('#include <project_vertex>', '#include <project_vertex>\n\tvSkW = (modelMatrix * vec4(transformed, 1.0)).xyz;');
+    sh.fragmentShader = sh.fragmentShader
+      .replace('#include <common>', `#include <common>
+varying vec3 vSkW;
+uniform sampler2D uSkinMap;
+uniform float uSkinScale;
+uniform float uMottleScale;
+uniform float uDetail;
+uniform float uWrap;
+uniform vec3 uScatter;
+uniform vec3 uSite;
+uniform vec3 uSiteN;
+uniform vec3 uSiteT;
+uniform float uReticle;
+uniform float uRingR;
+uniform float uRingW;
+uniform vec3 uRingColor;
+${GLSL_NOISE}`)
+      .replace('#include <color_fragment>', `#include <color_fragment>
+{
+  float m1 = psN(vSkW * uMottleScale);
+  float m2 = psN(vSkW * uMottleScale * 3.7 + 3.1);
+  diffuseColor.rgb *= mix(vec3(1.0), vec3(1.05, 0.9, 0.86), smoothstep(0.4, 0.85, m1) * 0.7);
+  diffuseColor.rgb *= 0.95 + 0.1 * m2;
+}`)
+      .replace('#include <normal_fragment_maps>', `#include <normal_fragment_maps>
+float skCav = 1.0;
+{
+  vec3 wN = inverseTransformDirection(normal, viewMatrix);
+  vec3 bw = pow(abs(wN), vec3(4.0));
+  bw /= (bw.x + bw.y + bw.z);
+  vec3 q = vSkW * uSkinScale;
+  vec4 tx = texture2D(uSkinMap, q.zy);
+  vec4 ty = texture2D(uSkinMap, q.xz);
+  vec4 tz = texture2D(uSkinMap, q.xy);
+  vec2 dx = tx.xy * 2.0 - 1.0, dy = ty.xy * 2.0 - 1.0, dz = tz.xy * 2.0 - 1.0;
+  vec3 pert = vec3(0.0, dx.y, dx.x) * bw.x + vec3(dy.x, 0.0, dy.y) * bw.y + vec3(dz.x, dz.y, 0.0) * bw.z;
+  vec3 wNp = normalize(wN + pert * uDetail);
+  normal = normalize((viewMatrix * vec4(wNp, 0.0)).xyz);
+  skCav = mix(1.0, tx.z * bw.x + ty.z * bw.y + tz.z * bw.z, uDetail);
+  diffuseColor.rgb *= mix(0.72, 1.0, skCav);
+  roughnessFactor = clamp(roughnessFactor + (1.0 - skCav) * 0.25, 0.0, 1.0);
+}`)
+      .replace('#include <lights_fragment_end>', `#include <lights_fragment_end>
+#if NUM_DIR_LIGHTS > 0
+{
+  for (int i = 0; i < NUM_DIR_LIGHTS; i++) {
+    float nl = dot(normal, directionalLights[i].direction);
+    float w = max(0.0, (nl + uWrap) / (1.0 + uWrap)) - max(0.0, nl);
+    reflectedLight.directDiffuse += w * directionalLights[i].color * uScatter * material.diffuseColor * RECIPROCAL_PI * skCav;
+  }
+}
+#endif
+#ifdef SKIN_RETICLE
+if (uReticle > 0.001) {
+  vec3 dv = vSkW - uSite;
+  float d = length(dv);
+  float aa = max(fwidth(d), 1e-7);
+  float wl = max(uRingW, aa * 0.9);
+  float ring = 1.0 - smoothstep(wl, wl + aa * 1.5, abs(d - uRingR));
+  vec3 B = normalize(cross(uSiteN, uSiteT));
+  float ang = atan(dot(dv, B), dot(dv, uSiteT));
+  float a01 = fract((ang + PI * 0.5) / (2.0 * PI));
+  ring *= 1.0 - smoothstep(uReticle - 0.004, uReticle, a01);
+  float rr = d - uRingR;
+  float arc = abs(mod(ang + PI * 0.25, PI * 0.5) - PI * 0.25) * d;
+  float tick = (1.0 - smoothstep(wl, wl + aa * 1.5, arc)) * step(uRingR * 0.16, rr) * step(rr, uRingR * 0.42);
+  float inner = 1.0 - smoothstep(uRingR * 0.06, uRingR * 0.06 + aa * 1.5, d);
+  float halo = exp(-d * d / (uRingR * uRingR * 0.035)) * 0.35;
+  float k2 = smoothstep(0.55, 1.0, uReticle);
+  totalEmissiveRadiance += uRingColor * (ring + tick * k2 + (inner + halo) * k2);
+}
+#endif`);
+  };
+  mat.customProgramCacheKey = () => `intro-skin${reticle ? '-r' : ''}`;
+  return mat;
+}
+
+// ============================================================================================ small shaders
+
+function makeBackdrop(THREE, radius, { base, haze, hazeY = 0.02, hazeW = 5, back = 0.45 }) {
+  const mat = new THREE.ShaderMaterial({
+    name: 'intro-backdrop',
+    uniforms: { uBase: { value: new THREE.Color(base) }, uHaze: { value: new THREE.Color(haze) }, uY: { value: hazeY }, uW: { value: hazeW }, uBack: { value: back } },
+    vertexShader: /* glsl */`
+      varying vec3 vDir;
+      void main() { vDir = normalize(position); gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
+    fragmentShader: /* glsl */`
+      uniform vec3 uBase; uniform vec3 uHaze; uniform float uY; uniform float uW; uniform float uBack;
+      varying vec3 vDir;
+      void main() {
+        vec3 d = normalize(vDir);
+        float h = exp(-pow((d.y - uY) * uW, 2.0)) * ((1.0 - uBack) + uBack * max(0.0, -d.z));
+        gl_FragColor = vec4(uBase + uHaze * h, 1.0);
+      }`,
+    side: THREE.BackSide,
+    depthWrite: false,
+  });
+  const m = new THREE.Mesh(new THREE.SphereGeometry(radius, 48, 24), mat);
+  m.renderOrder = -10;
+  m.frustumCulled = false;
+  return m;
+}
+
+/** Fresnel glow for glass skin, vessels and bones (additive, drawn after the opaque organs). */
+function makeGlowMaterial(THREE, { color, core = 0.25, rim = 0.6, power = 2.5, intensity = 1, side = THREE.FrontSide }) {
+  return new THREE.ShaderMaterial({
+    name: 'intro-glow',
+    uniforms: { uColor: { value: new THREE.Color(color) }, uCore: { value: core }, uRim: { value: rim }, uPow: { value: power }, uI: { value: intensity } },
+    vertexShader: /* glsl */`
+      varying vec3 vN; varying vec3 vV;
+      void main() { vec4 mv = modelViewMatrix * vec4(position, 1.0); vN = normalize(normalMatrix * normal); vV = -mv.xyz; gl_Position = projectionMatrix * mv; }`,
+    fragmentShader: /* glsl */`
+      uniform vec3 uColor; uniform float uCore; uniform float uRim; uniform float uPow; uniform float uI;
+      varying vec3 vN; varying vec3 vV;
+      void main() {
+        float ndv = abs(dot(normalize(vN), normalize(vV)));
+        float f = pow(1.0 - ndv, uPow);
+        gl_FragColor = vec4(uColor * (uCore * pow(ndv, 0.7) + uRim * f) * uI, 1.0);
+      }`,
+    transparent: true,
+    blending: THREE.AdditiveBlending,
+    depthWrite: false,
+    side,
+  });
+}
+
+/** Soft glowing points (the drug as champagne light). Size in world units, clamped in pixels. */
+function makeParticleMaterial(THREE, { color, minPx = 1.6, maxPx = 12, intensity = 1 }) {
+  return new THREE.ShaderMaterial({
+    name: 'intro-particles',
+    uniforms: { uColor: { value: new THREE.Color(color).multiplyScalar(intensity) }, uResY: { value: 900 }, uMinPx: { value: minPx }, uMaxPx: { value: maxPx } },
+    vertexShader: /* glsl */`
+      attribute float aSize; attribute float aAlpha;
+      uniform float uResY; uniform float uMinPx; uniform float uMaxPx;
+      varying float vA;
+      void main() {
+        vec4 mv = modelViewMatrix * vec4(position, 1.0);
+        gl_Position = projectionMatrix * mv;
+        float s = aSize * projectionMatrix[1][1] * 0.5 * uResY / max(-mv.z, 1e-5);
+        gl_PointSize = clamp(s, uMinPx, uMaxPx);
+        vA = aAlpha * clamp(s / uMinPx, 0.25, 1.0);
+      }`,
+    fragmentShader: /* glsl */`
+      uniform vec3 uColor; varying float vA;
+      void main() {
+        vec2 q = gl_PointCoord * 2.0 - 1.0;
+        float r2 = dot(q, q);
+        if (r2 > 1.0 || vA <= 0.002) discard;
+        float a = exp(-r2 * 3.2) + 0.6 * exp(-r2 * 18.0);
+        gl_FragColor = vec4(uColor * a * vA, 1.0);
+      }`,
+    transparent: true,
+    blending: THREE.AdditiveBlending,
+    depthWrite: false,
+  });
+}
+
+function makePoints(THREE, count, material) {
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(count * 3), 3).setUsage(THREE.DynamicDrawUsage));
+  geo.setAttribute('aSize', new THREE.BufferAttribute(new Float32Array(count), 1));
+  geo.setAttribute('aAlpha', new THREE.BufferAttribute(new Float32Array(count), 1).setUsage(THREE.DynamicDrawUsage));
+  const pts = new THREE.Points(geo, material);
+  pts.frustumCulled = false;
+  return pts;
+}
+
+/** Polyline with arc-length sampling (no allocations per sample). */
+function makePolyline(points) {
+  const n = points.length;
+  const xyz = new Float32Array(n * 3);
+  const cum = new Float32Array(n);
+  for (let i = 0; i < n; i++) {
+    xyz[i * 3] = points[i][0]; xyz[i * 3 + 1] = points[i][1]; xyz[i * 3 + 2] = points[i][2];
+    if (i > 0) cum[i] = cum[i - 1] + Math.hypot(points[i][0] - points[i - 1][0], points[i][1] - points[i - 1][1], points[i][2] - points[i - 1][2]);
+  }
+  const len = cum[n - 1] || 1e-6;
+  return {
+    len,
+    sample(u, out) {
+      const s = Math.min(1, Math.max(0, u)) * len;
+      let lo = 0, hi = n - 1;
+      while (hi - lo > 1) { const mid = (lo + hi) >> 1; if (cum[mid] <= s) lo = mid; else hi = mid; }
+      const seg = cum[hi] - cum[lo] || 1e-6;
+      const f = (s - cum[lo]) / seg;
+      out.set(xyz[lo * 3] + (xyz[hi * 3] - xyz[lo * 3]) * f, xyz[lo * 3 + 1] + (xyz[hi * 3 + 1] - xyz[lo * 3 + 1]) * f, xyz[lo * 3 + 2] + (xyz[hi * 3 + 2] - xyz[lo * 3 + 2]) * f);
+      return out;
+    },
+  };
+}
+
+function easeOutBack(x) { const c1 = 1.4, c3 = c1 + 1; return 1 + c3 * Math.pow(x - 1, 3) + c1 * Math.pow(x - 1, 2); }
+function easeOutCubic(x) { return 1 - Math.pow(1 - x, 3); }
+
+// ============================================================================================ set: studio (vial + syringe)
+
+function createStudioSet(ctx) {
+  const { THREE, mods, env, track } = ctx;
+  const V3 = THREE.Vector3;
+  const scene = new THREE.Scene();
+  scene.environment = env;
+  scene.environmentIntensity = 0.85;
+  const camera = new THREE.PerspectiveCamera(26, 1, 0.002, 30);
+
+  const vial = mods.createVial(THREE, { envMapIntensity: 1 });
+  scene.add(vial.group);
+
+  const syr = mods.createSyringe(THREE, { tickColor: 0xcdbf9f, liquidColor: 0xf3ead8 });
+  syr.setCapOn(false);
+  syr.setPlunger(0.3);
+  syr.setLiquid(0.22);
+  syr.setGlow(0.05);
+  const syrRoot = new THREE.Group();
+  syrRoot.add(syr.group);
+  scene.add(syrRoot);
+  const TIP = new V3(0.037, 0.0135, 0.016);
+  const AXIS = new V3(0.2, 0.975, 0.07).normalize();
+  const qAxis = new THREE.Quaternion().setFromUnitVectors(new V3(0, 1, 0), AXIS);
+  const qSpin = new THREE.Quaternion();
+  const Y = new V3(0, 1, 0);
+
+  // a single drop at the needle tip, and its glint
+  const dropMat = track(new THREE.MeshPhysicalMaterial({
+    color: 0xffffff, roughness: 0.02, metalness: 0, transmission: 1, ior: 1.333, thickness: 0.0016,
+    attenuationColor: new THREE.Color(0xfff6e4), attenuationDistance: 0.02, envMapIntensity: 2.2, specularIntensity: 1,
+  }));
+  const drop = new THREE.Mesh(track(new THREE.SphereGeometry(1, 40, 28)), dropMat);
+  drop.visible = false;
+  scene.add(drop);
+  const glintTex = track(radialTexture(THREE));
+  const glint = new THREE.Sprite(track(new THREE.SpriteMaterial({
+    map: glintTex, color: new THREE.Color(HEX.champagnePale).multiplyScalar(1.6), blending: THREE.AdditiveBlending,
+    transparent: true, depthWrite: false, depthTest: false, opacity: 0,
+  })));
+  glint.renderOrder = 50;
+  scene.add(glint);
+
+  // floor: black lacquer, a contact shadow under the vial and a warm pool of light, fading into the dark
+  const floorMat = track(new THREE.MeshPhysicalMaterial({
+    color: 0x0c0b0c, roughness: 0.34, metalness: 0, clearcoat: 1, clearcoatRoughness: 0.1, envMapIntensity: 0.55, specularIntensity: 0.5,
+  }));
+  floorMat.onBeforeCompile = (sh) => {
+    sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vFw;')
+      .replace('#include <project_vertex>', '#include <project_vertex>\n\tvFw = (modelMatrix * vec4(transformed, 1.0)).xyz;');
+    sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying vec3 vFw;')
+      .replace('#include <dithering_fragment>', `
+        float fr = length(vFw.xz);
+        float contact = mix(0.22, 1.0, smoothstep(0.0058, 0.016, fr));
+        float pool = exp(-fr * fr / 0.0065) * 0.016;
+        gl_FragColor.rgb = gl_FragColor.rgb * contact * (1.0 - smoothstep(0.14, 0.7, fr)) + vec3(1.0, 0.84, 0.6) * pool * (1.0 - smoothstep(0.0, 0.009, 0.009 - fr) * 0.8);
+        #include <dithering_fragment>`);
+  };
+  floorMat.customProgramCacheKey = () => 'intro-floor';
+  const floor = new THREE.Mesh(track(new THREE.PlaneGeometry(8, 8).rotateX(-Math.PI / 2)), floorMat);
+  scene.add(floor);
+  scene.add(makeBackdrop(THREE, 6, { base: 0x050405, haze: 0x2a2112, hazeY: 0.03, hazeW: 4.5, back: 0.7 }));
+
+  const lights = addStudioLights(THREE, scene);
+  lights.key.intensity = 2.0;
+
+  const keys = makeTrack([
+    // a      tx      ty       tz     dist   az   el   fov
+    [0.00, 0.010, 0.0215, 0.0, 0.205, -26, 8.0, 26],
+    [0.14, 0.006, 0.0210, 0.0, 0.180, -18, 6.5, 26],
+    [0.33, 0.000, 0.0195, 0.0, 0.098, 0, 3.5, 26],
+    [0.47, 0.002, 0.0210, 0.0, 0.092, 11, 4.0, 26],
+    [0.63, 0.022, 0.0450, 0.006, 0.255, 17, 6.0, 26],
+    [0.79, 0.027, 0.0430, 0.008, 0.220, 21, 5.0, 26],
+    [0.93, 0.0372, 0.0124, 0.016, 0.042, 24, 2.0, 24],
+    [1.00, 0.0372, 0.0118, 0.016, 0.017, 25, 1.0, 22],
+  ]);
+  const k = new Array(7);
+  const target = new V3(), fwd = new V3(0, 0, 1), up = new V3(0, 1, 0), right = new V3(1, 0, 0);
+  const tipW = new V3();
+
+  function update(p, t, dt, L) {
+    const a = clamp01(p / 0.322);
+    keys(a, k);
+    target.set(k[0], k[1], k[2]);
+    const wideK = 1 - sstep(0.84, 0.97, a); // close-ups keep their framing on phones
+    orbit(camera.position, target, k[3] * (1 + (L.fit - 1) * wideK), k[4], k[5], fwd, up, right);
+    camera.up.set(0, 1, 0);
+    camera.lookAt(target);
+    ctx.applyCamera(camera, k[6]);
+
+    // syringe: descends into place beside the vial, turning to show its graduations (lines only)
+    const kIn = sstep(0.48, 0.7, a);
+    const e = easeOutCubic(kIn);
+    syrRoot.visible = a > 0.47;
+    const bob = Math.sin(t * 0.8) * 0.0006;
+    syrRoot.position.copy(TIP).add(tipW.set(0.004 * (1 - e), 0.13 * (1 - e) + bob, -0.03 * (1 - e)));
+    qSpin.setFromAxisAngle(Y, 1.5 * (1 - e) + 0.32 + Math.sin(t * 0.33) * 0.12);
+    syrRoot.quaternion.copy(qAxis).multiply(qSpin);
+    syrRoot.updateMatrixWorld(true);
+
+    // the drop beads at the tip (gravity pulls it below the bevel)
+    const kDrop = sstep(0.66, 0.85, a);
+    drop.visible = syrRoot.visible && kDrop > 0.001;
+    if (drop.visible) {
+      tipW.copy(syr.tip).applyMatrix4(syr.group.matrixWorld);
+      const rd = 0.00092 * (0.15 + 0.85 * easeOutBack(kDrop));
+      const wob = 1 + 0.05 * Math.sin(t * 9.0) * (1 - kDrop);
+      drop.scale.set(rd / wob, rd * 1.12 * wob, rd / wob);
+      drop.position.copy(tipW).add(target.set(0, -rd * 0.95, 0));
+      const flare = Math.exp(-(((a - 0.86) / 0.035) ** 2));
+      glint.material.opacity = Math.min(1, 0.75 * flare + 0.28 * sstep(0.84, 0.95, a) * (0.85 + 0.15 * Math.sin(t * 1.9)));
+      glint.scale.setScalar(rd * (4 + 6 * flare));
+      glint.position.copy(drop.position).add(target.set(-rd * 0.3, rd * 0.4, rd * 1.1));
+    } else glint.material.opacity = 0;
+  }
+
+  return {
+    name: 'studio', scene, camera, clear: new THREE.Color(0x050405), bloom: 0.5, labels: [], prime: 0.25,
+    labelReady: vial.labelReady,
+    update,
+    dispose() {
+      vial.dispose();
+      syr.dispose();
+      disposeObject(scene);
+    },
+  };
 }
 
 function radialTexture(THREE, stops = [[0, 1], [0.18, 0.55], [0.45, 0.12], [1, 0]]) {
@@ -1520,4 +1483,871 @@ function radialTexture(THREE, stops = [[0, 1], [0.18, 0.55], [0.45, 0.12], [1, 0
   const t = new THREE.CanvasTexture(c);
   t.colorSpace = THREE.SRGBColorSpace;
   return t;
+}
+
+// ============================================================================================ anatomy (shared by body + glass)
+
+async function loadBody(THREE, mods) {
+  const loader = new mods.GLTFLoader();
+  loader.setMeshoptDecoder(mods.MeshoptDecoder);
+  const [gltf, landmarks] = await Promise.all([
+    loader.loadAsync(BODY_URL),
+    fetch(LANDMARKS_URL).then((r) => { if (!r.ok) throw new Error(`landmarks ${r.status}`); return r.json(); }),
+  ]);
+  gltf.scene.updateMatrixWorld(true);
+  const meshes = {};
+  gltf.scene.traverse((o) => { if (o.isMesh) meshes[o.name] = o; });
+  if (!meshes.skin) throw new Error('body.glb has no skin mesh');
+  for (const m of Object.values(meshes)) {
+    const mats = Array.isArray(m.material) ? m.material : [m.material];
+    for (const mt of mats) mt?.dispose?.();
+  }
+  return { meshes, landmarks, scene: gltf.scene };
+}
+
+function disposeBodyData(body) {
+  for (const m of Object.values(body.meshes)) m.geometry?.dispose();
+}
+
+/** A new mesh that shares the GLB geometry and bakes the node's world transform. */
+function shareMesh(THREE, src, material) {
+  const m = new THREE.Mesh(src.geometry, material);
+  m.matrixAutoUpdate = false;
+  m.matrix.copy(src.matrixWorld);
+  m.matrixWorldNeedsUpdate = true;
+  m.userData.sharedGeometry = true;
+  m.name = src.name;
+  return m;
+}
+
+function siteFrame(THREE, landmarks) {
+  const s = landmarks.sites?.abdomen || { point: [0.05, 1.01, 0.148], normal: [0.25, -0.1, 0.96] };
+  const S = new THREE.Vector3(...s.point);
+  const N = new THREE.Vector3(...s.normal).normalize();
+  const U = new THREE.Vector3(0, 1, 0).addScaledVector(N, -N.y).normalize();
+  const X = new THREE.Vector3().crossVectors(U, N).normalize();
+  return { S, N, U, X };
+}
+
+// ============================================================================================ set: body (lifelike skin)
+
+function createBodySet(ctx, body) {
+  const { THREE, skinTex } = ctx;
+  const V3 = THREE.Vector3;
+  const scene = new THREE.Scene();
+  scene.environment = ctx.env;
+  scene.environmentIntensity = 0.5;
+  const camera = new THREE.PerspectiveCamera(30, 1, 0.003, 30);
+  const skinMat = makeSkinMaterial(THREE, skinTex, { scale: 1 / 0.01, mottleScale: 28, reticle: true, color: 0xc28f73 });
+  const skin = shareMesh(THREE, body.meshes.skin, skinMat);
+  skin.frustumCulled = false;
+  scene.add(skin);
+  scene.add(makeBackdrop(THREE, 12, { base: 0x040304, haze: 0x1d170e, hazeY: 0.1, hazeW: 3.2, back: 0.6 }));
+
+  const F = siteFrame(THREE, body.landmarks);
+  const u = skinMat.userData.uniforms;
+  u.uSite.value.copy(F.S);
+  u.uSiteN.value.copy(F.N);
+  u.uSiteT.value.copy(F.X);
+
+  // low-key portrait light: warm key from the upper left, champagne rims outline the torso
+  const key = new THREE.DirectionalLight(0xffeedd, 2.6);
+  key.position.set(-0.75, 1.85, 1.5);
+  key.target.position.set(0, 1.05, 0);
+  const fill = new THREE.DirectionalLight(0xf2ece4, 0.35);
+  fill.position.set(1.2, 1.0, 1.0);
+  fill.target.position.set(0, 1.05, 0);
+  const rimL = new THREE.DirectionalLight(0xfff0dc, 2.2);
+  rimL.position.set(-1.4, 1.5, -0.9);
+  rimL.target.position.set(0, 1.05, 0);
+  const rimR = new THREE.DirectionalLight(0xe9cf9e, 2.6);
+  rimR.position.set(1.5, 1.3, -0.6);
+  rimR.target.position.set(0, 1.05, 0);
+  scene.add(key, key.target, fill, fill.target, rimL, rimL.target, rimR, rimR.target);
+
+  const keys = makeTrack([
+    // b     dist   az   el   up     fov
+    [0.00, 0.60, -26, 9.0, 0.085, 30],
+    [0.22, 0.44, -16, 7.0, 0.050, 30],
+    [0.52, 0.17, -5, 3.0, 0.008, 29],
+    [0.74, 0.07, -1, 1.0, 0.000, 28],
+    [1.00, 0.012, 0, 0.0, 0.000, 28],
+  ]);
+  const k = new Array(5);
+  const target = new V3();
+  const siteLabel = ctx.makeLabel('Injection site: the belly', 'r');
+  const labels = [{ label: siteLabel, anchor: F.S.clone(), vis: () => labelVis }];
+  let labelVis = 0;
+
+  function update(p, t, dt, L) {
+    const b = clamp01((p - 0.296) / (0.49 - 0.296));
+    keys(b, k);
+    target.copy(F.S).addScaledVector(F.U, k[3]);
+    orbit(camera.position, target, k[0], k[1], k[2], F.N, F.U, F.X);
+    camera.up.copy(F.U);
+    camera.lookAt(target);
+    ctx.applyCamera(camera, k[4]);
+    u.uReticle.value = sstep(0.42, 0.72, b);
+    u.uRingR.value = 0.009;
+    u.uDetail.value = 1;
+    labelVis = sstep(0.6, 0.72, b) * (1 - sstep(0.86, 0.94, b));
+  }
+
+  return {
+    name: 'body', scene, camera, clear: new THREE.Color(0x040304), bloom: 0.45, labels, prime: 0.4,
+    update,
+    dispose() { disposeObject(scene); },
+  };
+}
+
+// ============================================================================================ set: glass body (pull back)
+
+const ORGAN_TONES = {
+  brain: 0xc4a29a, thyroid: 0x9c5a52, heart: 0x8e3a36, lungs: 0xb58f88, liver: 0x6c372d, gallbladder: 0x8a6a3e,
+  stomach: 0xb58676, pancreas: 0xc29c74, spleen: 0x6a3138, small_intestine: 0xb08a7b, large_intestine: 0x9e7a68,
+  kidneys: 0x7a3832, bladder: 0xbca089,
+};
+// organs the drug acts on (data/retatrutide.js targets with a mesh), the path that reaches each, and when it lights
+const TARGETS = [
+  { organ: 'heart', path: 'to_heart_muscle', label: 'Heart', at: 0.42 },
+  { organ: 'liver', path: 'to_liver', label: 'Liver', at: 0.5 },
+  { organ: 'stomach', path: 'to_stomach', label: 'Stomach', at: 0.56 },
+  { organ: 'pancreas', path: 'to_pancreas', label: 'Pancreas', at: 0.62 },
+  { organ: 'brain', path: 'to_brain', label: 'Brain', at: 0.7 },
+];
+
+function createGlassSet(ctx, body) {
+  const { THREE } = ctx;
+  const V3 = THREE.Vector3;
+  const scene = new THREE.Scene();
+  scene.environment = ctx.env;
+  scene.environmentIntensity = 0.55;
+  const camera = new THREE.PerspectiveCamera(32, 1, 0.01, 60);
+  const M = body.meshes;
+  const lm = body.landmarks;
+  const F = siteFrame(THREE, lm);
+
+  const organMats = {};
+  for (const [id, hex] of Object.entries(ORGAN_TONES)) {
+    if (!M[id]) continue;
+    const lungs = id === 'lungs';
+    const mat = new THREE.MeshPhysicalMaterial({
+      color: hex, roughness: 0.48, metalness: 0, sheen: 0.7, sheenRoughness: 0.5,
+      sheenColor: new THREE.Color(hex).lerp(new THREE.Color(0xffffff), 0.35), clearcoat: 0.35, clearcoatRoughness: 0.3,
+      envMapIntensity: 0.6, emissive: 0x000000,
+      transparent: lungs, opacity: lungs ? 0.32 : 1, depthWrite: !lungs,
+    });
+    organMats[id] = mat;
+    const mesh = shareMesh(THREE, M[id], mat);
+    if (lungs) mesh.renderOrder = 1;
+    scene.add(mesh);
+  }
+  const artMat = makeGlowMaterial(THREE, { color: HEX.artery, core: 0.55, rim: 0.7, power: 2.0, intensity: 1.15 });
+  const veinMat = makeGlowMaterial(THREE, { color: HEX.vein, core: 0.55, rim: 0.7, power: 2.0, intensity: 1.1 });
+  const boneMat = makeGlowMaterial(THREE, { color: HEX.ivory, core: 0.0, rim: 0.5, power: 2.2, intensity: 0.08 });
+  const skinMat = makeGlowMaterial(THREE, { color: HEX.champagnePale, core: 0.025, rim: 0.62, power: 2.6, intensity: 1 });
+  const addGlow = (id, mat, order) => { if (!M[id]) return; const m = shareMesh(THREE, M[id], mat); m.renderOrder = order; m.frustumCulled = false; scene.add(m); };
+  addGlow('arteries', artMat, 2);
+  addGlow('veins', veinMat, 2);
+  addGlow('skeleton', boneMat, 3);
+  addGlow('skin', skinMat, 4);
+  scene.add(makeBackdrop(THREE, 30, { base: 0x040304, haze: 0x19140c, hazeY: 0.05, hazeW: 2.4, back: 0.5 }));
+
+  const key = new THREE.DirectionalLight(0xfff0e0, 2.0);
+  key.position.set(-1.2, 2.4, 2.0);
+  const rim = new THREE.DirectionalLight(0xe9cf9e, 1.6);
+  rim.position.set(1.4, 1.6, -1.6);
+  const fill = new THREE.AmbientLight(0xfff4e8, 0.25);
+  scene.add(key, rim, fill);
+
+  // ---- the drug's route: belly → heart → lungs → heart → out along the arteries to each target organ
+  const P = lm.paths || {};
+  const base = [...(P.abdomen_to_heart || []), ...(P.heart_to_lungs || []), ...(P.lungs_to_heart || [])];
+  const routes = TARGETS.filter((T) => P[T.path] && M[T.organ]).map((T) => ({ ...T, line: makePolyline([...base, ...P[T.path]]) }));
+  const count = routes.length ? (ctx.phone ? 520 : 900) : 0;
+  const rnd = mulberry32(42);
+  const pMat = makeParticleMaterial(THREE, { color: HEX.drug, intensity: 3.2, minPx: 1.4, maxPx: 9 });
+  const pts = makePoints(THREE, Math.max(1, count), pMat);
+  pts.renderOrder = 5;
+  scene.add(pts);
+  const parts = [];
+  for (let i = 0; i < count; i++) {
+    parts.push({
+      r: routes[i % routes.length], launch: rnd() * 0.42, phase: rnd(), speed: 0.035 + rnd() * 0.03,
+      jx: (rnd() - 0.5) * 0.006, jy: (rnd() - 0.5) * 0.006, jz: (rnd() - 0.5) * 0.006,
+    });
+    pts.geometry.attributes.aSize.array[i] = 0.004 + rnd() * 0.003;
+  }
+  pts.geometry.attributes.aSize.needsUpdate = true;
+
+  const labels = [];
+  const glow = {};
+  for (const T of TARGETS) {
+    const c = lm.organs?.[T.organ]?.center;
+    if (!c || !M[T.organ]) continue;
+    labels.push({ label: ctx.makeLabel(T.label, 'r', 'intro-label--organ'), anchor: new V3(...c), vis: () => (glow[T.organ] || 0) * labelGate });
+  }
+  let labelGate = 0;
+  const siteDot = new V3().copy(F.S);
+
+  const keys = makeTrack([
+    // g     dist   az    el   ty      fov
+    [0.00, 0.34, 8, 3.0, F.S.y, 32],
+    [0.10, 0.56, 5, 3.0, 1.03, 32],
+    [0.42, 2.45, -9, 4.0, 0.98, 32],
+    [0.56, 3.30, -14, 5.0, 0.94, 32],
+    [1.00, 3.45, 16, 5.0, 0.94, 32],
+  ]);
+  const k = new Array(5);
+  const target = new V3(), fwd = new V3(0, 0, 1), up = new V3(0, 1, 0), right = new V3(1, 0, 0);
+  const tmp = new V3();
+  const champ = new THREE.Color(HEX.champagne);
+
+  function update(p, t, dt, L) {
+    const g = clamp01((p - 0.772) / (1 - 0.772));
+    keys(g, k);
+    const kc = sstep(0, 0.42, g);
+    target.set(F.S.x * (1 - kc), k[3], F.S.z * (1 - kc) + 0.02 * kc);
+    const dist = k[0] * (1 + (L.fit - 1) * sstep(0.1, 0.42, g));
+    const drift = Math.sin(t * 0.09) * 1.2 * sstep(0.4, 0.6, g);
+    orbit(camera.position, target, dist, k[1] + drift, k[2], fwd, up, right);
+    camera.up.set(0, 1, 0);
+    camera.lookAt(target);
+    ctx.applyCamera(camera, k[4]);
+    pMat.uniforms.uResY.value = L.H * ctx.pixelRatio;
+
+    // released with the scroll, flowing with time
+    const q = clamp01((p - 0.79) / (0.905 - 0.79));
+    const pos = pts.geometry.attributes.position.array;
+    const alpha = pts.geometry.attributes.aAlpha.array;
+    for (let i = 0; i < count; i++) {
+      const P1 = parts[i];
+      const front = clamp01((q - P1.launch) / 0.5);
+      if (front <= 0) { alpha[i] = 0; continue; }
+      let s = (P1.phase + t * P1.speed) % 1;
+      s *= front;
+      P1.r.line.sample(s, tmp);
+      pos[i * 3] = tmp.x + P1.jx; pos[i * 3 + 1] = tmp.y + P1.jy; pos[i * 3 + 2] = tmp.z + P1.jz;
+      alpha[i] = sstep(0, 0.015, s) * (1 - sstep(0.95, 1, s));
+    }
+    pts.geometry.attributes.position.needsUpdate = true;
+    pts.geometry.attributes.aAlpha.needsUpdate = true;
+
+    for (const T of TARGETS) {
+      const m = organMats[T.organ];
+      const gk = sstep(T.at, T.at + 0.2, q);
+      glow[T.organ] = gk;
+      if (m) m.emissive.copy(champ).multiplyScalar(0.32 * gk * (0.88 + 0.12 * Math.sin(t * 1.7 + T.at * 9)));
+    }
+    labelGate = sstep(0.45, 0.6, q) * (L.portrait ? 1 - sstep(0.88, 0.93, p) : 1);
+    void siteDot;
+  }
+
+  return {
+    name: 'glass', scene, camera, clear: new THREE.Color(0x040304), bloom: 0.6, labels, prime: 0.95,
+    update,
+    dispose() { disposeObject(scene); },
+  };
+}
+
+// ============================================================================================ set: tissue (under the skin)
+// Units: millimetres. A block of belly tissue cut open: skin on top (y = 0), the front face (z = +10) and
+// the right face (x = +14) show the layers. Thicknesses are illustrative (labelled "not to scale").
+
+const DEPOT_C = [-2.0, -6.2, 10.0];
+const DEPOT_R = [3.2, 1.9, 2.4];
+
+const TISSUE_GLSL = /* glsl */`
+  uniform float uDepot;
+  uniform vec3 uDepotC;
+  uniform vec3 uDepotR;
+  varying vec3 vTw;
+  varying vec3 vTn;
+  ${GLSL_NOISE}
+  float tsDisc(vec2 p, vec2 c, float r) { return length(p - c) - r; }
+  // returns colour; writes roughness, a height for the bump and an emissive amount
+  vec3 tissue(vec3 p, out float rough, out float hgt, out float glow) {
+    bool front = abs(vTn.z) > 0.5;
+    float u = front ? p.x : 24.0 - p.z;
+    float y = p.y;
+    float nA = psN(vec3(u * 0.9, 0.3, p.z * 0.4));
+    float yE = -0.24 - 0.11 * (0.5 + 0.5 * sin(u * 6.3 + nA * 3.0));
+    float yD = -2.5 + 0.55 * (psN(vec3(u * 0.25, 1.7, 0.0)) - 0.5);
+    float yF = -12.4 + 0.8 * (psN(vec3(u * 0.18, 4.2, 0.0)) - 0.5);
+    float yM = yF - 0.42;
+    vec3 col;
+    rough = 0.5; hgt = 0.0; glow = 0.0;
+    if (y > yE) {
+      float k = clamp((y - yE) / (0.0 - yE), 0.0, 1.0);
+      col = mix(vec3(0.24, 0.13, 0.085), vec3(0.6, 0.43, 0.33), smoothstep(0.0, 0.4, k));
+      col = mix(col, vec3(0.72, 0.58, 0.44), smoothstep(0.78, 0.96, k));
+      rough = 0.62;
+    } else if (y > yD) {
+      float fib = psN(vec3(u * 2.2, y * 9.0, p.z * 2.2)) * 0.6 + psN(vec3(u * 6.0, y * 20.0, 1.3)) * 0.4;
+      col = mix(vec3(0.6, 0.31, 0.28), vec3(0.74, 0.44, 0.39), smoothstep(yE - 0.6, yE - 0.05, y));
+      col *= 0.84 + 0.26 * fib;
+      rough = 0.55; hgt = fib * 0.12;
+    } else if (y > yF) {
+      vec3 v = psV(p * vec3(0.78, 0.9, 0.78));
+      float e = v.y - v.x;
+      vec3 lob = mix(vec3(0.78, 0.55, 0.19), vec3(0.87, 0.67, 0.29), v.z);
+      vec3 cells = psV(p * 9.0);
+      float ce = smoothstep(0.0, 0.14, cells.y - cells.x);
+      lob *= 0.8 + 0.2 * ce;
+      float sept = 1.0 - smoothstep(0.03, 0.1, e);
+      col = mix(lob, vec3(0.66, 0.4, 0.36), sept);
+      // a fine vessel runs in some septa
+      col = mix(col, vec3(0.42, 0.06, 0.05), (1.0 - smoothstep(0.006, 0.016, e)) * step(0.62, psN(p * 1.3)));
+      rough = mix(0.24, 0.42, sept);
+      hgt = smoothstep(0.0, 0.32, e) * 0.9 + ce * 0.06;
+    } else if (y > yM) {
+      col = vec3(0.78, 0.72, 0.66) * (0.92 + 0.08 * psN(vec3(u * 4.0, y * 30.0, 0.0)));
+      rough = 0.2; hgt = 0.25;
+    } else {
+      vec3 mv = psV(vec3(u * 0.16, y * 1.15, p.z * 1.15 + 3.0));
+      float per = 1.0 - smoothstep(0.02, 0.08, mv.y - mv.x);
+      float fib = 0.82 + 0.18 * sin(y * 70.0 + psN(vec3(u * 3.0, y * 5.0, 0.0)) * 6.0);
+      col = mix(vec3(0.42, 0.07, 0.055) * fib * (0.88 + 0.24 * mv.z), vec3(0.7, 0.58, 0.52), per * 0.75);
+      rough = 0.38; hgt = (1.0 - per) * 0.45 + fib * 0.08;
+    }
+    if (front) {
+      vec2 q = vec2(u, y);
+      // hair follicles slanting down from the surface, with their bulbs
+      for (int i = 0; i < 3; i++) {
+        float u0 = i == 0 ? -10.2 : (i == 1 ? -4.8 : 8.6);
+        float yb = -2.25;
+        if (y > yb - 0.2 && y < 0.02) {
+          float cu = u0 + y * 0.55;
+          float d = abs(u - cu) * 0.87;
+          float sheath = 1.0 - smoothstep(0.07, 0.09, d);
+          float shaft = 1.0 - smoothstep(0.022, 0.032, d);
+          col = mix(col, vec3(0.5, 0.32, 0.25), sheath * step(yb, y));
+          col = mix(col, vec3(0.1, 0.065, 0.05), shaft * step(yb + 0.1, y));
+        }
+        float bulb = tsDisc(q, vec2(u0 + yb * 0.55, yb), 0.15);
+        col = mix(col, vec3(0.36, 0.17, 0.12), 1.0 - smoothstep(0.0, 0.02, bulb));
+      }
+      // vessels cut across: an artery and its vein in the fat, small ones in the deep dermis
+      for (int i = 0; i < 6; i++) {
+        vec4 v = i == 0 ? vec4(4.2, -9.4, 0.42, 0.0) : i == 1 ? vec4(5.45, -9.75, 0.56, 1.0) : i == 2 ? vec4(-7.4, -2.3, 0.12, 0.0) :
+                 i == 3 ? vec4(-6.85, -2.34, 0.15, 1.0) : i == 4 ? vec4(9.6, -2.2, 0.1, 0.0) : vec4(-10.4, -11.4, 0.3, 1.0);
+        float d = tsDisc(q, v.xy, v.z);
+        if (d < 0.0) {
+          float wall = v.w < 0.5 ? v.z * 0.3 : v.z * 0.13;
+          vec3 wc = v.w < 0.5 ? vec3(0.62, 0.24, 0.21) : vec3(0.36, 0.28, 0.38);
+          vec3 lumen = v.w < 0.5 ? vec3(0.3, 0.02, 0.02) : vec3(0.15, 0.03, 0.05);
+          col = mix(lumen, wc, smoothstep(-wall - 0.015, -wall + 0.015, d));
+          rough = 0.18; hgt = d > -wall ? 0.5 : -0.4;
+        }
+      }
+      // the depot, cut through: a champagne-wet pool in the fat
+      vec3 dq = (p - uDepotC) / uDepotR;
+      float dd = length(dq);
+      float inside = (1.0 - smoothstep(0.94, 1.0, dd)) * uDepot;
+      col = mix(col, vec3(0.95, 0.8, 0.52), inside * 0.75);
+      rough = mix(rough, 0.1, inside);
+      glow = inside * (0.35 + 0.65 * (1.0 - dd)) + (1.0 - smoothstep(0.0, 0.08, abs(dd - 1.0))) * uDepot * 0.6;
+    }
+    return col;
+  }`;
+
+function makeTissueMaterial(THREE, uniforms) {
+  const mat = new THREE.MeshPhysicalMaterial({
+    name: 'intro-tissue', color: 0xffffff, roughness: 0.5, metalness: 0, clearcoat: 0.55, clearcoatRoughness: 0.26,
+    sheen: 0.25, sheenRoughness: 0.5, sheenColor: new THREE.Color(0xffe6d8), envMapIntensity: 0.7, specularIntensity: 0.7,
+  });
+  mat.onBeforeCompile = (sh) => {
+    Object.assign(sh.uniforms, uniforms);
+    sh.vertexShader = sh.vertexShader
+      .replace('#include <common>', '#include <common>\nvarying vec3 vTw;\nvarying vec3 vTn;')
+      .replace('#include <project_vertex>', '#include <project_vertex>\n\tvTw = (modelMatrix * vec4(transformed, 1.0)).xyz;\n\tvTn = normal;');
+    sh.fragmentShader = sh.fragmentShader
+      .replace('#include <common>', `#include <common>\n${TISSUE_GLSL}`)
+      .replace('#include <color_fragment>', `#include <color_fragment>
+float tsRough, tsH, tsGlow;
+vec3 tsCol = tissue(vTw, tsRough, tsH, tsGlow);
+diffuseColor.rgb = tsCol;`)
+      .replace('#include <roughnessmap_fragment>', `#include <roughnessmap_fragment>
+roughnessFactor = tsRough;`)
+      .replace('#include <normal_fragment_maps>', `#include <normal_fragment_maps>
+{
+  vec3 dpdx = dFdx(-vViewPosition), dpdy = dFdy(-vViewPosition);
+  float hx = dFdx(tsH), hy = dFdy(tsH);
+  vec3 r1 = cross(dpdy, normal), r2 = cross(normal, dpdx);
+  float det = dot(dpdx, r1);
+  vec3 grad = sign(det) * (hx * r1 + hy * r2);
+  normal = normalize(abs(det) * normal - grad * 0.06);
+}`)
+      .replace('#include <lights_fragment_end>', `#include <lights_fragment_end>
+totalEmissiveRadiance += vec3(1.0, 0.82, 0.5) * tsGlow * 0.55;`);
+  };
+  mat.customProgramCacheKey = () => 'intro-tissue';
+  return mat;
+}
+
+function makeTubeColors(THREE, geo, from, to) {
+  const uv = geo.attributes.uv;
+  const col = new Float32Array(uv.count * 3);
+  const a = new THREE.Color(from), b = new THREE.Color(to), c = new THREE.Color();
+  for (let i = 0; i < uv.count; i++) {
+    c.copy(a).lerp(b, sstep(0.25, 0.8, uv.getX(i)));
+    col[i * 3] = c.r; col[i * 3 + 1] = c.g; col[i * 3 + 2] = c.b;
+  }
+  geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
+  return geo;
+}
+
+function createTissueSet(ctx) {
+  const { THREE, track, skinTex } = ctx;
+  const V3 = THREE.Vector3;
+  const scene = new THREE.Scene();
+  scene.environment = ctx.env;
+  scene.environmentIntensity = 0.65;
+  const camera = new THREE.PerspectiveCamera(30, 1, 0.02, 600);
+
+  const uniforms = {
+    uDepot: { value: 0 },
+    uDepotC: { value: new V3(...DEPOT_C) },
+    uDepotR: { value: new V3(...DEPOT_R) },
+  };
+  const cutMat = makeTissueMaterial(THREE, uniforms);
+  const front = new THREE.Mesh(new THREE.PlaneGeometry(28, 18, 1, 1).translate(0, -9, 10), cutMat);
+  const right = new THREE.Mesh(new THREE.PlaneGeometry(20, 18, 1, 1).rotateY(Math.PI / 2).translate(14, -9, 0), cutMat);
+  const skinMat = makeSkinMaterial(THREE, skinTex, { scale: 0.1, mottleScale: 0.03, color: 0xc28f73, envMapIntensity: 0.6 });
+  const top = new THREE.Mesh(new THREE.PlaneGeometry(28, 20, 1, 1).rotateX(-Math.PI / 2), skinMat);
+  scene.add(front, right, top);
+
+  // fine hairs on the skin (vellus), a few darker ones
+  {
+    const rnd = mulberry32(5);
+    const n = 70;
+    const hairGeo = new THREE.CylinderGeometry(0.008, 0.022, 1, 5, 1, true).translate(0, 0.5, 0);
+    const hairMat = new THREE.MeshStandardMaterial({ color: 0x3a2a20, roughness: 0.5, metalness: 0 });
+    const hairs = new THREE.InstancedMesh(hairGeo, hairMat, n);
+    const m = new THREE.Matrix4(), q = new THREE.Quaternion(), e = new THREE.Euler(), s = new V3(), p = new V3();
+    for (let i = 0; i < n; i++) {
+      p.set(-13 + rnd() * 26, 0, -9 + rnd() * 18.5);
+      e.set(0.6 + rnd() * 0.5, rnd() * Math.PI * 2, 0, 'YXZ');
+      q.setFromEuler(e);
+      const len = 0.8 + rnd() * 2.2;
+      s.set(1, len, 1);
+      m.compose(p, q, s);
+      hairs.setMatrixAt(i, m);
+    }
+    hairs.instanceMatrix.needsUpdate = true;
+    scene.add(hairs);
+  }
+
+  // capillaries exposed along the cut face (half embedded), red → blue
+  const capMat = new THREE.MeshPhysicalMaterial({ color: 0xffffff, vertexColors: true, roughness: 0.25, clearcoat: 0.6, clearcoatRoughness: 0.2, envMapIntensity: 0.8, emissive: 0x1a0303 });
+  const heroCurve = new THREE.CatmullRomCurve3([
+    [-0.6, -4.5], [0.2, -3.9], [1.2, -3.05], [2.1, -2.5], [3.3, -2.35], [4.4, -2.55], [5.3, -3.1], [6.2, -3.9], [7.4, -5.2], [8.6, -6.9], [9.6, -8.6], [10.1, -9.5],
+  ].map(([x, y]) => new V3(x, y, 10.02)), false, 'centripetal');
+  const heroGeo = makeTubeColors(THREE, new THREE.TubeGeometry(heroCurve, 160, 0.13, 14, false), 0x8a1c18, 0x2c3a6e);
+  scene.add(new THREE.Mesh(heroGeo, capMat));
+  const loops = [
+    [[-12, -2.6], [-11.4, -1.0], [-10.9, -0.62], [-10.4, -1.0], [-9.9, -2.4]],
+    [[-6.2, -2.7], [-5.8, -1.1], [-5.3, -0.66], [-4.8, -1.1], [-4.3, -2.6]],
+    [[10.6, -2.6], [11.1, -1.0], [11.6, -0.62], [12.1, -1.05], [12.6, -2.5]],
+    [[-9.0, -9.6], [-7.6, -7.4], [-6.0, -8.8], [-5.2, -10.8]],
+  ];
+  for (const L of loops) {
+    const c = new THREE.CatmullRomCurve3(L.map(([x, y]) => new V3(x, y, 10.01)), false, 'centripetal');
+    scene.add(new THREE.Mesh(makeTubeColors(THREE, new THREE.TubeGeometry(c, 60, 0.065, 8, false), 0x8a1c18, 0x2c3a6e), capMat));
+  }
+
+  // the depot: a champagne pool in the fat, half exposed by the cut
+  const depotMat = new THREE.ShaderMaterial({
+    name: 'intro-depot',
+    uniforms: { uColor: { value: new THREE.Color(HEX.drug) }, uI: { value: 0 }, uTime: { value: 0 } },
+    vertexShader: /* glsl */`
+      varying vec3 vN; varying vec3 vV; varying vec3 vP;
+      void main() { vec4 mv = modelViewMatrix * vec4(position, 1.0); vN = normalize(normalMatrix * normal); vV = -mv.xyz; vP = position; gl_Position = projectionMatrix * mv; }`,
+    fragmentShader: /* glsl */`
+      uniform vec3 uColor; uniform float uI; uniform float uTime;
+      varying vec3 vN; varying vec3 vV; varying vec3 vP;
+      ${GLSL_NOISE}
+      void main() {
+        float ndv = abs(dot(normalize(vN), normalize(vV)));
+        float n = psN(vP * 2.4 + vec3(0.0, uTime * 0.25, uTime * 0.1));
+        float core = pow(ndv, 1.5);
+        float rim = pow(1.0 - ndv, 3.0);
+        gl_FragColor = vec4(uColor * (core * (0.55 + 0.6 * n) + rim * 0.35) * uI, 1.0);
+      }`,
+    transparent: true,
+    blending: THREE.AdditiveBlending,
+    depthWrite: false,
+  });
+  const depot = new THREE.Mesh(new THREE.SphereGeometry(1, 48, 32), depotMat);
+  depot.position.set(...DEPOT_C);
+  depot.scale.set(...DEPOT_R);
+  depot.renderOrder = 4;
+  scene.add(depot);
+
+  // drug particles: in the pool, then seeping into the capillary and away with the blood
+  const rnd = mulberry32(77);
+  const nIn = ctx.phone ? 110 : 170, nOut = ctx.phone ? 120 : 190;
+  const pMat = makeParticleMaterial(THREE, { color: HEX.drug, intensity: 3.0, minPx: 1.5, maxPx: 8 });
+  const pts = makePoints(THREE, nIn + nOut, pMat);
+  pts.renderOrder = 5;
+  scene.add(pts);
+  const inP = [];
+  for (let i = 0; i < nIn; i++) {
+    let x, y, z;
+    do { x = rnd() * 2 - 1; y = rnd() * 2 - 1; z = rnd(); } while (x * x + y * y + z * z > 1);
+    inP.push({ x, y, z: z * 0.35, ph: rnd() * 6.28, sp: 0.4 + rnd() * 0.6 });
+    pts.geometry.attributes.aSize.array[i] = 0.05 + rnd() * 0.04;
+  }
+  const seep = new THREE.CatmullRomCurve3([new V3(-0.9, -4.6, 10.25), new V3(-0.7, -4.45, 10.12), ...heroCurve.points.slice(1).map((v) => v.clone().setZ(10.14))], false, 'centripetal');
+  const seepLine = makePolyline(seep.getSpacedPoints(200).map((v) => [v.x, v.y, v.z]));
+  const outP = [];
+  for (let i = 0; i < nOut; i++) {
+    const a = rnd() * Math.PI * 2, r = Math.sqrt(rnd());
+    outP.push({ release: 0.42 + rnd() * 0.5, sx: -2.0 + Math.cos(a) * 2.6 * r, sy: -6.2 + Math.sin(a) * 1.5 * r, ph: rnd(), sp: 0.03 + rnd() * 0.03, j: (rnd() - 0.5) * 0.12 });
+    pts.geometry.attributes.aSize.array[nIn + i] = 0.045 + rnd() * 0.03;
+  }
+  pts.geometry.attributes.aSize.needsUpdate = true;
+
+  scene.add(makeBackdrop(THREE, 300, { base: 0x050405, haze: 0x1e170d, hazeY: 0.0, hazeW: 2.0, back: 0.6 }));
+  const key = new THREE.DirectionalLight(0xfff0e0, 2.4);
+  key.position.set(-6, 14, 12);
+  const fill = new THREE.DirectionalLight(0xf3ece6, 0.6);
+  fill.position.set(12, 3, 10);
+  const rim = new THREE.DirectionalLight(0xe9cf9e, 1.8);
+  rim.position.set(10, 8, -12);
+  scene.add(key, fill, rim);
+
+  const labels = [];
+  const L1 = (text, anchor, side, from, to) => labels.push({ label: ctx.makeLabel(text, side, 'intro-label--tissue'), anchor: new V3(...anchor), vis: () => sstep(from, from + 0.06, cNow) * (1 - sstep(to - 0.06, to, cNow)) });
+  L1('Skin', [-12.6, -1.25, 10.05], 'r', 0.3, 0.7);
+  L1('Fat under the skin', [-12.6, -6.4, 10.05], 'r', 0.32, 0.7);
+  L1('Muscle', [-12.6, -15.0, 10.05], 'r', 0.34, 0.7);
+  L1('Depot: the drug pools here', [0.9, -5.0, 11.2], 'r', 0.38, 0.86);
+  L1('Capillary', [3.3, -2.35, 10.18], 'r', 0.62, 0.9);
+  let cNow = 0;
+
+  const keys = makeTrack([
+    // c      px     py     pz      tx     ty     tz    fov
+    [0.00, -1.6, 8.5, 7.25, -1.6, 0.0, 6.6, 30],
+    [0.10, -1.0, 11.5, 9.8, -1.0, -0.6, 6.0, 30],
+    [0.34, 21.0, 9.5, 36.0, -0.5, -7.5, 3.0, 30],
+    [0.62, 13.0, 2.5, 27.0, -0.8, -6.0, 8.0, 30],
+    [0.84, 2.8, -2.4, 15.4, 0.6, -3.5, 10.0, 30],
+    [1.00, 1.3, -3.05, 10.7, 1.15, -3.08, 10.02, 30],
+  ]);
+  const k = new Array(7);
+  const target = new V3(), tmp = new V3();
+  const upA = new V3(0, 0, -1), upB = new V3(0, 1, 0);
+
+  function update(p, t, dt, L) {
+    const c = clamp01((p - 0.462) / (0.642 - 0.462));
+    cNow = c;
+    keys(c, k);
+    target.set(k[3], k[4], k[5]);
+    camera.position.set(k[0], k[1], k[2]);
+    const fit = 1 + (L.fit - 1) * sstep(0.05, 0.3, c) * (1 - sstep(0.7, 0.95, c));
+    camera.position.sub(target).multiplyScalar(fit).add(target);
+    camera.up.copy(upA).lerp(upB, sstep(0.02, 0.28, c)).normalize();
+    camera.lookAt(target);
+    ctx.applyCamera(camera, k[6]);
+    pMat.uniforms.uResY.value = L.H * ctx.pixelRatio;
+
+    const form = sstep(0.12, 0.42, c);
+    const drain = sstep(0.6, 1.0, c);
+    uniforms.uDepot.value = form * (1 - 0.3 * drain);
+    depotMat.uniforms.uI.value = 0.9 * form * (1 - 0.35 * drain);
+    depotMat.uniforms.uTime.value = t;
+    depot.scale.set(DEPOT_R[0] * (0.55 + 0.45 * form), DEPOT_R[1] * (0.55 + 0.45 * form), DEPOT_R[2] * (0.55 + 0.45 * form));
+
+    const pos = pts.geometry.attributes.position.array;
+    const alpha = pts.geometry.attributes.aAlpha.array;
+    for (let i = 0; i < nIn; i++) {
+      const P1 = inP[i];
+      const w = 0.06;
+      pos[i * 3] = DEPOT_C[0] + (P1.x + Math.sin(t * P1.sp + P1.ph) * w) * DEPOT_R[0] * 0.85 * (0.55 + 0.45 * form);
+      pos[i * 3 + 1] = DEPOT_C[1] + (P1.y + Math.cos(t * P1.sp * 1.3 + P1.ph) * w) * DEPOT_R[1] * 0.85 * (0.55 + 0.45 * form);
+      pos[i * 3 + 2] = DEPOT_C[2] + 0.05 + P1.z * DEPOT_R[2];
+      alpha[i] = form * (1 - 0.4 * drain) * 0.8;
+    }
+    for (let i = 0; i < nOut; i++) {
+      const P1 = outP[i];
+      const j = nIn + i;
+      const go = clamp01((c - P1.release) / 0.22);
+      if (go <= 0) {
+        pos[j * 3] = P1.sx; pos[j * 3 + 1] = P1.sy; pos[j * 3 + 2] = DEPOT_C[2] + 0.3;
+        alpha[j] = form * 0.7;
+        continue;
+      }
+      // leaves the pool, joins the capillary, then flows on with the blood
+      const s = Math.min(1, go * 0.18 + (go >= 1 ? ((P1.ph + t * P1.sp) % 1) * 0.82 : 0));
+      seepLine.sample(s, tmp);
+      const kx = 1 - sstep(0, 0.18, s);
+      pos[j * 3] = tmp.x + (P1.sx - tmp.x) * kx * (1 - go);
+      pos[j * 3 + 1] = tmp.y + (P1.sy - tmp.y) * kx * (1 - go) + P1.j * 0.3;
+      pos[j * 3 + 2] = tmp.z;
+      alpha[j] = 0.9 * (1 - sstep(0.94, 1, s));
+    }
+    pts.geometry.attributes.position.needsUpdate = true;
+    pts.geometry.attributes.aAlpha.needsUpdate = true;
+  }
+
+  return {
+    name: 'tissue', scene, camera, clear: new THREE.Color(0x050405), bloom: 0.5, labels, prime: 0.5,
+    update,
+    dispose() { disposeObject(scene); },
+  };
+}
+
+// ============================================================================================ set: blood (capillary → vein)
+// Units: micrometres. A capillary (red cells in single file) widens into a vein. Not to scale in time:
+// the flow is slowed down so it can be followed.
+
+function createBloodSet(ctx) {
+  const { THREE } = ctx;
+  const V3 = THREE.Vector3;
+  const scene = new THREE.Scene();
+  scene.environment = ctx.env;
+  scene.environmentIntensity = 0.3;
+  const fogColor = new THREE.Color(0x0b0305);
+  scene.fog = new THREE.FogExp2(fogColor, 0.0105);
+  const camera = new THREE.PerspectiveCamera(40, 1, 0.08, 800);
+
+  // ---- the vessel: one smooth path, a narrow capillary flaring into a vein
+  const curve = new THREE.CatmullRomCurve3([
+    [-30, 0, 0], [40, 5, -3], [110, -3, 5], [180, 6, 1], [250, -5, -6], [320, 3, 4], [390, 0, -2], [460, -6, 4],
+  ].map((a) => new V3(...a)), false, 'centripetal');
+  const NR = 360, NS = ctx.phone ? 28 : 40;
+  const frames = curve.computeFrenetFrames(NR, false);
+  const C = curve.getSpacedPoints(NR);
+  const len = curve.getLength();
+  const radius = (u) => 4.6 + 21.4 * sstep(0.17, 0.42, u);
+  // smooth, twist-free frames (parallel transport from the Frenet start)
+  const Tn = frames.tangents, Nn = frames.normals, Bn = frames.binormals;
+  const pos = new Float32Array((NR + 1) * (NS + 1) * 3);
+  const nor = new Float32Array((NR + 1) * (NS + 1) * 3);
+  const aU = new Float32Array((NR + 1) * (NS + 1));
+  const idx = [];
+  for (let i = 0; i <= NR; i++) {
+    const u = i / NR, r = radius(u);
+    for (let j = 0; j <= NS; j++) {
+      const th = (j / NS) * Math.PI * 2;
+      const cx = Math.cos(th), sx = Math.sin(th);
+      const nx = Nn[i].x * cx + Bn[i].x * sx, ny = Nn[i].y * cx + Bn[i].y * sx, nz = Nn[i].z * cx + Bn[i].z * sx;
+      const k = i * (NS + 1) + j;
+      pos[k * 3] = C[i].x + nx * r; pos[k * 3 + 1] = C[i].y + ny * r; pos[k * 3 + 2] = C[i].z + nz * r;
+      nor[k * 3] = nx; nor[k * 3 + 1] = ny; nor[k * 3 + 2] = nz;
+      aU[k] = u;
+      if (i < NR && j < NS) {
+        const a = k, b = k + NS + 1, c = b + 1, d = a + 1;
+        idx.push(a, b, d, b, c, d);
+      }
+    }
+  }
+  const wallGeo = new THREE.BufferGeometry();
+  wallGeo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  wallGeo.setAttribute('normal', new THREE.BufferAttribute(nor, 3));
+  wallGeo.setAttribute('aU', new THREE.BufferAttribute(aU, 1));
+  wallGeo.setIndex(idx);
+  const wallMat = new THREE.ShaderMaterial({
+    name: 'intro-vessel-wall',
+    uniforms: {
+      uCap: { value: new THREE.Color(0xb0605a) }, uVein: { value: new THREE.Color(HEX.vein) },
+      uFogC: { value: fogColor }, uFog: { value: 0.0105 },
+    },
+    vertexShader: /* glsl */`
+      attribute float aU;
+      varying float vU; varying vec3 vN; varying vec3 vV; varying vec3 vW;
+      void main() {
+        vec4 mv = modelViewMatrix * vec4(position, 1.0);
+        vU = aU; vN = normalize(normalMatrix * normal); vV = -mv.xyz; vW = position;
+        gl_Position = projectionMatrix * mv;
+      }`,
+    fragmentShader: /* glsl */`
+      uniform vec3 uCap; uniform vec3 uVein; uniform vec3 uFogC; uniform float uFog;
+      varying float vU; varying vec3 vN; varying vec3 vV; varying vec3 vW;
+      ${GLSL_NOISE}
+      void main() {
+        vec3 v = psV(vW * vec3(0.07, 0.15, 0.15));   // endothelial cells, long along the flow
+        float edge = smoothstep(0.0, 0.07, v.y - v.x);
+        float nuc = 1.0 - smoothstep(0.1, 0.22, v.x);
+        vec3 base = mix(uCap, uVein, smoothstep(0.17, 0.42, vU)) * (0.85 + 0.3 * v.z);
+        float ndv = abs(dot(normalize(vN), normalize(vV)));
+        float fres = pow(1.0 - ndv, 2.0);
+        vec3 col = base * (0.22 + 1.1 * fres) * (0.7 + 0.3 * edge) + base * nuc * 0.28 + base * (1.0 - edge) * fres * 0.5;
+        float a = clamp(0.08 + 0.8 * fres, 0.0, 0.9) * (0.8 + 0.2 * (1.0 - edge));
+        float d = length(vV);
+        float f = exp(-pow(d * uFog, 2.0));
+        gl_FragColor = vec4(mix(uFogC, col, f), a * mix(0.4, 1.0, f));
+      }`,
+    transparent: true,
+    depthWrite: false,
+    side: THREE.DoubleSide,
+  });
+  const wall = new THREE.Mesh(wallGeo, wallMat);
+  wall.renderOrder = 3;
+  wall.frustumCulled = false;
+  scene.add(wall);
+
+  const sample = (u, out) => {
+    const f = clamp01(u) * NR;
+    const i = Math.min(NR - 1, Math.floor(f));
+    const k2 = f - i;
+    out.p.lerpVectors(C[i], C[i + 1], k2);
+    out.t.lerpVectors(Tn[i], Tn[i + 1], k2).normalize();
+    out.n.lerpVectors(Nn[i], Nn[i + 1], k2).normalize();
+    out.b.lerpVectors(Bn[i], Bn[i + 1], k2).normalize();
+    return out;
+  };
+  const fr = { p: new V3(), t: new V3(), n: new V3(), b: new V3() };
+
+  // ---- red cells: a biconcave disc (Evans–Fung profile), instanced
+  const R0 = 3.9;
+  const prof = [];
+  const NP = 18;
+  for (let i = 0; i <= NP; i++) {
+    const r = R0 * Math.sin((i / NP) * Math.PI / 2);
+    const x = r / R0;
+    const th = 0.5 * Math.sqrt(Math.max(0, 1 - x * x)) * (0.81 + 7.83 * x * x - 4.39 * x * x * x * x) * (3.91 / 3.91);
+    prof.push(new THREE.Vector2(r, th));
+  }
+  const pts = [...prof.map((v) => v.clone()), ...prof.slice(0, -1).reverse().map((v) => new THREE.Vector2(v.x, -v.y))];
+  const rbcGeo = new THREE.LatheGeometry(pts.map((v) => new THREE.Vector2(Math.max(0, v.x), v.y)).reverse(), ctx.phone ? 22 : 30);
+  rbcGeo.computeVertexNormals();
+  const rbcMat = new THREE.MeshPhysicalMaterial({
+    color: 0x8e1712, roughness: 0.42, metalness: 0, sheen: 1, sheenColor: new THREE.Color(0xff6a52), sheenRoughness: 0.42,
+    clearcoat: 0.25, clearcoatRoughness: 0.35, emissive: new THREE.Color(0x2b0404), envMapIntensity: 0.4,
+  });
+  const nCap = 18, nVein = ctx.phone ? 420 : 820;
+  const cells = new THREE.InstancedMesh(rbcGeo, rbcMat, nCap + nVein);
+  cells.frustumCulled = false;
+  scene.add(cells);
+  const rnd = mulberry32(31);
+  const cellData = [];
+  for (let i = 0; i < nCap; i++) cellData.push({ cap: true, u0: i / nCap, rho: 0, th: rnd() * 6.28, ax: new V3(rnd() - 0.5, rnd() - 0.5, rnd() - 0.5).normalize(), w: 0.2 + rnd() * 0.3, ph: rnd() * 6.28 });
+  for (let i = 0; i < nVein; i++) {
+    let u;
+    do { u = 0.3 + rnd() * 0.7; } while (rnd() > (radius(u) / 26) ** 2);
+    cellData.push({ cap: false, u0: (u - 0.3) / 0.7, rho: Math.sqrt(rnd()) * 0.86, th: rnd() * 6.28, ax: new V3(rnd() - 0.5, rnd() - 0.5, rnd() - 0.5).normalize(), w: 0.15 + rnd() * 0.5, ph: rnd() * 6.28, sp: 0.85 + rnd() * 0.3 });
+  }
+  const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), q2 = new THREE.Quaternion(), sc = new V3(), pp = new V3(), Y = new V3(0, 1, 0);
+
+  // ---- the drug: seeping through the capillary wall, then flowing with the blood
+  const nSeep = ctx.phone ? 90 : 150, nFlow = ctx.phone ? 160 : 300;
+  const pMat = makeParticleMaterial(THREE, { color: HEX.drug, intensity: 3.4, minPx: 1.6, maxPx: 10 });
+  const drug = makePoints(THREE, nSeep + nFlow, pMat);
+  drug.renderOrder = 6;
+  scene.add(drug);
+  const drugData = [];
+  for (let i = 0; i < nSeep; i++) drugData.push({ seep: true, u: 0.02 + rnd() * 0.24, th: rnd() * 6.28, ph: rnd(), sp: 0.05 + rnd() * 0.05 });
+  for (let i = 0; i < nFlow; i++) drugData.push({ seep: false, u0: rnd(), rho: Math.sqrt(rnd()) * 0.92, th: rnd() * 6.28, sp: 0.9 + rnd() * 0.4 });
+  for (let i = 0; i < drugData.length; i++) drug.geometry.attributes.aSize.array[i] = 0.16 + rnd() * 0.12;
+  drug.geometry.attributes.aSize.needsUpdate = true;
+
+  const head = new THREE.PointLight(0xffe2cf, 2.2, 0, 0);
+  const key = new THREE.DirectionalLight(0xfff0e0, 1.0);
+  key.position.set(0.3, 1, 0.4);
+  scene.add(head, key);
+
+  const labels = [];
+  const capAnchor = new V3(), cellAnchor = new V3();
+  labels.push({ label: ctx.makeLabel('Capillary wall', 'r', 'intro-label--micro'), anchor: capAnchor, vis: () => sstep(0.08, 0.16, dNow) * (1 - sstep(0.3, 0.38, dNow)) });
+  labels.push({ label: ctx.makeLabel('Red blood cell', 'r', 'intro-label--micro'), anchor: cellAnchor, vis: () => sstep(0.12, 0.2, dNow) * (1 - sstep(0.34, 0.4, dNow)) });
+  let dNow = 0;
+
+  const keys = makeTrack([
+    // d     u      rho    th   du     lookRho fov
+    [0.00, 0.045, 15.0, 70, 0.045, 0.0, 40],
+    [0.30, 0.150, 12.5, 76, 0.050, 0.0, 42],
+    [0.50, 0.300, 8.0, 82, 0.070, 1.5, 50],
+    [0.75, 0.470, 6.0, 88, 0.080, 2.5, 58],
+    [1.00, 0.620, 4.0, 92, 0.090, 3.0, 60],
+  ]);
+  const k = new Array(6);
+  const target = new V3(), tmp = new V3(), off = new V3();
+  const flowT = { v: 0 };
+
+  function update(p, t, dt, L) {
+    const d = clamp01((p - 0.614) / (0.798 - 0.614));
+    dNow = d;
+    keys(d, k);
+    sample(k[0], fr);
+    const th = k[2] * Math.PI / 180;
+    off.copy(fr.n).multiplyScalar(Math.cos(th)).addScaledVector(fr.b, Math.sin(th));
+    camera.position.copy(fr.p).addScaledVector(off, k[1]);
+    sample(k[0] + k[3], fr);
+    target.copy(fr.p).addScaledVector(off, k[4]);
+    camera.up.set(0, 1, 0);
+    camera.lookAt(target);
+    ctx.applyCamera(camera, k[5]);
+    head.position.copy(camera.position);
+    pMat.uniforms.uResY.value = L.H * ctx.pixelRatio;
+
+    flowT.v = t;
+    // red cells
+    for (let i = 0; i < cellData.length; i++) {
+      const c = cellData[i];
+      let u, rho, s = 1;
+      if (c.cap) {
+        u = ((c.u0 + t * 0.03) % 1) * 0.34;
+        rho = 0;
+        s = sstep(0, 0.02, u) * (1 - sstep(0.31, 0.34, u));
+      } else {
+        u = 0.3 + ((c.u0 + t * 0.012 * c.sp) % 1) * 0.7;
+        rho = c.rho * Math.max(0, radius(u) - 4.4);
+        s = sstep(0.3, 0.34, u) * (1 - sstep(0.97, 1, u));
+      }
+      sample(u, fr);
+      const a = c.th + t * 0.05;
+      pp.copy(fr.p).addScaledVector(fr.n, Math.cos(a) * rho).addScaledVector(fr.b, Math.sin(a) * rho);
+      if (c.cap) {
+        // in a capillary a cell travels edge-on, folded like a parachute
+        q.setFromUnitVectors(Y, fr.t);
+        q2.setFromAxisAngle(fr.t, c.ph + t * c.w);
+        q.premultiply(q2);
+        sc.set(s * 0.92, s * 1.25, s * 0.92);
+      } else {
+        q.setFromAxisAngle(c.ax, c.ph + t * c.w);
+        sc.set(s, s, s);
+      }
+      m4.compose(pp, q, sc);
+      cells.setMatrixAt(i, m4);
+      if (i === 7) cellAnchor.copy(pp);
+    }
+    cells.instanceMatrix.needsUpdate = true;
+    sample(0.11, fr);
+    capAnchor.copy(fr.p).addScaledVector(fr.n, Math.cos(1.2) * 4.6).addScaledVector(fr.b, Math.sin(1.2) * 4.6);
+
+    // drug
+    const P = drug.geometry.attributes.position.array;
+    const A = drug.geometry.attributes.aAlpha.array;
+    for (let i = 0; i < drugData.length; i++) {
+      const g = drugData[i];
+      let u, rho, a;
+      if (g.seep) {
+        const life = (g.ph + t * g.sp) % 1;
+        const inK = sstep(0, 0.55, life);
+        u = g.u + 0.07 * sstep(0.5, 1, life);
+        rho = 13 - 12.4 * inK;
+        a = sstep(0, 0.12, life) * (1 - sstep(0.85, 1, life));
+      } else {
+        u = (g.u0 + t * 0.016 * g.sp) % 1;
+        rho = g.rho * Math.max(0.6, radius(u) - 1.2);
+        a = sstep(0, 0.03, u) * (1 - sstep(0.96, 1, u)) * (u < 0.3 ? 0.5 : 1);
+      }
+      sample(u, fr);
+      const ang = g.th + t * 0.07;
+      tmp.copy(fr.p).addScaledVector(fr.n, Math.cos(ang) * rho).addScaledVector(fr.b, Math.sin(ang) * rho);
+      P[i * 3] = tmp.x; P[i * 3 + 1] = tmp.y; P[i * 3 + 2] = tmp.z;
+      A[i] = a;
+    }
+    drug.geometry.attributes.position.needsUpdate = true;
+    drug.geometry.attributes.aAlpha.needsUpdate = true;
+    void len;
+  }
+
+  return {
+    name: 'blood', scene, camera, clear: fogColor.clone(), bloom: 0.55, labels, prime: 0.6,
+    update,
+    dispose() { disposeObject(scene); },
+  };
 }

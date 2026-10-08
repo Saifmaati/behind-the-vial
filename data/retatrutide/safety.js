@@ -90,7 +90,7 @@ export default {
     doctorToday: [
       {
         sign: "Severe belly pain that will not go away or keeps getting worse, with or without throwing up, sometimes spreading to your back",
-        why: "This can be a sign of pancreatitis (an inflamed pancreas). It has happened with drugs in this family, and some cases reported after these drugs went on sale ended in death. The tirzepatide guide says to stop the drug and call a doctor right away. A US health institute (NIDDK) says fever or chills, a fast heartbeat, shortness of breath, or yellow skin or eyes with this pain also need care right away. If the pain is sudden and sharp, call 911.",
+        why: "This can be a sign of pancreatitis (an inflamed pancreas). It has happened with drugs in this family, and some cases reported after these drugs were approved ended in death. The tirzepatide guide says to stop the drug and call a doctor right away. A US health institute (NIDDK) says fever or chills, a fast heartbeat, shortness of breath, or yellow skin or eyes with this pain also need care right away. If the pain is sudden and sharp, call 911.",
         sources: ["eli-lilly-2026-zepbound-tirzepatide-injection-prescribing", "eli-lilly-2026-zepbound-tirzepatide-injection", "national-institute-2017-symptoms-causes-pancreatitis", "u-s-2026-abdominal-pain-medlineplus-medical"],
         ledger: ["gap-red-flags-us-911-split-label-pancreatitis-stop-call", "safety-pancreatitis-label", "gap-red-flags-us-911-split-niddk-severe-pancreatitis-seek-care", "gap-red-flags-us-911-split-sudden-sharp-belly-pain-911"],
       },
@@ -233,7 +233,7 @@ export default {
       {
         organ: "pancreas",
         title: "Pancreatitis has happened with this drug family",
-        text: "Pancreatitis is a swollen, inflamed pancreas. It has happened with drugs in this family, and some cases reported after the drugs went on sale ended in death. The warning sign is severe belly pain that will not go away and may spread to the back, with or without throwing up.",
+        text: "Pancreatitis is a swollen, inflamed pancreas. It has happened with drugs in this family, and some cases reported after the drugs were approved ended in death. The warning sign is severe belly pain that will not go away and may spread to the back, with or without throwing up.",
         sources: ["eli-lilly-2026-zepbound-tirzepatide-injection"],
         ledger: ["safety-pancreatitis-label"],
       },

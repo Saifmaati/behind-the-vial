@@ -46,6 +46,7 @@ export function renderSideEffects(entry, ctx) {
             ${fx.why?.text ? html`<div><dt>Why it happens</dt><dd>${fx.why.text}${ctx.mark(fx.why)}</dd></div>` : ''}
             ${fx.reduce?.text ? html`<div><dt>Easing it, or when it passes</dt><dd>${fx.reduce.text}${ctx.mark(fx.reduce)}</dd></div>` : ''}
           </dl>
+          ${fx.alsoOrgans?.length ? html`<p class="c-fxcard__also"><span class="c-fxcard__k">Also involves</span>${fx.alsoOrgans.map((o) => html`<span class="c-fxcard__organ">${organLabel(o)}</span>`)}</p>` : ''}
           <footer class="c-fxcard__foot">
             ${fx.timing?.text ? html`<span class="c-fxcard__when">${icon('clock', { size: 15 })}<span>${fx.timing.text}</span></span>` : html`<span></span>`}
             <button type="button" class="c-btn c-btn--ghost c-btn--sm" data-organ-focus="${fx.organ}">${icon('target', { size: 15 })}Show on body<span class="c-sr">: ${fx.name} (${organLabel(fx.organ)})</span></button>

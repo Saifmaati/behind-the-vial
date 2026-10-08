@@ -1,4 +1,4 @@
-// Behind the Vial: retatrutide core facts (status, what it is, how it works,
+// PeptideScope: retatrutide core facts (status, what it is, how it works,
 // where it acts, timing after a shot, and how it gets from under the skin
 // into the blood).
 //

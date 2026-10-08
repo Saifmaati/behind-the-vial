@@ -54,9 +54,26 @@ export const organOrder = (id) => { const i = ORGANS.indexOf(id); return i < 0 ?
 // ---- vocabularies (no green anywhere: tones map to accent / warn / danger / neutral) ----
 export const STATUS = {
   approved: { label: 'Approved', tone: 'accent' },
+  'approved-abroad': { label: 'Approved outside the US', tone: 'accent' },
   'in-trials': { label: 'In trials', tone: 'accent-2' },
   'research-only': { label: 'Research chemical only', tone: 'warn' },
 };
+
+/**
+ * Status key for the badge. An "approved" peptide whose status label never affirms a US (FDA)
+ * approval, e.g. "Registered as a medicine in Russia" or "Approved in some countries outside the
+ * US ...; not FDA-approved", shows "Approved outside the US" instead of a bare "Approved".
+ */
+export function statusKey(level, statusLabel = '') {
+  if (level !== 'approved') return level;
+  const label = String(statusLabel || '');
+  if (!label) return level;
+  const affirmed = label
+    .replace(/\bnot\s+(?:been\s+)?(?:part of any\s+)?FDA[-\s]approved(?:\s+medicine)?/gi, '')
+    .replace(/\bno\s+FDA[-\s]approved\b[^;,.]*/gi, '')
+    .replace(/\bnever\s+FDA[-\s]approved\b/gi, '');
+  return /\bFDA[-\s]approved\b|\bapproved by the (?:US )?FDA\b/i.test(affirmed) ? 'approved' : 'approved-abroad';
+}
 export const SEVERITY = {
   common: { label: 'Common', tone: 'neutral', hint: 'Many people get this.' },
   notable: { label: 'Notable', tone: 'warn', hint: 'Less common, or worth watching for.' },
@@ -70,9 +87,9 @@ export const VERDICT = {
 };
 export const EVIDENCE_LEVELS = ['anecdote', 'animal', 'small-human', 'large-trial'];
 export const SITES = [
-  { id: 'abdomen', label: 'Abdomen', hint: 'Belly' },
-  { id: 'thigh', label: 'Thigh', hint: 'Front of the leg' },
-  { id: 'arm', label: 'Upper arm', hint: 'Back of the arm' },
+  { id: 'abdomen', label: 'Abdomen' },
+  { id: 'thigh', label: 'Thigh' },
+  { id: 'arm', label: 'Upper arm' },
 ];
 
 // ---- formatters ----
@@ -96,13 +113,19 @@ export function fmtDate(d) {
   return `${MONTHS[mi]} ${Number(da)}, ${y}`;
 }
 
-/** First number in a cell like "−12.5%" or "33%" (Unicode minus aware). NaN when none. */
-export function numberIn(text) {
-  const m = /[-−–]?\d+(?:[.,]\d+)?/.exec(String(text ?? ''));
-  return m ? Number(m[0].replace(/[−–]/, '-').replace(',', '.')) : NaN;
+/**
+ * Source date with its qualifier: ('2026-10-07', 'accessed') → 'Accessed Oct 7, 2026';
+ * ('2026-07-30', 'data last updated; accessed 2026-10-08') → 'Data last updated Jul 30, 2026; accessed Oct 8, 2026'.
+ */
+export function fmtSourceDate(date, note) {
+  const d = fmtDate(date);
+  const n = String(note || '').trim();
+  if (!n) return d;
+  const [first, ...rest] = n.split(/\s*;\s*/);
+  const lead = first ? `${first.charAt(0).toUpperCase()}${first.slice(1)}${d ? ` ${d}` : ''}` : d;
+  const tail = rest.map((r) => r.replace(/\b\d{4}-\d{2}(?:-\d{2})?\b/g, (m) => fmtDate(m)));
+  return [lead, ...tail].filter(Boolean).join('; ');
 }
 
 export const plural = (n, one, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
 
-/** Visible marker for placeholder data (sample: true). Never ships: tests fail while samples remain. */
-export const sampleNote = () => html`<p class="c-sample" role="note"><span class="c-sample__tag">Sample data</span><span>Placeholder content for layout only. Verified, cited facts replace it before launch.</span></p>`;
