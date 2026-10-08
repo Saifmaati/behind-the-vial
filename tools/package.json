@@ -1,0 +1,9 @@
+{
+  "name": "behind-the-vial-tools",
+  "private": true,
+  "type": "module",
+  "description": "Dev-only tooling (asset pipeline, screenshots). Not shipped to the site.",
+  "devDependencies": {
+    "puppeteer-core": "^24.43.1"
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "name": "behind-the-vial",
+  "private": true,
+  "type": "module",
+  "description": "Static site. No runtime dependencies; three.js is vendored in vendor/three.",
+  "scripts": {
+    "serve": "node tools/serve.mjs 8790",
+    "test": "node --test tests/"
+  }
+}
