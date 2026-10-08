@@ -14,8 +14,8 @@
 // paper's number is used. Company-only figures are labelled as such.
 
 const doseFacts = {
-  intro: 'In each trial, adults were assigned at random to a fixed study group: a set weekly dose of retatrutide, or a placebo (a dummy shot with no drug). The tables show what happened in each group. In most of these trials, stomach side effects, and the share of people who quit because of side effects, went up as the dose went up. TRIUMPH-2 was the exception: more people quit in its 9 mg group than in its 12 mg group.',
-  caveat: 'These are fixed results from trials run under medical supervision, with physical exams, heart tracings (ECGs) and blood tests along the way. They do not tell anyone what to take, and there is nothing here to adjust.',
+  intro: 'In each trial, adults were assigned at random to a study group. Each group is named for the weekly dose of retatrutide it was assigned, and one group got a placebo (a dummy shot with no drug). The tables show what happened in each group. In most of these trials, stomach side effects, and the share of people who stopped because of side effects, were higher in the higher-dose groups. TRIUMPH-2 was the exception for stopping: more people stopped for good because of side effects or death in its 9 mg group than in its 12 mg group.',
+  caveat: 'These are fixed results from trials run under medical supervision. In the TRIUMPH trials, study teams checked people with physical exams, pulse checks, heart tracings (ECGs) and blood tests throughout. Nothing here tells anyone what to take, and nothing here can be adjusted.',
   sources: [
     'new-england-2026-retatrutide-triple-hormone-receptor-2',
     'new-england-2023-triple-hormone-receptor-agonist-2',
@@ -37,11 +37,11 @@ const doseFacts = {
     {
       id: 'triumph-1',
       name: 'TRIUMPH-1: adults with obesity or overweight, no diabetes',
-      design: 'Final-stage (phase 3) trial of 2,339 adults vs placebo. Nausea, vomiting and skin-feeling figures are from Lilly\'s results release; the rest are from the peer-reviewed paper',
+      design: 'Final-stage (phase 3) trial of 2,339 adults without diabetes who had obesity, or overweight with a weight-related health problem, vs placebo. Nausea, vomiting and skin-feeling figures are from Lilly\'s results release, not the journal; the rest are from the peer-reviewed paper and its appendix',
       timepoint: 'Results at week 80',
       columns: [
         'Study group',
-        'Average weight change, counting everyone',
+        'Average weight change, counting everyone who started',
         'Stopped because of side effects',
         'Nausea',
         'Vomiting',
@@ -79,7 +79,7 @@ const doseFacts = {
       timepoint: 'Results at week 80',
       columns: [
         'Study group',
-        'Average weight change, counting everyone',
+        'Average weight change, counting everyone who started',
         'Stopped for good because of side effects or death',
         'Nausea',
         'Diarrhea',
@@ -93,7 +93,7 @@ const doseFacts = {
         { arm: '9 mg group', cells: ['−16.8%', '12%', '21%', '34%', '6%', '5%', '+1.0'] },
         { arm: '12 mg group', cells: ['−18.8%', '8%', '28%', '34%', '7%', '6%', '+1.5'] },
       ],
-      chart: { columns: ['Stopped for good because of side effects or death', 'Nausea', 'Diarrhea'] },
+      chart: { columns: ['Stopped for good because of side effects or death', 'Nausea', 'Diarrhea', 'Odd skin feelings (dysesthesia)'] },
       sources: [
         'lancet-via-2026-retatrutide-adults-obesity-type',
         'lancet-elsevier-2026-supplementary-appendix-bellido-v',
@@ -112,11 +112,11 @@ const doseFacts = {
     {
       id: 'triumph-4',
       name: 'TRIUMPH-4: adults with obesity or overweight and knee arthritis',
-      design: 'Final-stage (phase 3) trial of 445 adults vs placebo. Figures are from Lilly\'s press release, not a peer-reviewed paper. Some people who stopped for side effects felt they were losing too much weight, and stopping for any reason was similar across groups',
+      design: 'Final-stage (phase 3) trial of 445 adults vs placebo. Figures are from Lilly\'s press release, not a peer-reviewed paper. Some people who stopped because of side effects felt they were losing too much weight, and stopping for any reason was similar across the groups',
       timepoint: 'Results at week 68',
       columns: [
         'Study group',
-        'Average weight change, counting everyone',
+        'Average weight change, counting everyone who started',
         'Stopped because of side effects',
         'Nausea',
         'Vomiting',
@@ -141,16 +141,16 @@ const doseFacts = {
     {
       id: 'phase-2-obesity',
       name: 'Phase 2 obesity trial: adults with obesity or overweight, no diabetes',
-      design: 'Mid-stage (phase 2) trial of 338 adults vs placebo, peer-reviewed in NEJM. The 4 mg and 8 mg doses were each tested in two separate groups, shown as A and B',
+      design: 'Mid-stage (phase 2) trial of 338 adults vs placebo, peer-reviewed in NEJM. The 4 mg and 8 mg doses were each tested in two separate groups, shown as A and B. Unlike the tables above, the weight figures here count only time on the drug',
       timepoint: 'Weight at week 48, heart rate at week 24',
       columns: [
         'Study group',
-        'Average weight change at week 48',
+        'Average weight change at week 48, counting only time on the drug',
         'Stopped because of side effects',
         'Nausea',
         'Vomiting',
-        'Skin sensitivity or burning feelings',
-        'Heart rate change at week 24 (beats per minute)',
+        'Odd skin feelings (sensitive skin and similar)',
+        'Heart rate change at week 24, on a 24-hour monitor (beats per minute)',
       ],
       rows: [
         { arm: 'Placebo (dummy shot)', cells: ['−2.1%', '0%', '11%', '1%', '1.4%', '+0.8'] },
@@ -182,47 +182,60 @@ const doseFacts = {
 
 const evidence = {
   level: 'large-trial',
-  summary: 'Retatrutide has been tested in large trials that compare it with a placebo, the top rung of this ladder. The four main final-stage (phase 3) TRIUMPH trials included more than 5,800 people. It is still an experimental drug: no regulator in the world has approved it, and the trial built to show its effect on heart attacks, strokes and kidney failure is not expected to finish until around February 2029.',
+  summary: 'Retatrutide has reached the top rung of this ladder: large trials that compare it with a placebo. The four main final-stage (phase 3) TRIUMPH trials included more than 5,800 people. It is still an experimental drug. No regulator in the world has approved it, a consumer safety group says its full safety picture is not yet known, and the trial built to show whether it affects heart attacks, strokes and kidney failure is not expected to finish until around February 2029.',
   sources: [
     'diabetes-obesity-2025-retatrutide-treatment-obesity-obstruct-2',
     'eli-lilly-2026-lilly-s-triple-agonist-3',
+    'public-citizen-2026-miracle-drug-peptide-craze',
     'clinicaltrials-gov-2026-effect-retatrutide-once-weekly',
   ],
-  ledger: ['claims-8-trials-with-diet', 'trials-status-investigational', 'trials-unknown-cvot'],
+  ledger: ['claims-8-trials-with-diet', 'trials-status-investigational', 'claims-4-full-safety-unknown', 'trials-unknown-cvot'],
   rungs: [
     {
       level: 'anecdote',
-      text: 'Social media is full of personal stories. A consumer watchdog group found hundreds of posts calling retatrutide "a miracle" and "better than Ozempic". The maker warns that illegal versions may hold the wrong amount, harmful contaminants or a different drug, so a story can\'t show what was really in the vial.',
+      text: 'A consumer watchdog group found hundreds of TikTok videos and Instagram posts calling retatrutide "a miracle" and "better than Ozempic". The maker warns that illegal versions may hold too much or too little of the drug, harmful contaminants or a different drug entirely, so a personal story can\'t show what was really in the vial.',
       sources: ['public-citizen-2026-miracle-drug-peptide-craze', 'eli-lilly-2026-what-know-about-retatrutide'],
       ledger: ['claims-3-claim-identified', 'gray-core-lilly-faq-contents'],
     },
     {
       level: 'anecdote',
-      text: 'Doctors have also published single-patient case reports. In one, a man with type 1 diabetes developed severe vomiting, a dangerous ketone build-up and kidney injury soon after injecting an online "retatrutide" product. He also had a gut infection, so the exact cause is uncertain.',
+      text: 'Doctors have also written up single patients. In one published case report, a man with type 1 diabetes developed severe vomiting, a dangerous build-up of ketones (acids in the blood) and kidney injury soon after injecting an online "retatrutide" product. The product was never tested, and he also had a gut infection, so the authors say the cause cannot be proven.',
       sources: ['cureus-springer-2026-online-sourced-retatrutide-complicating'],
       ledger: ['claims-4-case-report-dka'],
     },
     {
+      level: 'anecdote',
+      text: 'Health agencies also collect reports of harm. A consumer watchdog counted 26 reports tied to retatrutide sent to the FDA in the first five months of 2026, including 11 that needed a hospital stay. In the state of Victoria, Australia, six people had sudden liver injury after using products labelled retatrutide, and health officials think a contaminant may be to blame.',
+      sources: ['public-citizen-2026-miracle-drug-peptide-craze', 'department-health-2026-toxicity-linked-unapproved-peptide-2'],
+      ledger: ['claims-4-faers-reports', 'claims-5-victoria-liver-injury'],
+    },
+    {
+      level: 'anecdote',
+      text: 'Australia\'s medicines regulator received a report of a person whose vomiting was so severe it tore their food pipe after using a product sold as retatrutide. When the regulator tested the product, it held a different drug, semaglutide, and no retatrutide.',
+      sources: ['therapeutic-goods-2026-tga-tests-counterfeit-retatrutide'],
+      ledger: ['claims-4-tga-torn-oesophagus', 'claims-5-tga-no-retatrutide'],
+    },
+    {
       level: 'animal',
-      text: 'Lilly\'s early lab work in obese mice showed how the three-part design works: the mice ate less, and the glucagon part made their bodies burn more calories. Calorie-burning results in people have not been published.',
+      text: 'In Lilly\'s early lab work in obese mice, retatrutide lowered body weight in two ways: the mice ate less, and its glucagon part made their bodies burn more calories. Results on calorie burning in people have not been published.',
       sources: ['cell-metabolism-2022-ly3437943-novel-triple-glucagon'],
       ledger: ['pk-receptor-gcgr-energy-expenditure-mice'],
     },
     {
       level: 'animal',
-      text: 'In lab tests on mouse heart tissue, retatrutide made the heart\'s natural pacemaker beat faster, working through the glucagon receptor. This may help explain why heart rate rose in human trials, but animal tissue may not behave exactly like a person\'s heart.',
+      text: 'In lab tests on mouse heart tissue, retatrutide made the heart\'s natural pacemaker beat faster, working through its glucagon part, but it did not make the heart muscle squeeze harder. This may help explain why heart rate rose in human trials, but animal tissue may not behave exactly like a person\'s heart.',
       sources: ['naunyn-schmiedeberg-2025-contractile-effects-retatrutide-iso', 'new-england-2023-triple-hormone-receptor-agonist-2'],
       ledger: ['safety-heart-rate-mechanism-glucagon', 'trials-ph2-heart-rate-peak'],
     },
     {
       level: 'small-human',
-      text: 'The first studies in people were small. After a single shot in healthy volunteers, blood levels peaked half a day to 3 days later. A 12-week study in people with type 2 diabetes found it takes about 6 days for the amount in the blood to fall by half.',
+      text: 'The first studies in people were small. In Lilly\'s first study, 45 healthy volunteers got a single shot, and a review of that study reports that blood levels peaked half a day to 3 days later. A 12-week study in people with type 2 diabetes found it takes about 6 days for the amount in the blood to fall by half.',
       sources: ['biomolecules-mdpi-2025-retatrutide-a-game-changer', 'lancet-elsevier-2022-ly3437943-novel-triple-gip'],
       ledger: ['pk-tmax-single-dose-healthy', 'pk-half-life-6-days'],
     },
     {
       level: 'small-human',
-      text: 'Mid-stage (phase 2) trials then followed a few hundred people for up to 48 weeks: 338 adults with obesity or overweight, and 281 adults with type 2 diabetes. They found large average weight loss, and the most common side effects were stomach problems that got more common at higher doses.',
+      text: 'Mid-stage (phase 2) trials then tested it in a few hundred people. In 338 adults with obesity or overweight, the 12 mg group lost about 24% of their body weight on average by week 48 (counting only time on the drug), versus about 2% on placebo, and stomach problems were the most common side effects, more so at higher doses. In 281 adults with type 2 diabetes, the 12 mg group\'s HbA1c (a 3-month blood-sugar average) fell by about 2 points at 24 weeks.',
       sources: ['new-england-2023-triple-hormone-receptor-agonist-2', 'lancet-elsevier-2023-retatrutide-gip-glp-1'],
       ledger: ['trials-ph2-obesity-design', 'trials-ph2-weight-48wk', 'trials-ph2-gi-dose-related', 'trials-ph2-t2d-hba1c'],
     },
@@ -234,7 +247,7 @@ const evidence = {
     },
     {
       level: 'large-trial',
-      text: 'Large final-stage (phase 3) trials, each comparing the drug with a placebo, have reported results. Three are published in peer-reviewed journals: TRIUMPH-1 (2,339 adults without diabetes, 80 weeks), TRIUMPH-2 (1,152 adults with type 2 diabetes, 80 weeks) and TRANSCEND-T2D-1 (537 adults with type 2 diabetes, 40 weeks).',
+      text: 'Large final-stage (phase 3) trials, each comparing retatrutide with a placebo, have now reported results. Three have been published in peer-reviewed journals: TRIUMPH-1 (2,339 adults with obesity or overweight and no diabetes, 80 weeks), TRIUMPH-2 (1,152 adults with obesity or overweight and type 2 diabetes, 80 weeks) and TRANSCEND-T2D-1 (537 adults with fairly new type 2 diabetes, 40 weeks).',
       sources: [
         'new-england-2026-retatrutide-triple-hormone-receptor-2',
         'lancet-via-2026-retatrutide-adults-obesity-type',
@@ -244,24 +257,24 @@ const evidence = {
     },
     {
       level: 'large-trial',
-      text: 'Lilly has also announced TRIUMPH-3 (1,949 adults with severe obesity and heart or blood-vessel disease) and TRIUMPH-4 (445 adults with knee arthritis). The figures we show for these two come from Lilly\'s press releases.',
+      text: 'Lilly has also announced results from TRIUMPH-3 (1,949 adults with severe obesity and heart or blood-vessel disease) and TRIUMPH-4 (445 adults with obesity or overweight and knee arthritis). So far these two have been reported only in Lilly\'s press releases, not in peer-reviewed papers.',
       sources: ['eli-lilly-2026-lilly-s-triple-agonist-3', 'eli-lilly-2025-lilly-s-triple-agonist'],
       ledger: ['trials-triumph3-design', 'trials-triumph4-design'],
     },
   ],
   gaps: [
     {
-      text: 'What happens after more than 2 years on it. The comparison with placebo lasted only 80 weeks. The longest results, to 104 weeks, come from a selected group of 532 people who finished the main trial and handled the drug well.',
+      text: 'What happens after more than 2 years on it. In TRIUMPH-1, the comparison with placebo lasted 80 weeks. Results to 104 weeks come only from 532 people with a BMI (weight compared with height) of 35 or more who finished the main trial and handled their dose well, and in that extra time everyone got retatrutide.',
       sources: ['eli-lilly-2026-lilly-s-triple-agonist'],
       ledger: ['trials-unknown-longest-data'],
     },
     {
-      text: 'Whether it raises or lowers the risk of heart attacks, strokes and kidney failure. The trial built to answer this, with about 10,000 people, is still running and is not expected to finish until around February 2029. In TRIUMPH-3, there were too few heart events to show either protection or harm.',
+      text: 'Whether it raises or lowers the risk of heart attacks, strokes and kidney failure. The trial built to answer this, with about 10,000 people, is still running and is not expected to finish until around February 2029. In TRIUMPH-3, a trial in people who already had heart or blood-vessel disease, there were too few heart events to show either protection or harm.',
       sources: ['clinicaltrials-gov-2026-effect-retatrutide-once-weekly', 'eli-lilly-2026-lilly-s-triple-agonist-3'],
       ledger: ['trials-unknown-cvot', 'claims-13-heart-events-unclear'],
     },
     {
-      text: 'How often more serious problems happen, such as pancreatitis (an inflamed pancreas) or gallbladder and bile-duct disease. TRIUMPH-1 had too few pancreatitis cases (10 in total) to tell whether retatrutide raises the risk.',
+      text: 'How often more serious problems happen, such as pancreatitis (an inflamed pancreas) or gallbladder and bile-duct disease. A consumer safety group says this is not yet known. The TRIUMPH-1 researchers said its 10 pancreatitis cases were too few to tell whether retatrutide raises the risk.',
       sources: ['public-citizen-2026-miracle-drug-peptide-craze', 'new-england-2026-retatrutide-triple-hormone-receptor-3'],
       ledger: ['claims-4-full-safety-unknown', 'gap-phase3-serious-ae-rates-and-heart-rate-t1-pancreatitis-too-few'],
     },
@@ -271,11 +284,17 @@ const evidence = {
       ledger: ['trials-unknown-pregnancy-excluded', 'gap-personal-history-trial-exclusions-pregnancy-breastfeeding'],
     },
     {
-      text: 'How it affects people who were kept out of the trials. All four TRIUMPH trials left out people with badly reduced kidney function and anyone who had ever attempted suicide. TRIUMPH-1 also left out people who had ever had pancreatitis, or who had a personal or family history of medullary thyroid cancer (a rare thyroid cancer).',
+      text: 'Whether it makes birth-control pills less reliable. Lilly finished a study on this in July 2024, but as of October 2026 no results had been posted or published.',
+      sources: ['clinicaltrials-gov-2024-phase-1-study-investigate'],
+      ledger: ['gap-surgery-pregnancy-practical-guidance-reta-oc-ddi-no-results'],
+    },
+    {
+      text: 'How it affects people who were kept out of the trials. All four TRIUMPH trials left out people with badly reduced kidney function, anyone who had ever attempted suicide, and anyone who had used a drug in the same family, such as semaglutide or tirzepatide, in the 3 months before. So switching straight from those drugs was not studied. TRIUMPH-1 also left out people who had ever had pancreatitis, or who had a personal or family history of medullary thyroid cancer (a rare thyroid cancer).',
       sources: ['diabetes-obesity-2025-retatrutide-treatment-obesity-obstruct-3', 'clinicaltrials-gov-2026-study-retatrutide-ly3437943-particip'],
       ledger: [
         'gap-personal-history-trial-exclusions-kidney-egfr-under-30',
         'gap-personal-history-trial-exclusions-suicide-attempt-ever',
+        'gap-personal-history-trial-exclusions-recent-glp1-users',
         'trials-unknown-excluded-mtc-pancreatitis',
       ],
     },
@@ -285,7 +304,7 @@ const evidence = {
       ledger: ['trials-unknown-adults-only', 'gap-personal-history-trial-exclusions-adults-only'],
     },
     {
-      text: 'What is really in the products sold online. Lilly says black-market retatrutide "is not a medicine", and UK regulators say these products haven\'t been safety-tested and may not even contain retatrutide. Three tested vials held from about half to almost double the amount on the label, and a vial tested in Australia held a different drug, semaglutide, and no retatrutide.',
+      text: 'What is really in the products sold online. Lilly says black-market retatrutide "is not a medicine", and UK regulators say these products haven\'t been tested for safety and may not even contain retatrutide. In an Australian study, three vials held from about half to almost double the amount on their labels, and a vial tested by Australia\'s medicines regulator held a different drug, semaglutide, and no retatrutide.',
       sources: [
         'eli-lilly-2026-lilly-calls-online-platforms',
         'medicines-healthcare-2026-no-summer-shortcut-safe',
@@ -314,41 +333,46 @@ const evidence = {
 
 const claims = [
   {
-    claim: 'It caused huge weight loss in clinical trials.',
+    claim: 'It caused big weight loss in clinical trials.',
     verdict: 'supported',
     evidence: 'In the peer-reviewed TRIUMPH-1 trial, the 12 mg group lost 25.0% of their body weight on average over 80 weeks, versus 3.9% on placebo, counting everyone who started. Everyone in the main TRIUMPH trials also got healthy-eating and activity advice.',
     sources: ['new-england-2026-retatrutide-triple-hormone-receptor-2', 'diabetes-obesity-2025-retatrutide-treatment-obesity-obstruct-2'],
     ledger: ['claims-1-nejm-everyone-counted', 'claims-8-trials-with-diet'],
   },
   {
-    claim: 'You\'ll lose around a quarter to a third of your body weight.',
+    claim: 'You\'ll lose a quarter to almost a third of your body weight.',
     verdict: 'partly',
-    evidence: 'Those are group averages at the highest trial dose, not what each person gets. In TRIUMPH-1\'s 12 mg group the average was 25.0% when everyone who started was counted, and fewer than half (45.3%) lost 30% or more, even when figured as if everyone kept taking the drug.',
-    sources: ['new-england-2026-retatrutide-triple-hormone-receptor-2', 'eli-lilly-2026-lilly-s-triple-agonist'],
-    ledger: ['claims-1-nejm-everyone-counted', 'claims-1-not-everyone-30'],
+    evidence: 'Those are averages for the highest-dose trial groups, not what each person gets. In TRIUMPH-1\'s 12 mg group the average was 25.0% counting everyone who started, and fewer than half (45.3%) lost 30% or more even when figured as if everyone kept taking the drug. People with type 2 diabetes lost less: 18.8% in TRIUMPH-2\'s 12 mg group.',
+    sources: [
+      'new-england-2026-retatrutide-triple-hormone-receptor-2',
+      'eli-lilly-2026-lilly-s-triple-agonist',
+      'lancet-via-2026-retatrutide-adults-obesity-type',
+    ],
+    ledger: ['claims-1-nejm-everyone-counted', 'claims-1-not-everyone-30', 'claims-1-type2-diabetes-less'],
   },
   {
     claim: 'It keeps or even builds muscle. Only fat comes off.',
     verdict: 'not-supported',
-    evidence: 'Body scans in people with type 2 diabetes showed lean tissue, which includes muscle, was lost along with fat, in about the same share as with other obesity drugs. No retatrutide trial has shown it builds muscle.',
+    evidence: 'In a small body-scan study of 103 people with type 2 diabetes, lean tissue (which includes muscle) was lost along with fat, in about the same share as with other obesity treatments. No retatrutide trial has shown it builds muscle.',
     sources: ['lancet-diabetes-2025-effects-retatrutide-body-composition'],
     ledger: ['claims-2-lean-mass-also-lost', 'claims-2-small-diabetes-only-sample'],
   },
   {
     claim: 'It works better than Ozempic or Mounjaro, with fewer side effects.',
     verdict: 'not-supported',
-    evidence: 'No finished final-stage trial has compared them head to head yet, and the trial against tirzepatide (Mounjaro) is still running. Side effects were common: in TRIUMPH-1, 42.4% of the 12 mg group had nausea, versus 14.8% on placebo.',
+    evidence: 'No finished final-stage trial has compared them head to head, and the trial against tirzepatide (Mounjaro) is still running. Side effects were common: in TRIUMPH-1, 42.4% of the 12 mg group had nausea versus 14.8% on placebo, and a 2026 analysis that pooled 58 trials found people stopped retatrutide because of side effects more often than several other weight-loss drugs (low-certainty evidence).',
     sources: [
       'eli-lilly-2026-how-does-retatrutide-compare',
       'clinicaltrials-gov-2026-study-retatrutide-ly3437943-compared',
       'eli-lilly-2026-lilly-s-triple-agonist',
+      'bmj-medicine-2026-comparative-efficacy-safety-glucagon',
     ],
-    ledger: ['claims-3-no-head-to-head', 'claims-3-triumph5-pending', 'claims-3-gi-rates-triumph1'],
+    ledger: ['claims-3-no-head-to-head', 'claims-3-triumph5-pending', 'claims-3-gi-rates-triumph1', 'claims-3-nma-more-dropouts'],
   },
   {
     claim: 'It\'s safe because it\'s in phase 3. It\'s basically approved.',
     verdict: 'not-supported',
-    evidence: 'No regulator anywhere has approved it, and the FDA says it has not been found safe and effective for any condition. Phase 3 means it is still being tested, and Lilly has not yet asked the FDA for approval.',
+    evidence: 'No regulator anywhere has approved it, and the FDA says it has not been found safe and effective for any condition. Phase 3 means it is still being tested, and Lilly has not yet asked the FDA for approval: it plans to apply in early 2027.',
     sources: [
       'eli-lilly-2026-lilly-calls-online-platforms',
       'u-s-2026-fda-s-concerns-unapproved-2',
@@ -359,7 +383,7 @@ const claims = [
   {
     claim: 'Research-grade vials are the same as the real drug. The lab certificate proves it.',
     verdict: 'not-supported',
-    evidence: 'Three tested vials held from about half to almost double the amount on their labels, and a vial tested by Australia\'s regulator held a different drug and no retatrutide. Most lab test panels skip endotoxins (toxins from bacteria), so a high-purity certificate doesn\'t show a vial is free of them.',
+    evidence: 'In an Australian study, three vials held from about half to almost double the amount on their labels, and a vial tested by Australia\'s regulator held a different drug and no retatrutide. According to the testing service Finnrick, most lab test panels skip endotoxins (toxins from bacteria), so a high-purity certificate doesn\'t show a vial is free of them.',
     sources: [
       'wiley-drug-2026-composition-labelling-accuracy-products',
       'therapeutic-goods-2026-tga-tests-counterfeit-retatrutide',
@@ -368,16 +392,16 @@ const claims = [
     ledger: ['claims-5-australia-dose-range', 'claims-5-tga-no-retatrutide', 'claims-5-coa-skips-endotoxin'],
   },
   {
-    claim: 'It\'s legal to buy as long as it\'s labeled "for research use".',
+    claim: 'It\'s legal as long as it\'s labeled "for research use".',
     verdict: 'not-supported',
-    evidence: 'The FDA says companies selling it labeled "for research purposes" or "not for human consumption" are selling it illegally. Lilly says it is legally available only through its clinical trials, plus a narrow program that a doctor has to apply for.',
+    evidence: 'The FDA says companies selling it labeled "for research purposes" or "not for human consumption" are selling it illegally. Lilly says it is legally available only through its clinical trials; the one narrow exception is a Lilly program that a doctor can request for certain adults with severe obesity who can\'t join a trial.',
     sources: ['u-s-2026-fda-s-concerns-unapproved-2', 'eli-lilly-2026-lilly-s-triple-agonist'],
     ledger: ['claims-11-fda-falsely-labeled', 'claims-11-lilly-only-trials'],
   },
   {
     claim: 'It\'s natural, just a peptide, so it\'s gentle.',
     verdict: 'not-supported',
-    evidence: 'It is a lab-made molecule the body does not make, and it is built to last: in an early trial it took about 6 days for the amount in the blood to fall by half. The FDA warns that injected products skip some of the body\'s key defenses against germs and toxins.',
+    evidence: 'It is a lab-made molecule the body does not make, and it is built to last: in an early trial in people with type 2 diabetes, it took about 6 days for the amount in the blood to fall by half. The FDA warns that injected products skip some of the body\'s key defenses against germs and toxins.',
     sources: [
       'diabetes-obesity-2025-retatrutide-treatment-obesity-obstruct-2',
       'naunyn-schmiedeberg-2025-inotropic-effects-retatrutide-isola',
@@ -389,28 +413,28 @@ const claims = [
   {
     claim: 'It has no effect on the heart.',
     verdict: 'not-supported',
-    evidence: 'In the phase 2 trial it raised heart rate, more at higher doses, and the rise peaked and then eased. In TRIUMPH-2, low blood pressure was reported in 6% of the 12 mg group versus under 1% on placebo.',
+    evidence: 'In the phase 2 trial it raised heart rate, more at higher doses; the rise peaked at 24 weeks and then went down. In TRIUMPH-2, low blood pressure was reported in 6% of the 12 mg group versus under 1% on placebo.',
     sources: ['new-england-2023-triple-hormone-receptor-agonist-2', 'lancet-via-2026-retatrutide-adults-obesity-type'],
     ledger: ['claims-13-heart-rate-rises', 'claims-13-low-blood-pressure'],
   },
   {
     claim: 'Microdosing it boosts energy, longevity and anti-aging.',
     verdict: 'not-supported',
-    evidence: 'None of the 35 retatrutide studies on ClinicalTrials.gov tests longevity or anti-aging, and the biggest finished weight-loss trial tested set doses, not tiny "microdoses". Experts say good evidence for microdosing drugs in this family is essentially absent.',
+    evidence: 'None of the 35 retatrutide studies on ClinicalTrials.gov tests longevity or anti-aging, and the biggest finished weight-loss trial tested set doses, not tiny "microdoses". Experts reviewing microdosing of drugs like semaglutide and tirzepatide say good-quality evidence for it is essentially absent.',
     sources: ['new-england-2026-retatrutide-triple-hormone-receptor-2', 'expert-opinion-2026-considerations-challenges-microdosing-gl'],
     ledger: ['claims-6-trials-tested-weight-not-aging', 'claims-6-microdosing-evidence-absent'],
   },
   {
     claim: 'It reverses fatty liver.',
     verdict: 'partly',
-    evidence: 'In a small study of 98 people with fatty liver, liver fat fell by about 82% in the 12 mg group after 24 weeks. But no liver biopsies were done, so it could not show that liver damage or scarring was reversed.',
+    evidence: 'In a small study of 98 people with fatty liver, the 12 mg group\'s liver fat fell by about 82% from its own starting level after 24 weeks, while it did not change on placebo. But no liver biopsies were done, so the study could not show that liver damage or scarring was reversed.',
     sources: ['nature-medicine-2024-triple-hormone-receptor-agonist'],
     ledger: ['claims-7-liver-fat-drop', 'claims-7-no-biopsy-small'],
   },
   {
     claim: 'It fixes knee pain.',
     verdict: 'partly',
-    evidence: 'In adults with excess weight and knee arthritis, pain dropped more on retatrutide, but the placebo groups improved a lot too. In the peer-reviewed TRIUMPH-1 knee group, the extra benefit over placebo was about 1.6 to 1.8 points on a 10-point pain scale.',
+    evidence: 'The knee results come only from adults with excess weight and knee arthritis, and their pain also dropped a lot on placebo (by about 40% in Lilly\'s knee trial). In the peer-reviewed TRIUMPH-1 knee group, the extra benefit over placebo was about 1.6 to 1.8 points on a 10-point pain scale.',
     sources: ['eli-lilly-2025-lilly-s-triple-agonist', 'new-england-2026-retatrutide-triple-hormone-receptor-2'],
     ledger: ['claims-10-who-was-studied', 'claims-10-placebo-improved-too', 'claims-10-nejm-difference'],
   },
@@ -428,7 +452,7 @@ const claims = [
   {
     claim: 'The weight stays off after you stop.',
     verdict: 'unknown',
-    evidence: 'There are no results yet on stopping retatrutide, and a trial testing this runs until about 2028. With the related drug tirzepatide, people switched to placebo regained 14% of their body weight within a year.',
+    evidence: 'There are no results yet on stopping retatrutide, and a trial testing this runs until about 2028. With the related drug tirzepatide, people switched to placebo regained 14% of their body weight within a year, but that is a different drug and does not prove what happens with retatrutide.',
     sources: ['clinicaltrials-gov-2026-clinicaltrials-gov-nct06859268-phase', 'jama-american-2024-continued-treatment-tirzepatide-maintenan'],
     ledger: ['claims-9-retatrutide-stop-trial-running', 'claims-9-tirzepatide-regain'],
   },

@@ -6,7 +6,8 @@ export const SOURCES = {
     "title": "988 Suicide & Crisis Lifeline",
     "publisher": "988 Lifeline (Vibrant Emotional Health / SAMHSA)",
     "url": "https://988lifeline.org",
-    "date": "accessed 2026-10-07",
+    "date": "2026-10-07",
+    "dateNote": "accessed",
     "type": "nonprofit"
   },
   "aaps-journal-2012-mechanistic-determinants-biotherapeutics-a": {
@@ -27,7 +28,8 @@ export const SOURCES = {
     "title": "Glucagon-like Peptide-1 (GLP-1) Agonists - Track Emerging Hazards",
     "publisher": "America's Poison Centers",
     "url": "https://poisoncenters.org/track/glp-1",
-    "date": "accessed 2026-10-07 (data as of 2025-04-30)",
+    "date": "2026-10-07",
+    "dateNote": "accessed",
     "type": "nonprofit"
   },
   "america-s-2026-news-alerts": {
@@ -41,7 +43,8 @@ export const SOURCES = {
     "title": "Do you have hair loss or hair shedding?",
     "publisher": "American Academy of Dermatology (AAD)",
     "url": "https://www.aad.org/public/diseases/hair-loss/insider/shedding",
-    "date": "undated (accessed 2026-10-08)",
+    "date": "2026-10-08",
+    "dateNote": "accessed",
     "type": "nonprofit"
   },
   "american-diabetes-2026-16-diabetes-care-hospital": {
@@ -55,7 +58,8 @@ export const SOURCES = {
     "title": "Low Blood Glucose (Hypoglycemia)",
     "publisher": "American Diabetes Association",
     "url": "https://diabetes.org/living-with-diabetes/treatment-care/hypoglycemia",
-    "date": "undated (accessed 2026-10-08)",
+    "date": "2026-10-08",
+    "dateNote": "accessed",
     "type": "nonprofit"
   },
   "american-heart-2024-symptoms-diagnosis-monitoring-arrhythmia": {
@@ -587,7 +591,8 @@ export const SOURCES = {
     "title": "Mounjaro (tirzepatide) - EPAR Product Information (SmPC section 4.5)",
     "publisher": "European Medicines Agency",
     "url": "https://www.ema.europa.eu/en/documents/product-information/mounjaro-epar-product-information_en.pdf",
-    "date": "accessed 2026-10-08",
+    "date": "2026-10-08",
+    "dateNote": "accessed",
     "type": "label"
   },
   "expert-opinion-2026-considerations-challenges-microdosing-gl": {
@@ -601,7 +606,8 @@ export const SOURCES = {
     "title": "Methodology",
     "publisher": "Finnrick",
     "url": "https://www.finnrick.com/methodology",
-    "date": "2026-09-29 (test data last updated)",
+    "date": "2026-09-29",
+    "dateNote": "test data last updated",
     "type": "testing-lab"
   },
   "finnrick-2026-retatrutide-lab-test-certificate": {
@@ -629,7 +635,8 @@ export const SOURCES = {
     "title": "Retatrutide Safety Testing Results & Vendor Ratings",
     "publisher": "Finnrick",
     "url": "https://www.finnrick.com/products/retatrutide",
-    "date": "2026-10-08 (accessed; latest test 2026-09-25)",
+    "date": "2026-10-08",
+    "dateNote": "accessed; latest test 2026-09-25",
     "type": "testing-lab"
   },
   "frontiers-endocrinology-2019-discovery-development-liragluti": {
@@ -1469,7 +1476,8 @@ export const SOURCES = {
     "title": "FDA Warning Letters index, full-text search for 'retatrutide' (warning_letter_solr_index)",
     "publisher": "U.S. Food and Drug Administration",
     "url": "https://www.fda.gov/datatables/views/ajax?search_api_fulltext=retatrutide&view_name=warning_letter_solr_index&view_display_id=warning_letter_solr_block&start=0&length=100&draw=1",
-    "date": "2026-10-08 (accessed)",
+    "date": "2026-10-08",
+    "dateNote": "accessed",
     "type": "regulator"
   },
   "u-s-2026-foundayo-orforglipron-tablets": {
@@ -1483,7 +1491,8 @@ export const SOURCES = {
     "title": "Global Substance Registration System record: RETATRUTIDE (UNII NOP2Y096GV)",
     "publisher": "U.S. FDA / NCATS Global Substance Registration System (GSRS)",
     "url": "https://gsrs.ncats.nih.gov/api/v1/substances(52f7c547-14ed-454d-9bc2-c9137d0b5922)?view=full",
-    "date": "accessed 2026-10-07",
+    "date": "2026-10-07",
+    "dateNote": "accessed",
     "type": "regulator"
   },
   "u-s-2026-heart-palpitations-medlineplus-medical": {
@@ -1511,7 +1520,8 @@ export const SOURCES = {
     "title": "openFDA Drug Adverse Event API (FAERS): search patient.drug.medicinalproduct:retatrutide",
     "publisher": "U.S. Food and Drug Administration (openFDA)",
     "url": "https://api.fda.gov/drug/event.json?search=patient.drug.medicinalproduct:retatrutide&limit=100",
-    "date": "2026-07-30 (data last updated; accessed 2026-10-08)",
+    "date": "2026-07-30",
+    "dateNote": "data last updated; accessed 2026-10-08",
     "type": "regulator"
   },
   "u-s-2026-openfda-drug-adverse-event-2": {

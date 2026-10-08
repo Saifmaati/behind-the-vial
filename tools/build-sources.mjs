@@ -12,11 +12,19 @@ const claims = new Map(JSON.parse(readFileSync(`${ROOT}research/claims.json`, 'u
 const out = {};
 for (const s of sources.sort((a, b) => a.id.localeCompare(b.id))) {
   const users = s.usedBy.map(id => claims.get(id)).filter(Boolean);
+  // Dates must be YYYY, YYYY-MM or YYYY-MM-DD. Researchers sometimes recorded "accessed 2026-10-07"
+  // or "2026-07-30 (data last updated; accessed ...)": keep the first date as `date` (publication or
+  // data-update date when given, else the access date) and the rest as a short `dateNote`.
+  const raw = String(s.date || '');
+  const m = raw.match(/\d{4}-\d{2}-\d{2}|\d{4}-\d{2}|\d{4}/);
+  const isAccessOnly = /^(undated\s*)?\(?accessed/i.test(raw.trim()) || /^\d{4}-\d{2}-\d{2} \(accessed\)$/.test(raw.trim());
+  const dateNote = raw === (m && m[0]) ? undefined : (isAccessOnly ? 'accessed' : raw.replace(m ? m[0] : '', '').replace(/^[\s(;]+|[\s);]+$/g, '').replace(/\s+/g, ' ') || undefined);
   out[s.id] = {
     title: s.title,
     publisher: s.publisher,
     url: s.url,
-    date: s.date,
+    date: m ? m[0] : '',
+    ...(dateNote ? { dateNote } : {}),
     type: s.type,
     ...(users.length && users.every(c => c.unverified) ? { unverified: true } : {}),
   };
