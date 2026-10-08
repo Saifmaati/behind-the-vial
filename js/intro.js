@@ -50,8 +50,10 @@ const CHAPTERS = [
   { id: 'blood', from: 0.646, to: 0.762, stop: 0.712 },
   { id: 'body', from: 0.8, to: 0.894, stop: 0.858 },
 ];
-// keyboard / button stops and the reduced-motion still frames (0 = opening, last = end card)
+// keyboard / button stops (0 = opening, last = end card) and, for reduced motion, the frame shown at each
+// stop: picked where that chapter's picture is complete (the site ring drawn, the drop formed, …)
 const STOPS = [0, ...CHAPTERS.map((c) => c.stop), 1];
+const STILLS = [0, 0.11, 0.262, 0.441, 0.556, 0.712, 0.875, 1];
 // shots: which 3D set is on screen; neighbours overlap during a dissolve
 const SHOTS = [
   { set: 'studio', from: 0, to: 0.322 },
@@ -61,7 +63,6 @@ const SHOTS = [
   { set: 'glass', from: 0.772, to: 1.01 },
 ];
 const SMOOTH = 5.2;                    // scroll follow rate (1/s); higher = snappier
-const TEXT_DEADLINE_MS = 6000;         // if the 3D is not ready by then the still stays (text is static anyway)
 
 const clamp01 = (x) => (x < 0 ? 0 : x > 1 ? 1 : x);
 const sstep = (a, b, x) => { const t = clamp01((x - a) / (b - a)); return t * t * (3 - 2 * t); };
@@ -138,7 +139,7 @@ export function mountIntro(host, opts = {}) {
     for (let k = 1; k < STOPS.length; k++) if (p >= (STOPS[k - 1] + STOPS[k]) / 2) i = k;
     return i;
   }
-  function filmP() { return reducedMotion ? STOPS[stopIndexFor(S.target)] : S.shown; }
+  function filmP() { return reducedMotion ? STILLS[stopIndexFor(S.target)] : S.shown; }
 
   function scrollToP(p, { instant = false } = {}) {
     const top = Math.round(clamp01(p) * maxScroll());
@@ -233,7 +234,18 @@ export function mountIntro(host, opts = {}) {
 
   on(host, 'scroll', () => { readTarget(); wake(); }, { passive: true });
   on(document, 'visibilitychange', () => { if (!document.hidden) wake(); });
-  on(window, 'resize', () => { readTarget(); wake(); });
+  // keep the same place in the film when the viewport (and so the track) changes size
+  let lastMax = maxScroll();
+  on(window, 'resize', () => {
+    const m = maxScroll();
+    if (m !== lastMax && host.classList.contains('intro--film')) {
+      const keep = S.target;
+      lastMax = m;
+      host.scrollTop = Math.round(keep * m);
+    }
+    readTarget();
+    wake();
+  });
 
   // ------------------------------------------------------------------------------------------- leave
   function leave(reason) {
@@ -306,7 +318,6 @@ export function mountIntro(host, opts = {}) {
       console.warn('[intro] 3D unavailable, keeping the still title card.', err);
       fallbackToStill();
     });
-    later(() => { if (!gl || !gl.ready) host.classList.add('intro--slow'); }, TEXT_DEADLINE_MS);
   }
   function fallbackToStill() {
     host.classList.remove('intro--film', 'intro--webgl');
@@ -318,7 +329,7 @@ export function mountIntro(host, opts = {}) {
   }
 
   async function start3D() {
-    const [THREE, composerMod, bloomMod, passMod, syringeMod, vialMod, gltfMod, meshoptMod] = await Promise.all([
+    const [THREE, composerMod, bloomMod, passMod, syringeMod, vialMod, gltfMod, meshoptMod, bguMod] = await Promise.all([
       import('three'),
       import('three/addons/postprocessing/EffectComposer.js'),
       import('three/addons/postprocessing/UnrealBloomPass.js'),
@@ -327,6 +338,7 @@ export function mountIntro(host, opts = {}) {
       import('./scene/vial.js'),
       import('three/addons/loaders/GLTFLoader.js'),
       import('three/addons/libs/meshopt_decoder.module.js'),
+      import('three/addons/utils/BufferGeometryUtils.js'),
     ]);
     if (disposed || leaving) return;
     gl = createRuntime({
@@ -339,11 +351,13 @@ export function mountIntro(host, opts = {}) {
       createVial: vialMod.createVial,
       GLTFLoader: gltfMod.GLTFLoader,
       MeshoptDecoder: meshoptMod.MeshoptDecoder,
+      mergeVertices: bguMod.mergeVertices,
     }, {
       canvasHost,
       labelsHost: els.labels,
       reducedMotion,
       quality: debug && Number.isFinite(debug.quality) ? debug.quality : null,
+      debug,
       onReady() {
         if (disposed) return;
         host.classList.add('intro--webgl');
@@ -379,7 +393,7 @@ export function mountIntro(host, opts = {}) {
     try { host.scrollTop = 0; } catch { /* detached */ }
     for (const [el] of domCache) { for (const n of ['--o', '--p']) el.style.removeProperty(n); el.classList.remove('is-off', 'is-on'); }
     host.classList.remove('intro--js', 'intro--film', 'intro--still', 'intro--webgl', 'intro--no-webgl', 'intro--leaving',
-      'intro--end', 'intro--opening', 'intro--slow');
+      'intro--end', 'intro--opening');
     delete host.dataset.chapter;
     if (createdTrack) track.remove();
     if (els.labels) els.labels.textContent = '';
@@ -503,7 +517,7 @@ function createRuntime(mods, cfg) {
       tmpV.copy(lab.anchor).applyMatrix4(lab.matrix || IDENTITY).project(set.camera);
       if (tmpV.z > 1 || tmpV.z < -1) { L.el.style.opacity = '0'; L.o = 0; continue; }
       const x = Math.round((tmpV.x * 0.5 + 0.5) * W * 10) / 10;
-      const y = Math.round((-tmpV.y * 0.5 + 0.5) * H * 10) / 10;
+      const y = Math.round(((-tmpV.y * 0.5 + 0.5) * H + (lab.dy || 0)) * 10) / 10;
       if (x !== L.x || y !== L.y) { L.el.style.transform = `translate3d(${x}px, ${y}px, 0)`; L.x = x; L.y = y; }
       const oo = Math.round(o * 100) / 100;
       if (oo !== L.o) { L.el.style.opacity = String(oo); L.o = oo; }
@@ -521,7 +535,7 @@ function createRuntime(mods, cfg) {
   composer.setSize(W, H);
   const film = makeFilmPass(THREE, Pass, FullScreenQuad, W * pixelRatio, H * pixelRatio, samples);
   composer.addPass(film.pass);
-  const bloom = new UnrealBloomPass(new THREE.Vector2(W * pixelRatio, H * pixelRatio), 0.55, 0.62, 0.92);
+  const bloom = new UnrealBloomPass(new THREE.Vector2(W * pixelRatio, H * pixelRatio), 0.4, 0.38, 1.0);
   composer.addPass(bloom);
   const finalPass = makeFinalPass(THREE, Pass, FullScreenQuad);
   composer.addPass(finalPass);
@@ -536,8 +550,10 @@ function createRuntime(mods, cfg) {
   function lensShift(p) {
     const card = Math.max(1 - sstep(0.02, 0.07, p), sstep(0.88, 0.93, p));
     const wide = sstep(0.85, 1.25, L.aspect); // 0 portrait … 1 landscape
+    L.card = card;
+    L.wide = wide;
     L.sx = wide * (0.1 + 0.095 * card);
-    L.sy = (1 - wide) * (0.1 + 0.07 * card);
+    L.sy = (1 - wide) * (0.12 + 0.11 * card);
   }
   function applyCamera(cam, fov) {
     cam.aspect = W / H;
@@ -587,7 +603,6 @@ function createRuntime(mods, cfg) {
   let stopped = false;
   let disposedRt = false;
   let ready = false;
-  let lastShot = { a: null, b: null };
   let frames = 0;
   let clockNow = 0;
   const state = { p: 0, a: '', b: '', mix: 0 };
@@ -656,8 +671,9 @@ function createRuntime(mods, cfg) {
     }
     finalPass.uniforms.uFade.value = fade;
     finalPass.uniforms.uTime.value = t;
-    finalPass.uniforms.uFadeIn.value = Math.min(1, frames / 6);
-    bloom.strength = exitAt >= 0 ? bloom.strength : (A.bloom ?? 0.55) * (1 - mix) + (B ? (B.bloom ?? 0.55) * mix : 0);
+    finalPass.uniforms.uFadeIn.value = 1; // the canvas itself fades in (css/intro.css)
+    bloom.strength = exitAt >= 0 ? bloom.strength : (A.bloom ?? 0.4) * (1 - mix) + (B ? (B.bloom ?? 0.4) * mix : 0);
+    bloom.threshold = (A.bloomThreshold ?? 1) * (1 - mix) + (B ? (B.bloomThreshold ?? 1) * mix : 0);
     composer.render(dts);
     frames++;
     // labels follow the shot on screen
@@ -668,9 +684,10 @@ function createRuntime(mods, cfg) {
       else if (s === B) placeLabels(s, mix);
       else hideLabels(s);
     }
-    if (lastShot.a !== A) lastShot.a = A;
     state.p = p; state.a = A.name; state.b = B ? B.name : ''; state.mix = mix;
   }
+
+  if (cfg.debug) window.__introRT = { sets, bloom, renderer, finalPass, L }; // dev sandbox only
 
   // ------------------------------------------------------------------------------------- resize / context
   let resizeQueued = 0;
@@ -804,7 +821,7 @@ function makeFilmPass(THREE, Pass, FullScreenQuad, w, h, samples) {
   };
 }
 
-/** Tone map (ACES), sRGB, a warm obsidian lift, vignette, fine grain and a hint of lens fringing. */
+/** Tone map (AgX: gentle on skin and saturated reds), sRGB, a warm obsidian lift, vignette, fine grain, a hint of lens fringing. */
 function makeFinalPass(THREE, Pass, FullScreenQuad) {
   const uniforms = {
     tDiffuse: { value: null },
@@ -849,8 +866,9 @@ function makeFinalPass(THREE, Pass, FullScreenQuad) {
         col.r = texture2D(tDiffuse, vUv + off).r;
         col.g = texture2D(tDiffuse, vUv).g;
         col.b = texture2D(tDiffuse, vUv - off).b;
-        col = ACESFilmicToneMapping(col);
+        col = AgXToneMapping(col * 1.18);
         vec4 o = sRGBTransferOETF(vec4(col, 1.0));
+        o.rgb = mix(o.rgb, o.rgb * o.rgb * (3.0 - 2.0 * o.rgb), 0.3); // a gentle S-curve: AgX alone reads flat
         // obsidian lift: blacks sit on a warm near-black, never pure #000
         o.rgb = o.rgb * (1.0 - vec3(0.034, 0.032, 0.03)) + vec3(0.034, 0.032, 0.03);
         float vig = 1.0 - uVignette * smoothstep(0.1, 0.78, r2 * 1.55);
@@ -968,10 +986,10 @@ function buildStudio(THREE) {
     m.lookAt(0, 0, 0);
     s.add(m);
   };
-  panel(-3.6, 0.8, -3.4, 1.0, 9, 0xfff3e2, 6.0);   // tall strip, left behind
-  panel(3.9, 1.0, -3.0, 0.8, 9, 0xffe9cc, 7.5);    // tall strip, right behind
-  panel(0.2, 6.0, -0.6, 6.5, 2.4, 0xfffaf2, 2.4);  // overhead softbox
-  panel(-4.2, 1.6, 3.4, 2.2, 5.5, 0xfff4e6, 1.2);  // front-left key box
+  panel(-3.6, 0.8, -3.4, 1.0, 9, 0xfff3e2, 4.2);   // tall strip, left behind
+  panel(3.9, 1.0, -3.0, 0.8, 9, 0xffe9cc, 5.2);    // tall strip, right behind
+  panel(0.2, 6.0, -0.6, 6.5, 2.4, 0xfffaf2, 1.8);  // overhead softbox
+  panel(-4.2, 1.6, 3.4, 2.2, 5.5, 0xfff4e6, 0.8);  // front-left key box
   panel(0, 1.0, 6.0, 9, 4, 0xf4e6d0, 0.16);        // faint front fill
   panel(3.0, -2.6, 1.6, 2.4, 1.4, 0xc8a96a, 0.7);  // low champagne kicker
   return s;
@@ -997,7 +1015,6 @@ export const __dev = { buildStudio, addStudioLights };
  * RGBA8: rg = normal xy, b = cavity (1 flat, lower in pores and furrows), a = 1. One tile ≈ 10 mm of skin.
  */
 function makeSkinTexture(THREE, N = 512) {
-  const rnd = mulberry32(20261008);
   const h = new Float32Array(N * N);
   const cav = new Float32Array(N * N);
   // tileable value noise
@@ -1023,9 +1040,9 @@ function makeSkinTexture(THREE, N = 512) {
     for (let i = 0; i < G * G; i++) { pts[i * 3] = r(); pts[i * 3 + 1] = r(); pts[i * 3 + 2] = r(); }
     return pts;
   }
-  const PG = 22, pores = points(PG, 11);   // pores ≈ 0.45 mm apart
-  const FG = 7, furrows = points(FG, 13);  // furrow plateaus ≈ 1.4 mm
-  const F2G = 15, furrows2 = points(F2G, 17);
+  const PG = 26, pores = points(PG, 11);   // pores ≈ 0.4 mm apart
+  const FG = 11, furrows = points(FG, 13); // furrow plateaus ≈ 0.9 mm (the fine diamond pattern of skin)
+  const F2G = 23, furrows2 = points(F2G, 17);
   function worley(x, y, G, pts) {
     const cs = N / G;
     const cx = Math.floor(x / cs), cy = Math.floor(y / cs);
@@ -1048,19 +1065,21 @@ function makeSkinTexture(THREE, N = 512) {
       let v = 0.5 * n1(x, y) + 0.3 * n2(x, y) + 0.2 * n3(x, y);
       v *= 0.55;
       const [p1, , pw] = worley(x, y, PG, pores);
-      const pr = 0.13 + 0.09 * pw;
-      const pore = p1 < pr ? Math.pow(1 - p1 / pr, 2) : 0;
-      const [a1, a2] = worley(x, y, FG, furrows);
-      const fur = Math.max(0, 1 - (a2 - a1) / 0.07);
+      const pr = 0.1 + 0.08 * pw;
+      const pore = p1 < pr ? Math.pow(1 - p1 / pr, 1.5) : 0;
+      const [a1, a2, aw] = worley(x, y, FG, furrows);
+      const fe = Math.max(0, 1 - (a2 - a1) / 0.13);
+      const fur = fe * fe * (3 - 2 * fe) * (0.45 + 0.55 * aw);
       const [b1, b2] = worley(x, y, F2G, furrows2);
-      const fur2 = Math.max(0, 1 - (b2 - b1) / 0.09);
-      v -= 0.9 * pore + 0.42 * fur * fur + 0.18 * fur2 * fur2;
+      const fe2 = Math.max(0, 1 - (b2 - b1) / 0.16);
+      const fur2 = fe2 * fe2;
+      v -= 0.8 * pore + 0.15 * fur + 0.06 * fur2;
       h[i] = v;
-      cav[i] = 1 - Math.min(1, 0.85 * pore + 0.35 * fur + 0.12 * fur2);
+      cav[i] = 1 - Math.min(1, 0.95 * pore + 0.16 * fur + 0.05 * fur2);
     }
   }
   const data = new Uint8Array(N * N * 4);
-  const k = 2.6;
+  const k = 1.9 * (N / 512);
   for (let y = 0; y < N; y++) {
     for (let x = 0; x < N; x++) {
       const i = y * N + x;
@@ -1075,7 +1094,6 @@ function makeSkinTexture(THREE, N = 512) {
       data[i * 4 + 3] = 255;
     }
   }
-  void rnd;
   const tex = new THREE.DataTexture(data, N, N, THREE.RGBAFormat, THREE.UnsignedByteType);
   tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
   tex.magFilter = THREE.LinearFilter;
@@ -1112,7 +1130,7 @@ const GLSL_NOISE = /* glsl */`
  * `scale` = texture tiles per world unit), cavity darkening, soft mottling, a warm wrap-light term that
  * reads as light scattering under the skin, and an optional champagne reticle drawn on the surface.
  */
-function makeSkinMaterial(THREE, skinTex, { scale, mottleScale, color = 0xc49377, reticle = false, envMapIntensity = 0.55 } = {}) {
+function makeSkinMaterial(THREE, skinTex, { scale, mottleScale, color = 0xb48a76, reticle = false, navel = false, envMapIntensity = 0.55 } = {}) {
   const mat = new THREE.MeshPhysicalMaterial({
     name: 'intro-skin',
     color,
@@ -1132,17 +1150,19 @@ function makeSkinMaterial(THREE, skinTex, { scale, mottleScale, color = 0xc49377
     uMottleScale: { value: mottleScale },
     uDetail: { value: 1.0 },
     uWrap: { value: 0.6 },
-    uScatter: { value: new THREE.Color(1.0, 0.36, 0.22) },
+    uScatter: { value: new THREE.Color(0.62, 0.26, 0.2) },
     uSite: { value: new THREE.Vector3() },
     uSiteN: { value: new THREE.Vector3(0, 0, 1) },
     uSiteT: { value: new THREE.Vector3(1, 0, 0) },
     uReticle: { value: 0 },
     uRingR: { value: 0.009 },
     uRingW: { value: 0.00012 },
-    uRingColor: { value: new THREE.Color(HEX.champagnePale).multiplyScalar(2.4) },
+    uRingColor: { value: new THREE.Color(HEX.champagnePale).multiplyScalar(1.15) },
+    uNavel: { value: new THREE.Vector3(0, -10, 0) },
+    uNavelN: { value: new THREE.Vector3(0, 0, 1) },
   };
   mat.userData.uniforms = u;
-  mat.defines = { ...(mat.defines || {}), ...(reticle ? { SKIN_RETICLE: '' } : {}) };
+  mat.defines = { ...(mat.defines || {}), ...(reticle ? { SKIN_RETICLE: '' } : {}), ...(navel ? { SKIN_NAVEL: '' } : {}) };
   mat.onBeforeCompile = (sh) => {
     Object.assign(sh.uniforms, u);
     sh.vertexShader = sh.vertexShader
@@ -1164,6 +1184,8 @@ uniform float uReticle;
 uniform float uRingR;
 uniform float uRingW;
 uniform vec3 uRingColor;
+uniform vec3 uNavel;
+uniform vec3 uNavelN;
 ${GLSL_NOISE}`)
       .replace('#include <color_fragment>', `#include <color_fragment>
 {
@@ -1185,8 +1207,26 @@ float skCav = 1.0;
   vec2 dx = tx.xy * 2.0 - 1.0, dy = ty.xy * 2.0 - 1.0, dz = tz.xy * 2.0 - 1.0;
   vec3 pert = vec3(0.0, dx.y, dx.x) * bw.x + vec3(dy.x, 0.0, dy.y) * bw.y + vec3(dz.x, dz.y, 0.0) * bw.z;
   vec3 wNp = normalize(wN + pert * uDetail);
-  normal = normalize((viewMatrix * vec4(wNp, 0.0)).xyz);
   skCav = mix(1.0, tx.z * bw.x + ty.z * bw.y + tz.z * bw.z, uDetail);
+#ifdef SKIN_NAVEL
+  {
+    // the navel: a vertical oval pit with a soft rolled rim
+    vec3 dv = vSkW - uNavel;
+    vec3 nn = uNavelN;
+    vec3 tt = normalize(cross(vec3(0.0, 1.0, 0.0), nn));
+    vec3 bb = cross(nn, tt);
+    vec2 q2 = vec2(dot(dv, tt) / 0.0042, dot(dv, bb) / 0.0062);
+    float e = length(q2);
+    vec3 rdir = normalize(tt * q2.x / 0.0042 + bb * q2.y / 0.0062 + 1e-6);
+    float wall = smoothstep(0.15, 0.95, e) * (1.0 - smoothstep(0.95, 1.15, e));
+    float rim = smoothstep(1.0, 1.3, e) * (1.0 - smoothstep(1.3, 2.3, e));
+    wNp = normalize(wNp - rdir * wall * 1.6 + rdir * rim * 0.35 + vec3(0.0, -0.25, 0.0) * wall * step(0.0, q2.y));
+    float pit = 1.0 - smoothstep(0.25, 1.05, e);
+    skCav *= mix(1.0, 0.18, pit);
+    skCav *= 1.0 - 0.25 * wall;
+  }
+#endif
+  normal = normalize((viewMatrix * vec4(wNp, 0.0)).xyz);
   diffuseColor.rgb *= mix(0.72, 1.0, skCav);
   roughnessFactor = clamp(roughnessFactor + (1.0 - skCav) * 0.25, 0.0, 1.0);
 }`)
@@ -1221,7 +1261,7 @@ if (uReticle > 0.001) {
 }
 #endif`);
   };
-  mat.customProgramCacheKey = () => `intro-skin${reticle ? '-r' : ''}`;
+  mat.customProgramCacheKey = () => `intro-skin${reticle ? '-r' : ''}${navel ? '-n' : ''}`;
   return mat;
 }
 
@@ -1387,7 +1427,7 @@ function createStudioSet(ctx) {
 
   // floor: black lacquer, a contact shadow under the vial and a warm pool of light, fading into the dark
   const floorMat = track(new THREE.MeshPhysicalMaterial({
-    color: 0x0c0b0c, roughness: 0.34, metalness: 0, clearcoat: 1, clearcoatRoughness: 0.1, envMapIntensity: 0.55, specularIntensity: 0.5,
+    color: 0x0a090a, roughness: 0.62, metalness: 0, envMapIntensity: 0.05, specularIntensity: 0.18,
   }));
   floorMat.onBeforeCompile = (sh) => {
     sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vFw;')
@@ -1396,17 +1436,18 @@ function createStudioSet(ctx) {
       .replace('#include <dithering_fragment>', `
         float fr = length(vFw.xz);
         float contact = mix(0.22, 1.0, smoothstep(0.0058, 0.016, fr));
-        float pool = exp(-fr * fr / 0.0065) * 0.016;
-        gl_FragColor.rgb = gl_FragColor.rgb * contact * (1.0 - smoothstep(0.14, 0.7, fr)) + vec3(1.0, 0.84, 0.6) * pool * (1.0 - smoothstep(0.0, 0.009, 0.009 - fr) * 0.8);
+        float pool = exp(-fr * fr / 0.005) * 0.007;
+        vec3 far = vec3(0.0015, 0.0013, 0.0011);
+        gl_FragColor.rgb = mix(far, gl_FragColor.rgb * contact, 1.0 - smoothstep(0.12, 0.6, fr)) + vec3(1.0, 0.84, 0.6) * pool;
         #include <dithering_fragment>`);
   };
   floorMat.customProgramCacheKey = () => 'intro-floor';
   const floor = new THREE.Mesh(track(new THREE.PlaneGeometry(8, 8).rotateX(-Math.PI / 2)), floorMat);
   scene.add(floor);
-  scene.add(makeBackdrop(THREE, 6, { base: 0x050405, haze: 0x2a2112, hazeY: 0.03, hazeW: 4.5, back: 0.7 }));
+  scene.add(makeBackdrop(THREE, 6, { base: 0x050405, haze: 0x0d0a06, hazeY: 0.12, hazeW: 2.2, back: 0.8 }));
 
   const lights = addStudioLights(THREE, scene);
-  lights.key.intensity = 2.0;
+  lights.key.intensity = 1.6;
 
   const keys = makeTrack([
     // a      tx      ty       tz     dist   az   el   fov
@@ -1428,7 +1469,8 @@ function createStudioSet(ctx) {
     keys(a, k);
     target.set(k[0], k[1], k[2]);
     const wideK = 1 - sstep(0.84, 0.97, a); // close-ups keep their framing on phones
-    orbit(camera.position, target, k[3] * (1 + (L.fit - 1) * wideK), k[4], k[5], fwd, up, right);
+    const titleRoom = 1 + 0.35 * (1 - (L.wide ?? 1)) * (L.card ?? 0); // phones: a smaller vial above the title
+    orbit(camera.position, target, k[3] * (1 + (L.fit - 1) * wideK) * titleRoom, k[4], k[5], fwd, up, right);
     camera.up.set(0, 1, 0);
     camera.lookAt(target);
     ctx.applyCamera(camera, k[6]);
@@ -1460,7 +1502,7 @@ function createStudioSet(ctx) {
   }
 
   return {
-    name: 'studio', scene, camera, clear: new THREE.Color(0x050405), bloom: 0.5, labels: [], prime: 0.25,
+    name: 'studio', scene, camera, clear: new THREE.Color(0x050405), bloom: 0.2, bloomThreshold: 1.5, labels: [], prime: 0.25,
     labelReady: vial.labelReady,
     update,
     dispose() {
@@ -1502,11 +1544,23 @@ async function loadBody(THREE, mods) {
     const mats = Array.isArray(m.material) ? m.material : [m.material];
     for (const mt of mats) mt?.dispose?.();
   }
-  return { meshes, landmarks, scene: gltf.scene };
+  // the lifelike close-up wants smooth, full-precision normals (the GLB stores them quantized)
+  let skinSmooth = null;
+  try {
+    const src = meshes.skin;
+    const g = src.geometry.clone();
+    g.deleteAttribute('normal');
+    const merged = mods.mergeVertices ? mods.mergeVertices(g, 1e-6) : g;
+    if (merged !== g) g.dispose();
+    merged.computeVertexNormals();
+    skinSmooth = { geometry: merged, matrixWorld: src.matrixWorld, name: 'skin' };
+  } catch { skinSmooth = null; }
+  return { meshes, landmarks, scene: gltf.scene, skinSmooth };
 }
 
 function disposeBodyData(body) {
   for (const m of Object.values(body.meshes)) m.geometry?.dispose();
+  body.skinSmooth?.geometry?.dispose();
 }
 
 /** A new mesh that shares the GLB geometry and bakes the node's world transform. */
@@ -1536,10 +1590,10 @@ function createBodySet(ctx, body) {
   const V3 = THREE.Vector3;
   const scene = new THREE.Scene();
   scene.environment = ctx.env;
-  scene.environmentIntensity = 0.5;
+  scene.environmentIntensity = 0.32;
   const camera = new THREE.PerspectiveCamera(30, 1, 0.003, 30);
-  const skinMat = makeSkinMaterial(THREE, skinTex, { scale: 1 / 0.01, mottleScale: 28, reticle: true, color: 0xc28f73 });
-  const skin = shareMesh(THREE, body.meshes.skin, skinMat);
+  const skinMat = makeSkinMaterial(THREE, skinTex, { scale: 1 / 0.01, mottleScale: 28, reticle: true, navel: true, color: 0xae8a7c });
+  const skin = shareMesh(THREE, body.skinSmooth || body.meshes.skin, skinMat);
   skin.frustumCulled = false;
   scene.add(skin);
   scene.add(makeBackdrop(THREE, 12, { base: 0x040304, haze: 0x1d170e, hazeY: 0.1, hazeW: 3.2, back: 0.6 }));
@@ -1549,34 +1603,40 @@ function createBodySet(ctx, body) {
   u.uSite.value.copy(F.S);
   u.uSiteN.value.copy(F.N);
   u.uSiteT.value.copy(F.X);
+  const nav = body.landmarks.anchors?.navel;
+  if (nav) { u.uNavel.value.set(...nav); u.uNavelN.value.set(0.02, -0.12, 1).normalize(); }
 
-  // low-key portrait light: warm key from the upper left, champagne rims outline the torso
-  const key = new THREE.DirectionalLight(0xffeedd, 2.6);
-  key.position.set(-0.75, 1.85, 1.5);
+  // low-key portrait light: a warm key rakes across the belly from the side (it shows the form and the
+  // fine texture of the skin), a whisper of fill, champagne rims outline the torso
+  const key = new THREE.DirectionalLight(0xffeedd, 2.3);
+  key.position.set(-1.25, 1.8, 1.25);
   key.target.position.set(0, 1.05, 0);
-  const fill = new THREE.DirectionalLight(0xf2ece4, 0.35);
-  fill.position.set(1.2, 1.0, 1.0);
+  const fill = new THREE.DirectionalLight(0xf2ece4, 0.22);
+  fill.position.set(1.2, 1.0, 1.3);
   fill.target.position.set(0, 1.05, 0);
-  const rimL = new THREE.DirectionalLight(0xfff0dc, 2.2);
+  const rimL = new THREE.DirectionalLight(0xfff0dc, 1.6);
   rimL.position.set(-1.4, 1.5, -0.9);
   rimL.target.position.set(0, 1.05, 0);
-  const rimR = new THREE.DirectionalLight(0xe9cf9e, 2.6);
-  rimR.position.set(1.5, 1.3, -0.6);
+  const rimR = new THREE.DirectionalLight(0xe9cf9e, 2.4);
+  rimR.position.set(1.6, 1.25, -0.5);
   rimR.target.position.set(0, 1.05, 0);
   scene.add(key, key.target, fill, fill.target, rimL, rimL.target, rimR, rimR.target);
+  const hair = makeBodyHair(THREE, body, F, ctx.phone ? 110 : 190);
+  if (hair) scene.add(hair);
 
   const keys = makeTrack([
     // b     dist   az   el   up     fov
-    [0.00, 0.60, -26, 9.0, 0.085, 30],
-    [0.22, 0.44, -16, 7.0, 0.050, 30],
-    [0.52, 0.17, -5, 3.0, 0.008, 29],
+    [0.00, 0.40, -24, 7.0, 0.045, 30],
+    [0.22, 0.30, -15, 5.5, 0.030, 30],
+    [0.52, 0.15, -5, 3.0, 0.008, 29],
     [0.74, 0.07, -1, 1.0, 0.000, 28],
     [1.00, 0.012, 0, 0.0, 0.000, 28],
   ]);
   const k = new Array(5);
   const target = new V3();
   const siteLabel = ctx.makeLabel('Injection site: the belly', 'r');
-  const labels = [{ label: siteLabel, anchor: F.S.clone(), vis: () => labelVis }];
+  const labels = [{ label: siteLabel, anchor: F.S.clone().addScaledVector(F.X, 0.0128), vis: () => labelVis }];
+  const ringBase = u.uRingColor.value.clone();
   let labelVis = 0;
 
   function update(p, t, dt, L) {
@@ -1588,16 +1648,67 @@ function createBodySet(ctx, body) {
     camera.lookAt(target);
     ctx.applyCamera(camera, k[4]);
     u.uReticle.value = sstep(0.42, 0.72, b);
+    u.uRingColor.value.copy(ringBase).multiplyScalar(1 - sstep(0.8, 0.93, b));
     u.uRingR.value = 0.009;
     u.uDetail.value = 1;
     labelVis = sstep(0.6, 0.72, b) * (1 - sstep(0.86, 0.94, b));
   }
 
   return {
-    name: 'body', scene, camera, clear: new THREE.Color(0x040304), bloom: 0.45, labels, prime: 0.4,
+    name: 'body', scene, camera, clear: new THREE.Color(0x040304), bloom: 0.2, bloomThreshold: 1.25, labels, prime: 0.4,
     update,
     dispose() { disposeObject(scene); },
   };
+}
+
+/**
+ * Fine vellus hair on the belly around the site: thin, short, light, lying close to the skin and
+ * pointing mostly down toward the midline. Roots sit on the skin (a local plane fitted to the nearest
+ * skin vertices), so they never float in the macro shot.
+ */
+function makeBodyHair(THREE, body, F, n) {
+  const src = body.skinSmooth || body.meshes.skin;
+  const geo = src.geometry;
+  const pos = geo.attributes.position;
+  const M = src.matrixWorld;
+  const near = [];
+  const v = new THREE.Vector3();
+  for (let i = 0; i < pos.count; i++) {
+    v.fromBufferAttribute(pos, i).applyMatrix4(M);
+    if (v.distanceToSquared(F.S) < 0.055 * 0.055) near.push(v.clone());
+  }
+  if (near.length < 8) return null;
+  const rnd = mulberry32(909);
+  const hairGeo = new THREE.CylinderGeometry(0.000012, 0.000026, 1, 4, 1, true).translate(0, 0.5, 0);
+  const hairMat = new THREE.MeshStandardMaterial({ color: 0x6a5242, roughness: 0.45, metalness: 0, transparent: true, opacity: 0.85 });
+  const mesh = new THREE.InstancedMesh(hairGeo, hairMat, n);
+  const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), sc = new THREE.Vector3(), p = new THREE.Vector3(), d = new THREE.Vector3();
+  const Y = new THREE.Vector3(0, 1, 0);
+  for (let i = 0; i < n; i++) {
+    const a = rnd() * Math.PI * 2, r = 0.004 + Math.sqrt(rnd()) * 0.04;
+    p.copy(F.S).addScaledVector(F.X, Math.cos(a) * r).addScaledVector(F.U, Math.sin(a) * r);
+    // height of the skin here: inverse-distance mean of the nearest vertices, measured along the normal
+    let wsum = 0, h = 0;
+    for (const w of near) {
+      const dd = w.distanceToSquared(p) + 1e-6;
+      if (dd > 0.012 * 0.012) continue;
+      const ww = 1 / dd;
+      wsum += ww;
+      h += ww * F.N.dot(d.copy(w).sub(F.S));
+    }
+    if (!wsum) { sc.set(0, 0, 0); m4.compose(p, q, sc); mesh.setMatrixAt(i, m4); continue; }
+    p.addScaledVector(F.N, h / wsum - F.N.dot(d.copy(p).sub(F.S)) - 0.00005);
+    // lying close to the skin, pointing down and in toward the midline, with some scatter
+    d.copy(F.U).multiplyScalar(-0.85).addScaledVector(F.X, -Math.sign(p.x) * 0.35 + (rnd() - 0.5) * 0.7).addScaledVector(F.N, 0.18 + rnd() * 0.22).normalize();
+    q.setFromUnitVectors(Y, d);
+    const len = 0.0015 + rnd() * 0.0035;
+    sc.set(1, len, 1);
+    m4.compose(p, q, sc);
+    mesh.setMatrixAt(i, m4);
+  }
+  mesh.instanceMatrix.needsUpdate = true;
+  mesh.frustumCulled = false;
+  return mesh;
 }
 
 // ============================================================================================ set: glass body (pull back)
@@ -1609,11 +1720,11 @@ const ORGAN_TONES = {
 };
 // organs the drug acts on (data/retatrutide.js targets with a mesh), the path that reaches each, and when it lights
 const TARGETS = [
-  { organ: 'heart', path: 'to_heart_muscle', label: 'Heart', at: 0.42 },
-  { organ: 'liver', path: 'to_liver', label: 'Liver', at: 0.5 },
-  { organ: 'stomach', path: 'to_stomach', label: 'Stomach', at: 0.56 },
-  { organ: 'pancreas', path: 'to_pancreas', label: 'Pancreas', at: 0.62 },
-  { organ: 'brain', path: 'to_brain', label: 'Brain', at: 0.7 },
+  { organ: 'heart', path: 'to_heart_muscle', label: 'Heart', at: 0.42, side: 'r', dy: -6 },
+  { organ: 'liver', path: 'to_liver', label: 'Liver', at: 0.5, side: 'l', dy: 0 },
+  { organ: 'stomach', path: 'to_stomach', label: 'Stomach', at: 0.56, side: 'r', dy: -4 },
+  { organ: 'pancreas', path: 'to_pancreas', label: 'Pancreas', at: 0.62, side: 'r', dy: 16 },
+  { organ: 'brain', path: 'to_brain', label: 'Brain', at: 0.7, side: 'r', dy: 0 },
 ];
 
 function createGlassSet(ctx, body) {
@@ -1645,7 +1756,7 @@ function createGlassSet(ctx, body) {
   const artMat = makeGlowMaterial(THREE, { color: HEX.artery, core: 0.55, rim: 0.7, power: 2.0, intensity: 1.15 });
   const veinMat = makeGlowMaterial(THREE, { color: HEX.vein, core: 0.55, rim: 0.7, power: 2.0, intensity: 1.1 });
   const boneMat = makeGlowMaterial(THREE, { color: HEX.ivory, core: 0.0, rim: 0.5, power: 2.2, intensity: 0.08 });
-  const skinMat = makeGlowMaterial(THREE, { color: HEX.champagnePale, core: 0.025, rim: 0.62, power: 2.6, intensity: 1 });
+  const skinMat = makeGlowMaterial(THREE, { color: HEX.champagnePale, core: 0.012, rim: 0.5, power: 2.8, intensity: 1 });
   const addGlow = (id, mat, order) => { if (!M[id]) return; const m = shareMesh(THREE, M[id], mat); m.renderOrder = order; m.frustumCulled = false; scene.add(m); };
   addGlow('arteries', artMat, 2);
   addGlow('veins', veinMat, 2);
@@ -1666,7 +1777,7 @@ function createGlassSet(ctx, body) {
   const routes = TARGETS.filter((T) => P[T.path] && M[T.organ]).map((T) => ({ ...T, line: makePolyline([...base, ...P[T.path]]) }));
   const count = routes.length ? (ctx.phone ? 520 : 900) : 0;
   const rnd = mulberry32(42);
-  const pMat = makeParticleMaterial(THREE, { color: HEX.drug, intensity: 3.2, minPx: 1.4, maxPx: 9 });
+  const pMat = makeParticleMaterial(THREE, { color: HEX.drug, intensity: 1.7, minPx: 1.3, maxPx: 7 });
   const pts = makePoints(THREE, Math.max(1, count), pMat);
   pts.renderOrder = 5;
   scene.add(pts);
@@ -1676,7 +1787,7 @@ function createGlassSet(ctx, body) {
       r: routes[i % routes.length], launch: rnd() * 0.42, phase: rnd(), speed: 0.035 + rnd() * 0.03,
       jx: (rnd() - 0.5) * 0.006, jy: (rnd() - 0.5) * 0.006, jz: (rnd() - 0.5) * 0.006,
     });
-    pts.geometry.attributes.aSize.array[i] = 0.004 + rnd() * 0.003;
+    pts.geometry.attributes.aSize.array[i] = 0.003 + rnd() * 0.0025;
   }
   pts.geometry.attributes.aSize.needsUpdate = true;
 
@@ -1685,18 +1796,17 @@ function createGlassSet(ctx, body) {
   for (const T of TARGETS) {
     const c = lm.organs?.[T.organ]?.center;
     if (!c || !M[T.organ]) continue;
-    labels.push({ label: ctx.makeLabel(T.label, 'r', 'intro-label--organ'), anchor: new V3(...c), vis: () => (glow[T.organ] || 0) * labelGate });
+    labels.push({ label: ctx.makeLabel(T.label, T.side, 'intro-label--organ'), anchor: new V3(...c), dy: T.dy, vis: () => (glow[T.organ] || 0) * labelGate });
   }
   let labelGate = 0;
-  const siteDot = new V3().copy(F.S);
 
   const keys = makeTrack([
     // g     dist   az    el   ty      fov
     [0.00, 0.34, 8, 3.0, F.S.y, 32],
     [0.10, 0.56, 5, 3.0, 1.03, 32],
-    [0.42, 2.45, -9, 4.0, 0.98, 32],
-    [0.56, 3.30, -14, 5.0, 0.94, 32],
-    [1.00, 3.45, 16, 5.0, 0.94, 32],
+    [0.42, 2.45, -9, 4.0, 0.96, 32],
+    [0.56, 3.40, -14, 5.0, 0.86, 32],
+    [1.00, 3.60, 16, 5.0, 0.84, 32],
   ]);
   const k = new Array(5);
   const target = new V3(), fwd = new V3(0, 0, 1), up = new V3(0, 1, 0), right = new V3(1, 0, 0);
@@ -1708,7 +1818,7 @@ function createGlassSet(ctx, body) {
     keys(g, k);
     const kc = sstep(0, 0.42, g);
     target.set(F.S.x * (1 - kc), k[3], F.S.z * (1 - kc) + 0.02 * kc);
-    const dist = k[0] * (1 + (L.fit - 1) * sstep(0.1, 0.42, g));
+    const dist = k[0] * (1 + (L.fit - 1) * sstep(0.1, 0.42, g)) * (1 + 0.22 * (1 - (L.wide ?? 1)) * (L.card ?? 0));
     const drift = Math.sin(t * 0.09) * 1.2 * sstep(0.4, 0.6, g);
     orbit(camera.position, target, dist, k[1] + drift, k[2], fwd, up, right);
     camera.up.set(0, 1, 0);
@@ -1728,7 +1838,7 @@ function createGlassSet(ctx, body) {
       s *= front;
       P1.r.line.sample(s, tmp);
       pos[i * 3] = tmp.x + P1.jx; pos[i * 3 + 1] = tmp.y + P1.jy; pos[i * 3 + 2] = tmp.z + P1.jz;
-      alpha[i] = sstep(0, 0.015, s) * (1 - sstep(0.95, 1, s));
+      alpha[i] = sstep(0, 0.04, s) * (1 - sstep(0.95, 1, s)) * (0.35 + 0.65 * front);
     }
     pts.geometry.attributes.position.needsUpdate = true;
     pts.geometry.attributes.aAlpha.needsUpdate = true;
@@ -1740,11 +1850,10 @@ function createGlassSet(ctx, body) {
       if (m) m.emissive.copy(champ).multiplyScalar(0.32 * gk * (0.88 + 0.12 * Math.sin(t * 1.7 + T.at * 9)));
     }
     labelGate = sstep(0.45, 0.6, q) * (L.portrait ? 1 - sstep(0.88, 0.93, p) : 1);
-    void siteDot;
   }
 
   return {
-    name: 'glass', scene, camera, clear: new THREE.Color(0x040304), bloom: 0.6, labels, prime: 0.95,
+    name: 'glass', scene, camera, clear: new THREE.Color(0x040304), bloom: 0.5, bloomThreshold: 0.95, labels, prime: 0.95,
     update,
     dispose() { disposeObject(scene); },
   };
@@ -1844,9 +1953,9 @@ const TISSUE_GLSL = /* glsl */`
       vec3 dq = (p - uDepotC) / uDepotR;
       float dd = length(dq);
       float inside = (1.0 - smoothstep(0.94, 1.0, dd)) * uDepot;
-      col = mix(col, vec3(0.95, 0.8, 0.52), inside * 0.75);
+      col = mix(col, vec3(0.92, 0.72, 0.36), inside * 0.7);
       rough = mix(rough, 0.1, inside);
-      glow = inside * (0.35 + 0.65 * (1.0 - dd)) + (1.0 - smoothstep(0.0, 0.08, abs(dd - 1.0))) * uDepot * 0.6;
+      glow = inside * (0.2 + 0.4 * (1.0 - dd)) + (1.0 - smoothstep(0.0, 0.06, abs(dd - 1.0))) * uDepot * 0.45;
     }
     return col;
   }`;
@@ -1879,7 +1988,7 @@ roughnessFactor = tsRough;`)
   normal = normalize(abs(det) * normal - grad * 0.06);
 }`)
       .replace('#include <lights_fragment_end>', `#include <lights_fragment_end>
-totalEmissiveRadiance += vec3(1.0, 0.82, 0.5) * tsGlow * 0.55;`);
+totalEmissiveRadiance += vec3(1.0, 0.82, 0.5) * tsGlow * 0.35;`);
   };
   mat.customProgramCacheKey = () => 'intro-tissue';
   return mat;
@@ -1920,16 +2029,16 @@ function createTissueSet(ctx) {
   // fine hairs on the skin (vellus), a few darker ones
   {
     const rnd = mulberry32(5);
-    const n = 70;
-    const hairGeo = new THREE.CylinderGeometry(0.008, 0.022, 1, 5, 1, true).translate(0, 0.5, 0);
-    const hairMat = new THREE.MeshStandardMaterial({ color: 0x3a2a20, roughness: 0.5, metalness: 0 });
+    const n = 38;
+    const hairGeo = new THREE.CylinderGeometry(0.005, 0.016, 1, 5, 1, true).translate(0, 0.5, 0);
+    const hairMat = new THREE.MeshStandardMaterial({ color: 0x5c4434, roughness: 0.45, metalness: 0 });
     const hairs = new THREE.InstancedMesh(hairGeo, hairMat, n);
     const m = new THREE.Matrix4(), q = new THREE.Quaternion(), e = new THREE.Euler(), s = new V3(), p = new V3();
     for (let i = 0; i < n; i++) {
       p.set(-13 + rnd() * 26, 0, -9 + rnd() * 18.5);
       e.set(0.6 + rnd() * 0.5, rnd() * Math.PI * 2, 0, 'YXZ');
       q.setFromEuler(e);
-      const len = 0.8 + rnd() * 2.2;
+      const len = 0.6 + rnd() * 1.4;
       s.set(1, len, 1);
       m.compose(p, q, s);
       hairs.setMatrixAt(i, m);
@@ -1987,7 +2096,7 @@ function createTissueSet(ctx) {
   // drug particles: in the pool, then seeping into the capillary and away with the blood
   const rnd = mulberry32(77);
   const nIn = ctx.phone ? 110 : 170, nOut = ctx.phone ? 120 : 190;
-  const pMat = makeParticleMaterial(THREE, { color: HEX.drug, intensity: 3.0, minPx: 1.5, maxPx: 8 });
+  const pMat = makeParticleMaterial(THREE, { color: HEX.drug, intensity: 1.7, minPx: 1.5, maxPx: 8 });
   const pts = makePoints(THREE, nIn + nOut, pMat);
   pts.renderOrder = 5;
   scene.add(pts);
@@ -2018,10 +2127,10 @@ function createTissueSet(ctx) {
   scene.add(key, fill, rim);
 
   const labels = [];
-  const L1 = (text, anchor, side, from, to) => labels.push({ label: ctx.makeLabel(text, side, 'intro-label--tissue'), anchor: new V3(...anchor), vis: () => sstep(from, from + 0.06, cNow) * (1 - sstep(to - 0.06, to, cNow)) });
+  const L1 = (text, anchor, side, from, to) => labels.push({ label: ctx.makeLabel(text, side, 'intro-label--tissue'), anchor: new V3(...anchor), x0: anchor[0], vis: () => sstep(from, from + 0.06, cNow) * (1 - sstep(to - 0.06, to, cNow)) });
   L1('Skin', [-12.6, -1.25, 10.05], 'r', 0.3, 0.7);
   L1('Fat under the skin', [-12.6, -6.4, 10.05], 'r', 0.32, 0.7);
-  L1('Muscle', [-12.6, -15.0, 10.05], 'r', 0.34, 0.7);
+  L1('Muscle', [6.5, -15.0, 10.05], 'r', 0.34, 0.7);
   L1('Depot: the drug pools here', [0.9, -5.0, 11.2], 'r', 0.38, 0.86);
   L1('Capillary', [3.3, -2.35, 10.18], 'r', 0.62, 0.9);
   let cNow = 0;
@@ -2042,6 +2151,7 @@ function createTissueSet(ctx) {
   function update(p, t, dt, L) {
     const c = clamp01((p - 0.462) / (0.642 - 0.462));
     cNow = c;
+    for (let i = 0; i < 3; i++) labels[i].anchor.x = L.portrait ? 2.2 : labels[i].x0;
     keys(c, k);
     target.set(k[3], k[4], k[5]);
     camera.position.set(k[0], k[1], k[2]);
@@ -2055,7 +2165,7 @@ function createTissueSet(ctx) {
     const form = sstep(0.12, 0.42, c);
     const drain = sstep(0.6, 1.0, c);
     uniforms.uDepot.value = form * (1 - 0.3 * drain);
-    depotMat.uniforms.uI.value = 0.9 * form * (1 - 0.35 * drain);
+    depotMat.uniforms.uI.value = 0.32 * form * (1 - 0.35 * drain);
     depotMat.uniforms.uTime.value = t;
     depot.scale.set(DEPOT_R[0] * (0.55 + 0.45 * form), DEPOT_R[1] * (0.55 + 0.45 * form), DEPOT_R[2] * (0.55 + 0.45 * form));
 
@@ -2067,7 +2177,7 @@ function createTissueSet(ctx) {
       pos[i * 3] = DEPOT_C[0] + (P1.x + Math.sin(t * P1.sp + P1.ph) * w) * DEPOT_R[0] * 0.85 * (0.55 + 0.45 * form);
       pos[i * 3 + 1] = DEPOT_C[1] + (P1.y + Math.cos(t * P1.sp * 1.3 + P1.ph) * w) * DEPOT_R[1] * 0.85 * (0.55 + 0.45 * form);
       pos[i * 3 + 2] = DEPOT_C[2] + 0.05 + P1.z * DEPOT_R[2];
-      alpha[i] = form * (1 - 0.4 * drain) * 0.8;
+      alpha[i] = form * (1 - 0.4 * drain) * 0.45;
     }
     for (let i = 0; i < nOut; i++) {
       const P1 = outP[i];
@@ -2092,7 +2202,7 @@ function createTissueSet(ctx) {
   }
 
   return {
-    name: 'tissue', scene, camera, clear: new THREE.Color(0x050405), bloom: 0.5, labels, prime: 0.5,
+    name: 'tissue', scene, camera, clear: new THREE.Color(0x050405), bloom: 0.38, bloomThreshold: 1.1, labels, prime: 0.5,
     update,
     dispose() { disposeObject(scene); },
   };
@@ -2119,7 +2229,6 @@ function createBloodSet(ctx) {
   const NR = 360, NS = ctx.phone ? 28 : 40;
   const frames = curve.computeFrenetFrames(NR, false);
   const C = curve.getSpacedPoints(NR);
-  const len = curve.getLength();
   const radius = (u) => 4.6 + 21.4 * sstep(0.17, 0.42, u);
   // smooth, twist-free frames (parallel transport from the Frenet start)
   const Tn = frames.tangents, Nn = frames.normals, Bn = frames.binormals;
@@ -2214,10 +2323,10 @@ function createBloodSet(ctx) {
   const rbcGeo = new THREE.LatheGeometry(pts.map((v) => new THREE.Vector2(Math.max(0, v.x), v.y)).reverse(), ctx.phone ? 22 : 30);
   rbcGeo.computeVertexNormals();
   const rbcMat = new THREE.MeshPhysicalMaterial({
-    color: 0x8e1712, roughness: 0.42, metalness: 0, sheen: 1, sheenColor: new THREE.Color(0xff6a52), sheenRoughness: 0.42,
-    clearcoat: 0.25, clearcoatRoughness: 0.35, emissive: new THREE.Color(0x2b0404), envMapIntensity: 0.4,
+    color: 0xa00d08, roughness: 0.4, metalness: 0, sheen: 0.7, sheenColor: new THREE.Color(0xe0402c), sheenRoughness: 0.45,
+    clearcoat: 0.22, clearcoatRoughness: 0.35, emissive: new THREE.Color(0x300303), envMapIntensity: 0.35,
   });
-  const nCap = 18, nVein = ctx.phone ? 420 : 820;
+  const nCap = 18, nVein = ctx.phone ? 380 : 700;
   const cells = new THREE.InstancedMesh(rbcGeo, rbcMat, nCap + nVein);
   cells.frustumCulled = false;
   scene.add(cells);
@@ -2227,19 +2336,19 @@ function createBloodSet(ctx) {
   for (let i = 0; i < nVein; i++) {
     let u;
     do { u = 0.3 + rnd() * 0.7; } while (rnd() > (radius(u) / 26) ** 2);
-    cellData.push({ cap: false, u0: (u - 0.3) / 0.7, rho: Math.sqrt(rnd()) * 0.86, th: rnd() * 6.28, ax: new V3(rnd() - 0.5, rnd() - 0.5, rnd() - 0.5).normalize(), w: 0.15 + rnd() * 0.5, ph: rnd() * 6.28, sp: 0.85 + rnd() * 0.3 });
+    cellData.push({ cap: false, u0: (u - 0.3) / 0.7, rho: 0.34 + Math.sqrt(rnd()) * 0.6, th: rnd() * 6.28, ax: new V3(rnd() - 0.5, rnd() - 0.5, rnd() - 0.5).normalize(), w: 0.15 + rnd() * 0.5, ph: rnd() * 6.28, sp: 0.85 + rnd() * 0.3 });
   }
   const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), q2 = new THREE.Quaternion(), sc = new V3(), pp = new V3(), Y = new V3(0, 1, 0);
 
   // ---- the drug: seeping through the capillary wall, then flowing with the blood
-  const nSeep = ctx.phone ? 90 : 150, nFlow = ctx.phone ? 160 : 300;
+  const nSeep = ctx.phone ? 90 : 150, nFlow = ctx.phone ? 260 : 460;
   const pMat = makeParticleMaterial(THREE, { color: HEX.drug, intensity: 3.4, minPx: 1.6, maxPx: 10 });
   const drug = makePoints(THREE, nSeep + nFlow, pMat);
   drug.renderOrder = 6;
   scene.add(drug);
   const drugData = [];
   for (let i = 0; i < nSeep; i++) drugData.push({ seep: true, u: 0.02 + rnd() * 0.24, th: rnd() * 6.28, ph: rnd(), sp: 0.05 + rnd() * 0.05 });
-  for (let i = 0; i < nFlow; i++) drugData.push({ seep: false, u0: rnd(), rho: Math.sqrt(rnd()) * 0.92, th: rnd() * 6.28, sp: 0.9 + rnd() * 0.4 });
+  for (let i = 0; i < nFlow; i++) drugData.push({ seep: false, u0: rnd(), rho: Math.sqrt(rnd()) * 0.7, th: rnd() * 6.28, sp: 0.9 + rnd() * 0.4 });
   for (let i = 0; i < drugData.length; i++) drug.geometry.attributes.aSize.array[i] = 0.16 + rnd() * 0.12;
   drug.geometry.attributes.aSize.needsUpdate = true;
 
@@ -2258,13 +2367,12 @@ function createBloodSet(ctx) {
     // d     u      rho    th   du     lookRho fov
     [0.00, 0.045, 15.0, 70, 0.045, 0.0, 40],
     [0.30, 0.150, 12.5, 76, 0.050, 0.0, 42],
-    [0.50, 0.300, 8.0, 82, 0.070, 1.5, 50],
-    [0.75, 0.470, 6.0, 88, 0.080, 2.5, 58],
-    [1.00, 0.620, 4.0, 92, 0.090, 3.0, 60],
+    [0.50, 0.300, 5.0, 82, 0.070, 1.0, 50],
+    [0.75, 0.470, 2.5, 88, 0.080, 1.0, 58],
+    [1.00, 0.620, 1.5, 92, 0.090, 1.0, 60],
   ]);
   const k = new Array(6);
   const target = new V3(), tmp = new V3(), off = new V3();
-  const flowT = { v: 0 };
 
   function update(p, t, dt, L) {
     const d = clamp01((p - 0.614) / (0.798 - 0.614));
@@ -2282,7 +2390,6 @@ function createBloodSet(ctx) {
     head.position.copy(camera.position);
     pMat.uniforms.uResY.value = L.H * ctx.pixelRatio;
 
-    flowT.v = t;
     // red cells
     for (let i = 0; i < cellData.length; i++) {
       const c = cellData[i];
@@ -2342,11 +2449,10 @@ function createBloodSet(ctx) {
     }
     drug.geometry.attributes.position.needsUpdate = true;
     drug.geometry.attributes.aAlpha.needsUpdate = true;
-    void len;
   }
 
   return {
-    name: 'blood', scene, camera, clear: fogColor.clone(), bloom: 0.55, labels, prime: 0.6,
+    name: 'blood', scene, camera, clear: fogColor.clone(), bloom: 0.45, bloomThreshold: 1.0, labels, prime: 0.6,
     update,
     dispose() { disposeObject(scene); },
   };

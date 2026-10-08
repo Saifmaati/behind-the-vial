@@ -84,8 +84,8 @@ export function createSyringe(THREE, opts = {}) {
     envMap = null,
     scale = 1,
     envMapIntensity = 1,
-    tickColor = 0xd3dae1,
-    liquidColor = 0xbfeeff,
+    tickColor = 0xd8d0c0,   // warm grey print
+    liquidColor = 0xf3ead8, // clear, faintly warm (never a neon tint)
     radialSegments = 64,
   } = opts;
 
@@ -105,7 +105,7 @@ export function createSyringe(THREE, opts = {}) {
     transmission: 1,
     ior: 1.49,
     thickness: 1.0 * MM,
-    attenuationColor: new THREE.Color(0xe6f3ff),
+    attenuationColor: new THREE.Color(0xf4f1ea),
     attenuationDistance: 0.03 * scale,
     specularIntensity: 1,
     envMapIntensity,
@@ -115,13 +115,13 @@ export function createSyringe(THREE, opts = {}) {
   // against black only shows its outline, which reads as a stray wire, so it gets the hub's haze.
   const hubMat = track(new THREE.MeshPhysicalMaterial({
     name: 'syringe-frosted',
-    color: 0xe6ebf0,
+    color: 0xebe9e6,
     roughness: 0.36,
     specularIntensity: 0.55, // haze scatters the reflection: no hot rim glints on the flange ends
     transmission: 0.5,
     ior: 1.49,
     thickness: 1.8 * MM,
-    attenuationColor: new THREE.Color(0xd9dee4),
+    attenuationColor: new THREE.Color(0xdedad4),
     attenuationDistance: 0.006 * scale,
     clearcoat: 0.15,
     clearcoatRoughness: 0.36,
@@ -134,7 +134,7 @@ export function createSyringe(THREE, opts = {}) {
     transmission: 0.9,
     ior: 1.49,
     thickness: 0.4 * MM,
-    attenuationColor: new THREE.Color(0xc8d0d8),
+    attenuationColor: new THREE.Color(0xd0ccc4),
     attenuationDistance: 0.004 * scale,
     envMapIntensity,
   }));

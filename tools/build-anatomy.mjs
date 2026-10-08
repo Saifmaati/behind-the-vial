@@ -35,7 +35,7 @@ import { ensureSources, safeUnzip, readXlsxRows, SOURCES } from './anatomy/sourc
 import { buildLandmarks } from './anatomy/landmarks.mjs';
 import { tubeEnd, bridgeTube, insideField, clampInside, pushOutside } from './anatomy/vessels.mjs';
 import { ensureRanged, openRanged } from './anatomy/hra-ranged.mjs';
-import { HRA_FEMALE, FEMALE_FETCH, FEMALE_FETCH_EXCLUDE, openFemaleHRA, breastMask, maleToFemale } from './anatomy/female.mjs';
+import { HRA_FEMALE, FEMALE_FETCH, FEMALE_FETCH_EXCLUDE, openFemaleHRA, breastMask, maleToFemale, ribCageSpline } from './anatomy/female.mjs';
 import { topSlab } from './anatomy/bp3d-warp.mjs';
 
 const argv = process.argv.slice(2);
@@ -227,6 +227,7 @@ const sioSim = fitSimilarity(A, B);
 report.sioRegistration = { scale_m_per_voxel: +sioSim.s.toFixed(6), rms_mm: +(sioSim.rms * 1000).toFixed(1), residuals_mm: Object.fromEntries(regPairs.map((p, i) => [p[0], +(sioSim.residuals[i] * 1000).toFixed(1)])) };
 log(`  SIO -> HRA similarity: scale ${sioSim.s.toFixed(6)} m/voxel, RMS ${(sioSim.rms * 1000).toFixed(1)} mm over ${A.length} organs`);
 let toBody = (p) => sioSim.apply(p); // SIO voxel index -> this body's HRA frame
+let toBodyCage = toBody; // (female: rib cage and shoulder girdle use a spline with extra lung pairs)
 if (FEMALE) {
   // Male HRA -> female HRA thin-plate spline: every warp landmark tag present in both bodies (spine, leg bones, organ
   // centroids, skin rings, hands, feet) plus gut and sternum pairs around the stomach and the rib cage.
@@ -249,7 +250,19 @@ if (FEMALE) {
   const sioSternum = M.mapVertices(V.surfaceNets(V.blur(V.gridFromMask(sio.mask(L('sternum')), sio.W, sio.H, sio.D, { pad: 2 }), 1), 0.5), (x, y, z) => sioSim.apply([x, y, z]));
   extra.push(['sternum:all', M.surfaceCentroid(sioSternum), M.surfaceCentroid(hra.collect(['VH_F_sternum', 'VH_F_manubrium']))]);
   extra.push(['sternum:notch', topSlab(sioSternum, 0.006), topSlab(hra.collect('VH_F_manubrium'), 0.006)]);
-  const m2f = maleToFemale(lmkM, lmkF, extra);
+  const m2f = maleToFemale(lmkM, lmkF, extra); // stomach and thyroid
+  // Rib cage and shoulder girdle: the same spline plus radial samples on matching cross-sections of both bodies' closed
+  // lung shells and lower-chest skin sections (tools/anatomy/female.mjs ribCageSpline). Without them the mapped male rib
+  // cage came out wider than the female chest (where the skin-ring samples over the breasts are masked) and the inside
+  // clamp flattened the lateral rib ends against the skin. A separate spline, so the stomach and thyroid are unchanged.
+  const maleStage = join(WORK, 'stage-meshes.bin');
+  const maleLungs = existsSync(maleStage) ? M.unpackMeshes(readFileSync(maleStage))['organ::lungs'] : null;
+  const m2fCage = ribCageSpline({ lmkMale: lmkM, lmkFemale: lmkF, extra,
+    maleLungs: maleLungs || remesh(M.weld(hraM.collect('VH_M_lungs'), 1e-6), ORGANS.lungs), femaleLungs: organs.lungs,
+    maleSkin: M.simplify(M.weld(hraM.collect('VH_M_skin'), 1e-6), 150000, { error: 0.005 }), femaleSkin: bpSetup().ringSkin });
+  report.maleToFemaleRibCage = { pairs: m2fCage.count, lungCrossSectionPairs: m2fCage.lungPairs, lowerChestSkinPairs: m2fCage.torsoPairs, maxResidual_mm: +(m2fCage.maxResidual * 1000).toFixed(1) };
+  log(`  rib cage spline: ${m2fCage.count} pairs incl. ${m2fCage.lungPairs} lung and ${m2fCage.torsoPairs} lower-chest skin cross-section pairs (male lung shells from ${maleLungs ? 'the male build cache' : 'a fresh remesh'}), max residual ${(m2fCage.maxResidual * 1000).toFixed(1)} mm`);
+  toBodyCage = (p) => m2fCage.apply(sioSim.apply(p));
   // sanity check on structures that are NOT landmarks: distance between the mapped male centroid and the true female one
   const check = Object.fromEntries([['gallbladder', 'VH_M_gallbladder'], ['aortic arch', 'VH_M_aortic_arch'], ['hepatic portal vein', 'VH_M_hepatic_portal_vein'], ['splenic artery', 'VH_M_splenic_artery'], ['celiac trunk', 'VH_M_celiac_trunk']].map(([k2, n]) => [k2, +(M.dist(m2f.apply(M.surfaceCentroid(hraM.collect(n))), M.surfaceCentroid(hra.collect(n))) * 1000).toFixed(1)]));
   report.maleToFemale = { pairs: m2f.count, extraPairs: extra.map((e) => e[0]), maxResidual_mm: +(m2f.maxResidual * 1000).toFixed(1), worstResiduals: m2f.worst, checkDistances_mm: check };
@@ -257,10 +270,10 @@ if (FEMALE) {
   log(`  HRA male -> female spline on ${m2f.count} pairs (max residual ${(m2f.maxResidual * 1000).toFixed(1)} mm); mapped-vs-true centroid distance (not landmarks): ${Object.entries(check).map(([a, b]) => `${a} ${b} mm`).join(', ')}`);
   toBody = (p) => m2f.apply(sioSim.apply(p));
 }
-const sioMesh = (labels, { blurPasses = 1, iterations = 10 } = {}) => {
+const sioMesh = (labels, { blurPasses = 1, iterations = 10, map = toBody } = {}) => {
   const g = V.gridFromMask(sio.mask(labels), sio.W, sio.H, sio.D, { pad: 2 });
   const m = V.surfaceNets(V.blur(g, blurPasses), 0.5);
-  return M.orientOutward(M.taubin(M.mapVertices(m, (x, y, z) => toBody([x, y, z])), { iterations }));
+  return M.orientOutward(M.taubin(M.mapVertices(m, (x, y, z) => map([x, y, z])), { iterations }));
 };
 for (const [id, o] of Object.entries(ORGANS)) if (o.sio) { organs[id] = sioMesh(L(...o.sio)); log(`  ${id}: ${M.triCount(organs[id])} tris, ${(M.volumeCentroid(organs[id]).volume * 1000).toFixed(3)} L`); }
 if (FEMALE) {
@@ -278,7 +291,10 @@ if (FEMALE) {
 }
 const ribNames = [...LT.keys()].filter((n) => /^(left|right) (rib \d+|costal cartilage .+|clavicle|clavicular cartilage|scapula)$|^sternum$/.test(n) && !(FEMALE && n === 'sternum'));
 // (SIO shoulder girdle is in the cadaver's arms-down pose; the HRA skin has abducted arms, so keep it under the skin)
-const sioBones = args.has('--no-skeleton') ? null : keepInside(sioMesh(L(...ribNames), { iterations: 6 }));
+const clampBefore = { ...clampLog };
+const sioBones = args.has('--no-skeleton') ? null : keepInside(sioMesh(L(...ribNames), { iterations: 6, map: toBodyCage }));
+report.ribCageClamp = { vertices: clampLog.vertices - clampBefore.vertices, maxMove_mm: clampLog.maxMove_mm };
+log(`  rib cage and shoulder girdle kept inside the skin: ${report.ribCageClamp.vertices} vertices moved (max ${clampLog.maxMove_mm} mm)`);
 
 // ---------------------------------------------------------------------------------------------------------------
 log('4/7 BodyParts3D: thin-plate-spline warp into the HRA body; limb/neck/head vessels; skull, arm, hand, foot bones');

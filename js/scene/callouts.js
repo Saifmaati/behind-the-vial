@@ -172,8 +172,9 @@ export function createCallouts(stage, layer, { onSelect } = {}) {
     const compact = W < 560;
     const offX = compact ? 18 : 34;
     const margin = (compact ? 8 : 14) + insets.left;
-    // keep clear of the stage HUD labels and the colour key (which sits under the phase label when narrow)
-    const top = (W <= 430 ? 56 : compact ? 34 : 60) + insets.top;
+    // keep clear of the stage HUD labels, the colour key (under the phase label when narrow) and the
+    // Layers / Body buttons in the top-right corner (icon-only and higher up on the narrowest stages)
+    const top = (W <= 430 ? 56 : 86) + insets.top;
     const bottom = (W <= 430 ? 40 : compact ? 54 : 58) + insets.bottom;  // the hint row and the credit
     const gap = compact ? 4 : 6;
     const reserveR = (compact ? 50 : 56) + insets.right; // the zoom / reset buttons sit on the right edge

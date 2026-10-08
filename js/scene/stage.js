@@ -227,7 +227,7 @@ export async function createStage(host, { reducedMotion = false, theme = 'dark',
   controls.dampingFactor = 0.075;
   controls.enablePan = false;
   controls.rotateSpeed = 0.55;
-  controls.zoomSpeed = 0.7;
+  controls.zoomSpeed = 1.1; // deep zoom spans ~3.6 m to 2.4 cm: about 80 wheel notches, or a few double-clicks
   controls.minDistance = MIN_DIST;
   controls.maxDistance = 6;
   // zoom toward the cursor (the pivot is first moved to the surface under it; see onWheelCapture)

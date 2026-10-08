@@ -3,7 +3,8 @@
 // SIO (VOXEL-MAN Visible Human Male) label names for the muscles BodyParts3D 4.0 lacks (rectus abdominis, internal
 // oblique, transversus abdominis, pelvic floor), for the external oblique (BodyParts3D's includes the aponeurosis, which
 // would hide the rectus abdominis) and for iliopsoas and diaphragm (same body as the HRA organs).
-// `sioMesh` sets the voxel meshing for SIO labels (see sio-stage.mjs labelMesh).
+// `sioMesh` sets the voxel meshing for SIO labels (see sio-stage.mjs labelMesh); `maleOnly` muscles are left out of the
+// female layer (the SIO pelvic diaphragm is a male pelvic floor).
 // `name` is the anatomical name; `plain` is the plain-language description shown under it (accurate, neutral, textbook
 // location and action only).
 
@@ -45,7 +46,7 @@ export const MUSCLES = [
   { slug: 'internal_oblique', name: 'Internal oblique', plain: 'Middle layer of the belly wall, under the external oblique', region: 'abdomen', sio: ['left internal oblique', 'right internal oblique'], layer: 'deep', thin: true, sioMesh: { close: 1, blurPasses: 1, iso: 0.35, iterations: 12 } },
   { slug: 'transversus_abdominis', name: 'Transversus abdominis', plain: 'Deepest belly-wall layer; wraps around like a corset', region: 'abdomen', sio: ['left transversus abdominis', 'right transversus abdominis'], layer: 'deep', thin: true, sioMesh: { close: 1, blurPasses: 1, iso: 0.35, iterations: 12 } },
   { slug: 'iliopsoas', name: 'Iliopsoas (psoas major and iliacus)', plain: 'Deep hip flexor running from the lower spine and pelvis to the thigh bone', region: 'pelvis', sio: ['left psoas', 'right psoas', 'left iliacus', 'right iliacus'], layer: 'deep', sioMesh: { close: 1, blurPasses: 1, iterations: 12 } },
-  { slug: 'pelvic_floor', name: 'Pelvic diaphragm (levator ani and coccygeus)', plain: 'A sling that supports the pelvic organs', region: 'pelvis', sio: ['pelvic diaphragm'], layer: 'deep', thin: true, sioMesh: { close: 1, blurPasses: 1, iso: 0.35, iterations: 12 } },
+  { slug: 'pelvic_floor', name: 'Pelvic diaphragm (levator ani and coccygeus)', plain: 'A sling that supports the pelvic organs', region: 'pelvis', sio: ['pelvic diaphragm'], layer: 'deep', thin: true, maleOnly: true, sioMesh: { close: 1, blurPasses: 1, iso: 0.35, iterations: 12 } },
   // ---- arm ----
   { slug: 'biceps_brachii', name: 'Biceps brachii', plain: 'Front of the upper arm; bends the elbow and turns the palm up', region: 'arm', bp: ['long head of {s} biceps brachii', 'short head of {s} biceps brachii'] },
   { slug: 'triceps_brachii', name: 'Triceps brachii', plain: 'Back of the upper arm; straightens the elbow', region: 'arm', bp: ['long head of {s} triceps brachii', 'lateral head of {s} triceps brachii', 'medial head of {s} triceps brachii'] },

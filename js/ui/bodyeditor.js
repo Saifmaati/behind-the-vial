@@ -397,7 +397,7 @@ export function mountLayersPanel(host, { initial = {}, muscles = false, structur
         <ul class="lp-list" role="list"></ul>
       </details>
     </div>
-    <p class="be-note">Point at any part of the body to name it. Scroll or pinch to zoom toward a spot; double-click or double-tap to fly to it; drag with the right button or two fingers to move around when close.</p>`;
+    <p class="be-note">Point at any part of the body to name it. Scroll or pinch toward a spot to zoom in; double-click or double-tap flies there.</p>`;
   (buttonHost || host).append(toggle);
   host.append(panel);
 

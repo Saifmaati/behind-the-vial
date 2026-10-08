@@ -7,6 +7,7 @@
 import * as M from './mesh.mjs';
 import { nodeTable, openRanged } from './hra-ranged.mjs';
 import { fitTPS } from './register.mjs';
+import { ringAt, hLoops, ringSamples } from './rings.mjs';
 
 export const HRA_FEMALE = {
   id: 'hra-united-female',
@@ -21,7 +22,7 @@ export const HRA_FEMALE = {
 };
 
 /**
- * Node subtrees fetched from the female GLB (about 35 MB of index + position data). Not fetched: eyes (23.7 MB;
+ * Node subtrees fetched from the female GLB (40.9 MB of index + position data in 80 ranges). Not fetched: eyes (23.7 MB;
  * only their centres are needed, taken from the accessor bounds), mouth (60 MB), mammary glands (21.9 MB; the skin
  * already carries the breast surface), intervertebral discs (18 MB), tracheobronchial tree, spinal cord, placenta.
  */
@@ -126,4 +127,66 @@ export function maleToFemale(lmkMale, lmkFemale, extra = [], { lambda = 0.002 } 
   // leave-one-out style diagnostic: how far each pair's own target is from the smooth fit (regularised spline)
   const worst = tags.map((t, i) => [t, tps.residuals[i]]).sort((a, b) => b[1] - a[1]).slice(0, 6).map(([t, r]) => `${t} ${(r * 1000).toFixed(1)} mm`);
   return { apply: tps.apply, count: src.length, tags, maxResidual: tps.maxResidual, worst, mapMesh: (m) => M.mapVertices(m, (x, y, z) => tps.apply([x, y, z])) };
+}
+
+/**
+ * Rib-cage pairs for the male -> female spline: radial samples on matching horizontal cross-sections of the two bodies'
+ * closed lung shells (left and right lung separately; levels as fractions of each lung's own height, 12 directions).
+ * The lungs fill the thoracic cage, so these pin the (male) SIO rib cage to the female thorax; skin rings alone leave
+ * the chest wall unconstrained where the breast samples are masked. Returns [tag, malePoint, femalePoint][].
+ */
+export function lungPairs(maleLungs, femaleLungs, { levels = [0.25, 0.35, 0.45, 0.55, 0.65, 0.75, 0.85], k = 12 } = {}) {
+  const sides = (m) => {
+    const comps = M.components(m).slice(0, 2).map((c) => M.subsetTriangles(m, c));
+    const out = {}; for (const c of comps) out[M.bounds(c).center[0] > 0 ? 'L' : 'R'] = c; return out;
+  };
+  const a = sides(maleLungs), b = sides(femaleLungs); const pairs = [];
+  for (const side of ['L', 'R']) {
+    if (!a[side] || !b[side]) continue;
+    const ba = M.bounds(a[side]), bb = M.bounds(b[side]);
+    for (const f of levels) {
+      const ra = ringAt(a[side], ba.min[1] + f * ba.size[1], ba.center, k, 1), rb = ringAt(b[side], bb.min[1] + f * bb.size[1], bb.center, k, 1);
+      if (!ra || !rb) continue;
+      ra.samples.forEach((p, i) => { if (p && rb.samples[i]) pairs.push([`lung:${side}:${f}:${i}`, p, rb.samples[i]]); });
+    }
+  }
+  return pairs;
+}
+
+/**
+ * Lower-chest and waist pairs for the male -> female rib-cage spline: radial samples on matching horizontal skin
+ * cross-sections of the two bodies, at heights relative to each body's lungs (from 45 % of lung height below the lung
+ * base up to 15 % above it, where the lower ribs are), lateral and posterior directions only (the front sector is
+ * skipped: breasts and belly differ between the bodies). Levels whose torso loop still includes an arm are skipped.
+ */
+export function torsoPairs(maleSkin, femaleSkin, maleLungs, femaleLungs, { levels = [-0.45, -0.3, -0.15, 0, 0.15], k = 16, frontHalfAngle = 55, maxHalfWidth = 0.24 } = {}) {
+  const torsoLoop = (skin, y) => {
+    const loops = hLoops(skin, y).sort((a, b) => Math.abs(a.centroid[0]) - Math.abs(b.centroid[0]));
+    const l = loops[0]; if (!l) return null;
+    const half = Math.max(...l.points.map((p) => Math.abs(p[0] - l.centroid[0])));
+    return half < maxHalfWidth ? l : null;
+  };
+  const a = M.bounds(maleLungs), b = M.bounds(femaleLungs); const pairs = [];
+  for (const f of levels) {
+    const la = torsoLoop(maleSkin, a.min[1] + f * a.size[1]), lb = torsoLoop(femaleSkin, b.min[1] + f * b.size[1]);
+    if (!la || !lb) continue;
+    const ra = ringSamples(la, la.centroid, [0, 1, 0], [0, 0, 1], k, 1), rb = ringSamples(lb, lb.centroid, [0, 1, 0], [0, 0, 1], k, 1);
+    for (let i = 0; i < k; i++) {
+      const ang = (i / k) * 360; if (Math.min(ang, 360 - ang) < frontHalfAngle) continue;
+      if (ra[i] && rb[i]) pairs.push([`torso:${f}:${i}`, ra[i], rb[i]]);
+    }
+  }
+  return pairs;
+}
+
+/**
+ * The male -> female spline used for the SIO rib cage and shoulder girdle (and, in the close-up layer, the SIO trunk
+ * muscles that lie on them): the organ spline's pairs plus lung cross-section pairs and lower-chest skin pairs.
+ * Skins are the 150k-triangle ring skins (M.simplify(skin, 150000, { error: 0.005 })) of each body, HRA frames.
+ */
+export function ribCageSpline({ lmkMale, lmkFemale, extra, maleLungs, femaleLungs, maleSkin, femaleSkin }) {
+  const lp = lungPairs(maleLungs, femaleLungs);
+  const tp = torsoPairs(maleSkin, femaleSkin, maleLungs, femaleLungs);
+  const s = maleToFemale(lmkMale, lmkFemale, [...extra, ...lp, ...tp]);
+  return { ...s, lungPairs: lp.length, torsoPairs: tp.length };
 }

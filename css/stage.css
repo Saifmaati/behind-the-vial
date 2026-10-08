@@ -861,7 +861,17 @@ html[data-theme="light"] .be-eyebrow { color: var(--st-gold); }
   .stage-credit__short { display: inline; }
   .stage-skip { bottom: 42px; }
   .stage-panel-btns { top: 14px; right: 10px; gap: 6px; }
-  .stage-body-btn { min-height: 32px; padding: 0 12px 0 9px; }
+  /* icon-only here, so the pair clears the colour key; the names stay for assistive technology */
+  .stage-body-btn { width: 34px; min-height: 34px; padding: 0; justify-content: center; }
+  .stage-body-btn__text {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
 }
 @container stage (max-width: 360px) {
   .stage-legend { gap: 8px; letter-spacing: 0.08em; }

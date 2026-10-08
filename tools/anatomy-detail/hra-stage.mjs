@@ -54,3 +54,26 @@ export async function extractHRA(file, { log = () => {}, skeleton = true } = {})
   const regB = REG.map(([tag, names]) => [tag, voxelCentroid(M.weld(hra.collect(names), 1e-6))]);
   return { meshes, info: { regB }, hra };
 }
+
+/**
+ * Female counterpart of extractHRA for the close-up layer: full-resolution skin and the HRA female bones, read through
+ * openFemaleHRA() (tools/anatomy/female.mjs; logical male names are translated). Same bone selection and merge order
+ * as tools/build-anatomy.mjs --sex female (the female HRA pelvis is the ilium only, so the hip bones are BodyParts3D's).
+ */
+export function extractFemaleHRA(hra, { log = () => {} } = {}) {
+  const meshes = {};
+  meshes.skin = M.weld(hra.collect('VH_M_skin'), 1e-6);
+  log(`HRA female skin: ${M.triCount(meshes.skin)} tris`);
+  const femurPatches = [/condyle/, /intercondylar/, /enthesis/, /perichondular/, /patellar_surface/, /articular_cartilage/, /distal_most/];
+  const bones = {
+    spine: hra.collect('VH_M_vertebra'), sacrum: hra.collect(['VH_M_sacrum', 'VH_M_coccyx']),
+    femur_L: hra.collect('VH_M_femur_L', { exclude: femurPatches }), femur_R: hra.collect('VH_M_femur_R', { exclude: femurPatches }),
+    sternum: hra.collect(['VH_F_sternum', 'VH_F_manubrium']),
+  };
+  for (const b of ['tibia', 'fibula', 'patella']) for (const s of ['L', 'R']) bones[`${b}_${s}`] = hra.collect(`VH_M_${b}_${s}`);
+  for (const [n, m] of Object.entries(bones)) meshes[`bone_${n}`] = M.weld(m, 1e-6);
+  meshes.hraBones = M.weld(M.merge([bones.spine, bones.sacrum, bones.femur_L, bones.femur_R, bones.tibia_L, bones.tibia_R, bones.fibula_L, bones.fibula_R,
+    bones.patella_L, bones.patella_R, bones.sternum]), 1e-6);
+  log(`HRA female bones: ${M.triCount(meshes.hraBones)} tris`);
+  return meshes;
+}

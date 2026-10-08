@@ -24,6 +24,7 @@
 
   color-scheme: dark;
   display: block;
+  place-items: normal; /* the baseline centres a grid; the film is a plain block scroller */
   padding: 0;
   overflow: hidden;
   color: var(--i-ink);
@@ -204,6 +205,8 @@
   transition: opacity 600ms var(--i-ease);
 }
 #intro.intro--film:not(.intro--opening):not(.intro--end) .intro-tag { opacity: 0.85; }
+#intro .intro-tag-scale { display: none; }
+#intro:is([data-chapter="4"], [data-chapter="5"], [data-chapter="6"]) .intro-tag-scale { display: inline; }
 
 /* ------------------------------------------------------------------ title card (opening + end) */
 #intro .intro-card {
@@ -222,8 +225,9 @@
   visibility: visible;
   transform: translateY(calc((1 - var(--o, 1)) * -10px));
 }
-/* fully faded parts leave the accessibility-irrelevant visual layer and the tab order */
-#intro.intro--film .is-off { visibility: hidden; }
+/* a fully faded title card and its buttons leave the tab order (the chapter captions stay readable to
+   screen readers as one list, whichever one is on screen) */
+#intro.intro--film :is(.intro-card, .intro-actions, .intro-cue).is-off { visibility: hidden; }
 #intro.intro--js .intro-content > * { animation: none; }
 #intro #intro-title {
   margin: 0;
@@ -533,7 +537,7 @@ html[data-motion="reduce"][data-intro="leaving"] #intro { transition: none !impo
 /* ------------------------------------------------------------------ tablet */
 @media (max-width: 1100px) {
   #intro .intro-card { width: min(34rem, 52vw); }
-  #intro.intro--film .intro-chapters { width: min(28rem, 50vw); }
+  #intro.intro--film .intro-chapters { width: min(28rem, 50vw); bottom: calc(var(--i-foot) + 104px); }
 }
 
 /* ------------------------------------------------------------------ portrait + phones: picture above, words below */
@@ -545,8 +549,8 @@ html[data-motion="reduce"][data-intro="leaving"] #intro { transition: none !impo
   #intro .intro-still {
     right: auto;
     left: 50%;
-    top: 13%;
-    height: 44%;
+    top: 10%;
+    height: 38%;
     translate: -50% 0;
   }
   #intro .intro-scrim {
@@ -556,23 +560,23 @@ html[data-motion="reduce"][data-intro="leaving"] #intro { transition: none !impo
   }
   #intro .intro-card {
     top: auto;
-    bottom: calc(var(--i-foot) + 64px);
+    bottom: calc(var(--i-foot) + 92px);
     right: max(var(--i-gutter), calc(env(safe-area-inset-right) + 16px));
     width: auto;
     translate: none;
   }
-  #intro:not(.intro--film) .intro-card { bottom: calc(var(--i-foot) + 52px); }
+  #intro:not(.intro--film) .intro-card { bottom: calc(var(--i-foot) + 44px); }
   #intro #intro-title { font-size: clamp(2.6rem, 1.6rem + 6vw, 3.6rem); }
   #intro .intro-tagline.brand-tagline { margin-top: 10px; font-size: 1.15rem; }
   #intro .intro-sub { margin-top: 12px; font-size: 0.95rem; line-height: 1.5; }
-  #intro .intro-actions { flex-direction: column; align-items: stretch; gap: 10px; margin-top: 20px; }
+  #intro .intro-actions { flex-direction: column; align-items: stretch; gap: 10px; margin: 20px 0 0; max-width: none; }
   #intro #intro-enter,
   #intro #intro-facts { --btn-h: 50px; width: 100%; justify-content: center; }
   #intro.intro--film .intro-cue { margin-top: 18px; }
   #intro.intro--film .intro-chapters {
     right: max(var(--i-gutter), calc(env(safe-area-inset-right) + 16px));
     width: auto;
-    bottom: calc(var(--i-foot) + 64px);
+    bottom: calc(var(--i-foot) + 92px);
   }
   #intro .intro-ch-title { font-size: clamp(1.5rem, 1.1rem + 3vw, 2rem); margin-top: 8px; }
   #intro .intro-ch-text { margin-top: 8px; font-size: 0.95rem; line-height: 1.5; }

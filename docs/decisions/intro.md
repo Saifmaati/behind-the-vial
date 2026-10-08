@@ -1,35 +1,44 @@
-# Decisions: intro (js/intro.js, css/intro.css, js/scene/syringe.js)
+# Decisions: intro (js/intro.js, css/intro.css, js/scene/vial.js, js/scene/syringe.js, #intro in index.html)
 
 One line each: decision, then why.
 
-## Storyboard and behaviour
-- **The intro clock starts at the first rendered frame after every shader is compiled and the studio environment is filtered**, not at page load, so nothing stutters mid-sequence; a black frame is on screen from the start and "Skip intro" is visible and live from frame 1.
-- **Storyboard: 0–2.2 s one capillary draws itself; 2.2–7 s pull-back as the network lights up from it; 4.8–9.4 s the syringe glides in rim-lit, then the studio light comes up; 7.7–10.8 s kicker, title, sub, buttons, note; 12 s+ idle loop (slow drift, heartbeat flow).** Text waits for the 3D clock so words and picture land together.
-- **If the 3D is not ready 4.5 s after mount the text is shown anyway, and the 3D later joins at 9.4 s (syringe already in place)**, so a slow device never leaves the visitor in front of a black screen with nothing to read.
-- **Keyboard focus anywhere except "Skip intro" reveals all the text at once**, so keyboard users never tab onto an invisible button; buttons stay `pointer-events: none` until revealed for mouse users.
-- **Enter (with no control focused) enters the app, Escape skips; both are ignored with modifier keys or while composing text**; a focused button handles its own Enter.
-- **Enter / Facts call back immediately and the 3D plays a 0.7 s push-in while main.js fades the overlay**; the loop stops by itself 1.2 s after leaving even if nobody calls `dispose()`.
-- **`dispose()` frees every geometry, material, texture and render target, then calls `renderer.dispose()` and `renderer.forceContextLoss()` and removes the canvas**, so the 3D body never shares the GPU with a second live context (verified: `isContextLost() === true` after Enter and after Escape).
-- **Reduced motion is one composed still at t = 12.6 s with all text visible and no transitions.** The module also listens to the bus event `motion:change { reducedMotion }` and switches still ⇄ idle loop live (never restarting the sequence); with no `reducedMotion` option it falls back to `html[data-motion]`, then the media query.
-- **No allocations in the frame loop** (shared scratch vectors, stage reveal by index instead of iterating the stage table) and the loop pauses on `visibilitychange`.
+## Film and scroll (v2: the scroll-driven film replaces the timed intro)
+- **Six chapters plus an opening and an end card on one ~760 % scroll track: vial → syringe with a drop → the site on a lifelike belly → a cut block of tissue with the depot → capillary into a vein → the whole see-through body with the drug reaching its target organs → title and buttons.** It is the owner's storyboard in order, one viewport of scroll per chapter.
+- **#intro itself is the scroll container (a sticky full-screen stage plus an empty track), not the document**, so the app behind never moves, mobile toolbars never resize the stage mid-film, and app.css can keep the body locked; the page's own scroll is saved at mount and restored on exit (dev handle `#intro.__intro.seek(p)`; `window.scrollTo` does not drive the film).
+- **The 3D is five separate sets (studio, body, tissue, blood, glass) joined by short cross-dissolves with a slight push-in**, because the scales differ by a factor of 100 000 (a 1.75 m body vs 7 µm red cells); a dissolve reads as one continuous camera move and each set keeps sane depth precision.
+- **Scroll is followed with a critically damped lerp (rate 5.2/s)**, so wheel steps and touch flicks scrub like a video instead of jumping.
+- **Keys move a whole chapter (Space/PageDown/arrows forward, Shift+Space/PageUp/arrows back, Home/End); Enter with nothing focused enters, Escape skips; a focused button keeps its own Space/Enter.** Chapter steps are what a keyboard user needs; per-pixel keyboard scrolling of a film is meaningless.
+- **Hidden end-card buttons are `visibility: hidden` (out of the tab order) until the end card shows; focusing one jumps to the end card.** Keyboard users never tab onto something invisible; Skip is always first in the tab order.
+- **Chapter captions are one ordered list of real text; only the title card and its buttons leave the accessibility tree when faded**, so a screen reader can read the whole narrative in order.
+- **Back / Next chapter buttons and an `01 / 06` count sit next to the safety line** (never "00"), for touch users and as the primary control under reduced motion.
+
+## First frame, safety and fallback
+- **Kicker "Independent education · Not a seller", the title with its tagline, the line "Education only · Nothing for sale · Not medical advice · No dosing guidance" and Skip are static HTML over a CSS/SVG still**, so the educational, non-commercial purpose shows before any script, font or 3D has loaded (owner feedback 2).
+- **The kicker and the safety line stay on screen through the whole film** (top bar and foot), not only on the first frame, because a visitor can land mid-scroll via a shared screenshot or a restore.
+- **Without WebGL (or `?no3d`) the intro stays that still title card with both buttons and no scroll track**: it looks designed (line-drawn vial and syringe in champagne hairlines, a soft halo) and is fully usable.
+- **The vial label reads only "RESEARCH USE ONLY", "NOT FOR HUMAN USE" and a lot code** (the SVG still uses the same three lines): no amount, strength, brand, price, storage or preparation wording. The earlier "LYOPHILIZED POWDER", expiry date, storage line and barcode digits were removed as fake data.
+- **The syringe never touches the vial and never points at it; it floats beside it, needle down, with one drop at the tip.** Nothing reads as drawing up, mixing, measuring or an injection angle; caption 02 says so in words.
+- **The injection site is shown as a champagne ring drawn on the skin, never with a needle on the body**, so the intro shows where, not how.
 
 ## Look
-- **The intro is always dark**, whatever the site theme (the overlay carries `.force-dark`): it is a cinematic title card.
-- **Lighting of the syringe: a black studio environment with soft strip lights for the glass, a front key from the camera's upper left, a little ambient fill, two rim lights, and a tiny point light on the bevel's mirror direction.** The black studio alone made the white plastic read as a dark grey stick; the fill and key fix that without washing out the glass.
-- **Bloom threshold 0.8**: only light sources (vessels, blood cells, glints, the needle flash) bloom; lit plastic stays solid. The key is 20 % lower on tall (phone) layouts because the same bloom covers more of a small frame.
-- **On phones the syringe sits above the title (upper third) and the copy stacks below**; checked at 390×844 and 360×740 that they never overlap.
+- **Tone mapping is AgX with a gentle S-curve and a warm obsidian lift**, because ACES pushed skin to orange and blood to neon red; AgX keeps skin natural and lets champagne glows roll off softly.
+- **Bloom is set per shot (strength and threshold)**: high thresholds in the studio and on skin (no haze from glass highlights), lower in the micro shots so the drug reads as light.
+- **Lifelike skin is a MeshPhysicalMaterial with: a tileable micro-relief texture drawn once on the CPU (pores ≈ 0.4 mm, a fine diamond pattern of furrows), applied triplanar in world space with mipmaps; soft mottling; a warm wrap-light term for light scattering under the skin; sheen and a thin oily clearcoat.** No image textures are downloaded; detail fades out by mipmapping at distance, so there is no shimmer.
+- **The GLB skin normals are recomputed in full precision (vertices welded first)** for the close-up, because the quantized normals showed faceted planes under raking light.
+- **A procedural navel at `landmarks.anchors.navel` and ~190 vellus hairs seated on the skin around the site** make the macro shot read as a real belly; hair roots are fitted to the nearest skin vertices so they never float.
+- **The cut tissue block is illustrative, labelled "Illustration · not to scale"**: epidermis exaggerated, fat lobules with septa and adipocytes, fascia, striated muscle, follicles, vessels cut across, and the depot as a champagne pool half exposed by the cut. Thicknesses are not data and no numbers are shown.
+- **Red cells use the Evans–Fung biconcave profile, travel edge-on in single file in the capillary and tumble freely in the vein; a clear channel is kept down the vein's axis for the camera.** Flow is slowed down (a film, not a measurement).
+- **The glass body uses the real anatomy GLB: organs in muted natural tones, arteries oxblood, veins sapphire, skin as a champagne fresnel; the drug follows `abdomen_to_heart` → `heart_to_lungs` → `lungs_to_heart` → `to_<organ>` and lights the organs with receptors named in the targets of data/retatrutide.js (heart, liver, stomach, pancreas, brain).** Organ labels carry names only, no claims or numbers.
+- **On phones the subject sits in the upper part of the frame (lens shift, not a camera turn) and the words stack below; on desktop the subject sits right of centre and the words on the left.**
 
-## Syringe (js/scene/syringe.js)
-- **Modelled on a standard 1 mL tuberculin-style syringe at real size (meters; barrel Ø 6.8 mm, 29 G needle, 12° lancet bevel)**, documented with its local frame at the top of the file so injection.js can place it on the skin by the tip.
-- **The finger flange is a solid, frosted shape (it shares the hub's frosted material)**; a perfectly clear flange seen nearly edge-on against black only showed its outline, which read as a stray wire.
-- **The barrel ends inside the flange and the flange forms the top of the bore**, so no overlapping transmissive surfaces z-fight there.
-- **Plunger rod and thumb press: opaque white polypropylene (satin, low sheen, faint clearcoat).** Opaque because three.js only shows opaque objects through a transmissive barrel; low clearcoat because glossy glints bloomed on phones.
-- **Stopper: black rubber with two rounded sealing ribs and a deep groove, a slight silicone sheen** so the rib crests catch thin highlights through the barrel.
-- **Graduations are drawn procedurally in the fragment shader with fwidth anti-aliasing (three lengths: every line, every 5th, every 10th), at least ~1 px wide, with minor lines fading first when they crowd under ~3 px**: crisp at the intro's size, no moiré at the small size inside the body. Lines only, never numbers or units.
-- **Needle: polished steel (roughness 0.17), the freshly ground bevel facet slightly brighter than the shaft and flat-shaded so it flashes as one facet.**
-- **Liquid: own shader in the opaque list (so the glass refracts it), concave meniscus when there is an air gap, wetting the stopper face when there is none; updates move existing vertices (no allocations) with fixed bounds.**
-- **`materials.hub` now also drives the flange** (same object), so callers that restyle `glass`/`hub`/`cap` (injection.js does) restyle the flange too; `parts.head` was added (rod head disc). All other extras (`setGlow`, `parts`, `materials`, `dims`, `tip`) are unchanged and additive to the contract.
+## Performance and lifecycle
+- **A quality ladder steps down when frames are slow (pixel ratio 1.6 → 1.25 → 1 → 0.75, MSAA 4 → 2 → 0) and, as a last resort, stops the ambient motion so frames are drawn only while scrolling.** Phones and old laptops stay responsive; headless SwiftShader can still take screenshots.
+- **Every set is compiled (`compileAsync`) before it can appear; a shot whose set is not ready borrows the nearest earlier one**, so nothing compiles mid-scroll and a slow anatomy download never shows an empty frame.
+- **`dispose()` frees every geometry, material, texture and render target, then `renderer.dispose()` + `forceContextLoss()` and removes the canvas** (verified: no `#intro canvas` after Enter/Escape; main.js then mounts the body).
+- **Reduced motion = still frames, one per chapter, chosen where that chapter's picture is complete** (ring drawn, drop formed, depot formed); scroll, keys and Back/Next switch them instantly; no ambient motion, no CSS transitions. `motion:change` switches live without a restart.
 
 ## Contract notes
-- Consumes the foundation proposal `motion:change { reducedMotion }` (not yet in ARCHITECTURE.md).
-- `mountIntro` returns `{ dispose() }` plus a dev-only `_state` getter (clock, ready, running, timings) used by the sandbox.
+- `mountIntro(host, { reducedMotion, onEnter, onFacts }) → { dispose() }` is unchanged; `_state` (dev) and `host.__intro = { seek(p, { instant }), state }` are additive.
+- `createVial(THREE, { envMap, scale, envMapIntensity, capColor, label }) → { group, dispose(), dims, parts, materials, labelReady }` (local frame and real sizes documented in the file).
+- `createSyringe` defaults are now warm neutrals (clear, faintly warm liquid; warm grey graduations) instead of a pale cyan tint, per the luxury palette; the API is unchanged.
+- The #intro DOM keeps every contract id (`#intro-canvas-host`, `#intro-title`, `#intro-enter`, `#intro-facts`, `#intro-skip`, `#intro-sub`) and adds `.intro-stage`, `.intro-track`, `.intro-card`, `.intro-chapters`, `.intro-foot`, `.intro-labels`.

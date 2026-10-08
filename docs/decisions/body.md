@@ -15,31 +15,40 @@ One line each: decision, then why. Files: `js/scene/{stage,anatomy,vessels,injec
 8. **Six skin tones, unnamed (Tone 1, lightest … Tone 6, deepest), default Tone 3**, appearance only, emitted as `skinTone` in `body:change`; the swatches are duplicated in `bodyeditor.js` so the UI never imports three.js.
 9. **Age also deepens the fine furrows and lowers the oil sheen a little** (18 → 90 years), on top of the existing stature and fat shift; it is appearance only and never shown as a number.
 
+10. **Skin occlusion is baked once per body, per vertex, when the lifelike look is first used** (nearby skin in front of each vertex within 7 cm, through a spatial hash, then smoothed over the mesh), so armpits, the groin, between the fingers and under the chin darken with a warm bounce; it takes a fraction of a second on the 60k-triangle skin and nothing per frame.
+11. **Hands, feet and face carry slightly more red** (from the editable body's own regional weights: little fat under the skin), a small step away from a uniform mannequin tone.
+
 ## Layers, labels, zoom
-10. **Layers: Skin · Muscles (only once the detail asset is loaded) · Skeleton · Organs · Blood vessels, plus a "Skin look" slider from Lifelike to Glass; default Glass with every layer on except Muscles**, so the first view is the same see-through body as before.
-11. **The layers panel lives in `js/ui/bodyeditor.js` (`mountLayersPanel`)**, because `tests/exclusions.test.mjs` allows range inputs only in the timeline and the body editor; its inputs carry `data-view-only`, and it never mentions anything but the view.
-12. **Below an X-ray value of one half, vessels, bones and organs take solid looks (oxblood arteries, sapphire veins, ivory bone, opaque organs)**, so peeling the skin off in the lifelike view reads like an anatomical plate rather than glass.
-13. **Structure names come from the mesh names now and from `atlas-<sex>.json` once it ships; skin points are named by body region** ("Skin · Left forearm") from the same capsules that weight the editable body, so no label is invented.
-14. **Picking order: an opaque skin wins; in the glass view organs (and muscles) come first, bones only where nothing else is under the pointer, the skin last**, so pointing at the belly names the organ behind the glass rather than a rib.
-15. **Hover labels (mouse) and tap labels (touch) sit on the picked point, not the organ centre**, so they stay on screen in a deep zoom; an organ tap still focuses the organ as before.
-16. **Zoom to cursor with a surface pivot**: before each zoom-in step the orbit pivot slides along the current view axis to the depth of the surface under the pointer (no visible jump), so the camera heads for that spot and stops 2.4 cm short of it instead of passing through the skin; zooming out goes straight back, and past ~72 % of the home distance the pivot drifts home so the whole body is centred again.
-17. **The near plane follows the distance (4 % of it, between 1 mm and 5 cm)**, which keeps depth precision at the full-body view and allows a 13 mm field of view at the closest zoom.
-18. **Panning is on only when zoomed in (closer than 70 % of the home distance), and the pivot stays inside a box around the body**; zoomed in on a touch screen, one-finger drags turn the body instead of scrolling the page.
-19. **Double-click / double-tap flies to the point (pivot there, 38 % of the current distance)**; on touch a single tap waits 260 ms to tell it from a double tap.
-20. **Injection-site rings and labels step aside in a close-up (closer than ~0.3 m)**, because a 3 cm ring covered the skin being examined.
-21. **Detail asset (`detail-<sex>.glb`: `skin_hi`, `muscle_<slug>`, `eyes`, `skeleton_hi`; `atlas-<sex>.json`) is requested only when named** by `landmarks-<sex>.json` (`detail: { glb, atlas }` or `meta.detail`) or by the caller, because probing a missing file logs a console error; `skin_hi` replaces the body skin within 0.5 m of the pivot.
+12. **Layers: Skin · Muscles (only once the detail asset is loaded) · Skeleton · Organs · Blood vessels, plus a "Skin look" slider from Lifelike to Glass; default Glass with every layer on except Muscles**, so the first view is the same see-through body as before.
+13. **The layers panel lives in `js/ui/bodyeditor.js` (`mountLayersPanel`)**, because `tests/exclusions.test.mjs` allows range inputs only in the timeline and the body editor; its inputs carry `data-view-only`, and it never mentions anything but the view.
+14. **Below an X-ray value of one half, vessels, bones and organs take solid looks (oxblood arteries, sapphire veins, ivory bone, opaque organs)**, so peeling the skin off in the lifelike view reads like an anatomical plate rather than glass.
+15. **Structure names come from the mesh names now and from `atlas-<sex>.json` once it ships; skin points are named by body region** ("Skin · Left forearm") from the same capsules that weight the editable body, so no label is invented.
+16. **Picking order: an opaque skin wins; in the glass view organs (and muscles) come first, bones only where nothing else is under the pointer, the skin last**, so pointing at the belly names the organ behind the glass rather than a rib.
+17. **Hover labels (mouse) and tap labels (touch) sit on the picked point, not the organ centre**, so they stay on screen in a deep zoom; an organ tap still focuses the organ as before.
+18. **Zoom to cursor with a surface pivot**: before each zoom-in step the orbit pivot slides along the current view axis to the depth of the surface under the pointer (no visible jump), so the camera heads for that spot and stops 2.4 cm short of it instead of passing through the skin; zooming out goes straight back, and past ~72 % of the home distance the pivot drifts home so the whole body is centred again.
+19. **The near plane follows the distance (4 % of it, between 1 mm and 5 cm)**, which keeps depth precision at the full-body view and allows a 13 mm field of view at the closest zoom.
+20. **Panning is on only when zoomed in (closer than 70 % of the home distance), and the pivot stays inside a box around the body**; zoomed in on a touch screen, one-finger drags turn the body instead of scrolling the page.
+21. **Double-click / double-tap flies to the point (pivot there, 38 % of the current distance)**; on touch a single tap waits 260 ms to tell it from a double tap.
+22. **Injection-site rings and labels step aside in a close-up (closer than ~0.3 m)**, because a 3 cm ring covered the skin being examined.
+23. **Detail asset (`detail-<sex>.glb`: `skin_hi`, `muscle_<slug>`, `eyes`, `skeleton_hi`; `atlas-<sex>.json`) is requested only when named** by `landmarks-<sex>.json` (`detail: { glb, atlas }` or `meta.detail`) or by the caller, because probing a missing file logs a console error; `skin_hi` replaces the body skin within 0.5 m of the pivot.
 
 ## Sequence
-22. **The sequence keeps the visitor's skin look for the syringe and depot close-up (a lifelike skin stays whole around the section window), turns on organs and vessels, and switches to the glass view from the bloodstream phase until it ends**, then restores the visitor's layers and look; both panels are locked while it plays.
-23. **The orbit pivot does not drift home during the sequence** (`stage.autoCenter = false`), so the fitted bloodstream and organ views stay as framed.
+24. **The sequence keeps the visitor's skin look for the syringe and depot close-up (a lifelike skin stays whole around the section window), turns on organs and vessels, and switches to the glass view from the bloodstream phase until it ends**, then restores the visitor's layers and look; both panels are locked while it plays.
+25. **The orbit pivot does not drift home during the sequence** (`stage.autoCenter = false`), so the fitted bloodstream and organ views stay as framed.
+
+## Look and layout fixes
+26. **Light theme: the glass skin's core is an ink wash (#3a3226 at 3.5 %) instead of ivory**, because the output pass converts the premultiplied colour to sRGB, which turned a faint ivory core into a white veil over the organs; the body now reads as ivory paper with ink linework, as the palette asks.
+27. **Labels keep 86 px clear at the top of wide stages** (56 px at ≤ 430 px), so they never sit under the Layers / Body buttons; at ≤ 430 px the two buttons become icon-only (names kept for assistive technology) so they clear the colour key.
+28. **Zoom speed 1.1** (was 0.7): the zoom now spans 3.6 m to 2.4 cm, about 80 wheel notches; trackpad pinches and double-clicks get there much faster.
+29. **The close-up skin from the detail asset is welded, relaxed twice and given fresh normals on load**, because its quantised normals showed facets in the test build.
 
 ## Robustness
-24. **Quality tiers: phones, tablets and machines with ≤ 4 cores or ≤ 4 GB report `quality: 'low'`**: no bloom, pixel ratio capped at 1.5 (floor 0.85), 2× MSAA, half the ambient blood cells, 150 drug particles instead of 240, the light skin shader; on any device bloom switches off if frames stay under 30 fps at the lowest pixel ratio.
-25. **The female-anatomy check is a GET of `landmarks-female.json` (reused from the cache by the load)** instead of HEAD requests, which headless Chrome reported as aborted.
-26. **No per-frame allocation in the new code**: picks run only on pointer events (throttled to ~20 per second for hover, ~11 per second for wheel pivots), and per-frame work reuses vectors.
+30. **Quality tiers: phones, tablets and machines with ≤ 4 cores or ≤ 4 GB report `quality: 'low'`**: no bloom, pixel ratio capped at 1.5 (floor 0.85), 2× MSAA, half the ambient blood cells, 150 drug particles instead of 240, the light skin shader; on any device bloom switches off if frames stay under 30 fps at the lowest pixel ratio.
+31. **The female-anatomy check is a GET of `landmarks-female.json` (reused from the cache by the load)** instead of HEAD requests, which headless Chrome reported as aborted.
+32. **No per-frame allocation in the new code**: picks run only on pointer events (throttled to ~20 per second for hover, ~11 per second for wheel pivots), and per-frame work reuses vectors.
 
 ## Poster
-27. **`assets/img/body-poster.webp` is the default glass body, dark theme, three-quarter (azimuth 32°), rendered from the sandbox at 1.5× and downsampled onto the stage's obsidian vignette, injection rings hidden**, for the no-WebGL fallback.
+33. **`assets/img/body-poster.webp` is the default glass body, dark theme, three-quarter (azimuth 32°), rendered from the sandbox at 1.5× and downsampled onto the stage's obsidian vignette, injection rings hidden (1598 × 998, 67 KB WebP at quality 0.93)**, for the no-WebGL fallback.
 
 ## Contract requests (for ARCHITECTURE.md)
 - `body:change` gains `skinTone: 'tone-1' … 'tone-6'` (appearance only, consumed by `js/scene/*` only).

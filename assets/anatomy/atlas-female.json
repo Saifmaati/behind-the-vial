@@ -1,0 +1,1852 @@
+{
+ "version": 1,
+ "units": "m",
+ "sex": "female",
+ "frame": "metres, +Y up, feet at y=0, body faces +Z, centred on x=0 z=0, person's left = +X (same as body-female.glb, 1.62 m)",
+ "centers": "surface or volume centroid in the published frame; for paired structures `center` is the person's left side (+X) and `sides` gives both",
+ "files": {
+  "body-female.glb": "assets/anatomy/body-female.glb",
+  "detail-female.glb": "assets/anatomy/detail-female.glb"
+ },
+ "attribution": "Anatomy adapted from the HRA 3D Reference Organs, United Female (NIH HuBMAP, CC BY 4.0), the VOXEL-MAN Segmented Internal Organs of the Visible Human Male (Höhne et al., CC BY 4.0) and BodyParts3D (© DBCLS, CC BY 4.0).",
+ "structures": [
+  {
+   "id": "skin",
+   "name": "Skin",
+   "plain": "The body’s outer covering",
+   "system": "integumentary",
+   "center": [
+    -0.0014,
+    0.8398,
+    -0.0126
+   ],
+   "file": "body-female.glb"
+  },
+  {
+   "id": "brain",
+   "name": "Brain",
+   "plain": "Controls thought, movement and the senses",
+   "system": "nervous",
+   "center": [
+    -0.0007,
+    1.5458,
+    -0.0164
+   ],
+   "file": "body-female.glb"
+  },
+  {
+   "id": "thyroid",
+   "name": "Thyroid gland",
+   "plain": "Gland at the front of the neck that makes thyroid hormone",
+   "system": "endocrine",
+   "center": [
+    -0.0062,
+    1.3556,
+    0.013
+   ],
+   "file": "body-female.glb"
+  },
+  {
+   "id": "heart",
+   "name": "Heart",
+   "plain": "Pumps blood around the body",
+   "system": "cardiovascular",
+   "center": [
+    0.0494,
+    1.1999,
+    -0.0008
+   ],
+   "file": "body-female.glb"
+  },
+  {
+   "id": "lungs",
+   "name": "Lungs",
+   "plain": "Take in oxygen and remove carbon dioxide",
+   "system": "respiratory",
+   "center": [
+    -0.0052,
+    1.2485,
+    -0.0308
+   ],
+   "file": "body-female.glb",
+   "sides": {
+    "left": [
+     0.0706,
+     1.2562,
+     -0.0365
+    ],
+    "right": [
+     -0.0651,
+     1.2425,
+     -0.0262
+    ]
+   }
+  },
+  {
+   "id": "liver",
+   "name": "Liver",
+   "plain": "Large organ under the right ribs; processes nutrients and makes bile",
+   "system": "digestive",
+   "center": [
+    -0.0391,
+    1.111,
+    -0.007
+   ],
+   "file": "body-female.glb"
+  },
+  {
+   "id": "gallbladder",
+   "name": "Gallbladder",
+   "plain": "Small sac under the liver that stores bile",
+   "system": "digestive",
+   "center": [
+    -0.0663,
+    1.037,
+    0.0058
+   ],
+   "file": "body-female.glb"
+  },
+  {
+   "id": "stomach",
+   "name": "Stomach",
+   "plain": "Holds and starts digesting food",
+   "system": "digestive",
+   "center": [
+    0.0591,
+    1.0918,
+    0.0047
+   ],
+   "file": "body-female.glb"
+  },
+  {
+   "id": "pancreas",
+   "name": "Pancreas",
+   "plain": "Makes digestive enzymes and the hormones insulin and glucagon",
+   "system": "digestive",
+   "center": [
+    0.0254,
+    1.037,
+    -0.0067
+   ],
+   "file": "body-female.glb"
+  },
+  {
+   "id": "spleen",
+   "name": "Spleen",
+   "plain": "Filters the blood and helps fight infection",
+   "system": "lymphatic",
+   "center": [
+    0.0878,
+    1.1004,
+    -0.0684
+   ],
+   "file": "body-female.glb"
+  },
+  {
+   "id": "small_intestine",
+   "name": "Small intestine",
+   "plain": "Small bowel; absorbs most nutrients from food",
+   "system": "digestive",
+   "center": [
+    0.0028,
+    0.941,
+    0.0229
+   ],
+   "file": "body-female.glb"
+  },
+  {
+   "id": "large_intestine",
+   "name": "Large intestine (colon)",
+   "plain": "Large bowel; absorbs water and forms stool",
+   "system": "digestive",
+   "center": [
+    0.0043,
+    0.9218,
+    0.0209
+   ],
+   "file": "body-female.glb"
+  },
+  {
+   "id": "kidneys",
+   "name": "Kidneys",
+   "plain": "Filter the blood and make urine",
+   "system": "urinary",
+   "center": [
+    0.0195,
+    1.0101,
+    -0.0447
+   ],
+   "file": "body-female.glb",
+   "sides": {
+    "left": [
+     0.0816,
+     1.0059,
+     -0.045
+    ],
+    "right": [
+     -0.0684,
+     1.0162,
+     -0.0443
+    ]
+   }
+  },
+  {
+   "id": "bladder",
+   "name": "Urinary bladder",
+   "plain": "Stores urine",
+   "system": "urinary",
+   "center": [
+    -0.0092,
+    0.7847,
+    0.0224
+   ],
+   "file": "body-female.glb"
+  },
+  {
+   "id": "uterus",
+   "name": "Uterus",
+   "plain": "The womb",
+   "system": "reproductive",
+   "center": [
+    -0.0065,
+    0.8067,
+    -0.0004
+   ],
+   "file": "body-female.glb"
+  },
+  {
+   "id": "ovaries",
+   "name": "Ovaries",
+   "plain": "Make eggs and the hormones estrogen and progesterone",
+   "system": "reproductive",
+   "center": [
+    -0.0076,
+    0.8332,
+    0.0095
+   ],
+   "file": "body-female.glb",
+   "sides": {
+    "left": [
+     0.0495,
+     0.8331,
+     0.0095
+    ],
+    "right": [
+     -0.064,
+     0.8332,
+     0.0095
+    ]
+   }
+  },
+  {
+   "id": "arteries",
+   "name": "Arteries",
+   "plain": "Vessels carrying oxygen-rich blood (shown red; includes the pulmonary veins)",
+   "system": "cardiovascular",
+   "center": [
+    0.0044,
+    0.9171,
+    -0.0009
+   ],
+   "file": "body-female.glb"
+  },
+  {
+   "id": "veins",
+   "name": "Veins",
+   "plain": "Vessels carrying oxygen-poor blood (shown blue; includes the pulmonary arteries)",
+   "system": "cardiovascular",
+   "center": [
+    -0.0008,
+    0.8525,
+    -0.0069
+   ],
+   "file": "body-female.glb"
+  },
+  {
+   "id": "skeleton",
+   "name": "Skeleton",
+   "plain": "The bones that support and protect the body",
+   "system": "skeletal",
+   "center": [
+    -0.0016,
+    1.0094,
+    -0.0196
+   ],
+   "file": "body-female.glb"
+  },
+  {
+   "id": "skin_hi",
+   "name": "Skin (close-up surface)",
+   "plain": "The body’s outer covering, in full detail for close-up views",
+   "system": "integumentary",
+   "center": [
+    -0.0015,
+    0.8397,
+    -0.0126
+   ],
+   "file": "detail-female.glb"
+  },
+  {
+   "id": "muscle_sternocleidomastoid",
+   "name": "Sternocleidomastoid",
+   "plain": "The long neck muscle that turns and tilts the head",
+   "system": "muscular",
+   "center": [
+    0.0378,
+    1.3941,
+    0.0173
+   ],
+   "file": "detail-female.glb",
+   "region": "neck",
+   "layer": "superficial",
+   "sides": {
+    "left": [
+     0.0378,
+     1.3941,
+     0.0173
+    ],
+    "right": [
+     -0.0415,
+     1.3912,
+     0.018
+    ]
+   }
+  },
+  {
+   "id": "muscle_platysma",
+   "name": "Platysma",
+   "plain": "Thin sheet of muscle just under the skin of the neck",
+   "system": "muscular",
+   "center": [
+    0.0469,
+    1.3725,
+    0.0239
+   ],
+   "file": "detail-female.glb",
+   "region": "neck",
+   "layer": "superficial",
+   "sides": {
+    "left": [
+     0.0469,
+     1.3725,
+     0.0239
+    ],
+    "right": [
+     -0.0467,
+     1.3726,
+     0.0289
+    ]
+   }
+  },
+  {
+   "id": "muscle_suprahyoid",
+   "name": "Suprahyoid muscles",
+   "plain": "Muscles of the floor of the mouth; lift the voice box when swallowing",
+   "system": "muscular",
+   "center": [
+    0.0221,
+    1.4381,
+    0.0451
+   ],
+   "file": "detail-female.glb",
+   "region": "neck",
+   "layer": "superficial",
+   "sides": {
+    "left": [
+     0.0221,
+     1.4381,
+     0.0451
+    ],
+    "right": [
+     -0.0204,
+     1.4357,
+     0.05
+    ]
+   }
+  },
+  {
+   "id": "muscle_infrahyoid",
+   "name": "Infrahyoid muscles",
+   "plain": "Strap muscles at the front of the neck; lower the voice box",
+   "system": "muscular",
+   "center": [
+    0.0324,
+    1.3592,
+    0.0106
+   ],
+   "file": "detail-female.glb",
+   "region": "neck",
+   "layer": "superficial",
+   "sides": {
+    "left": [
+     0.0324,
+     1.3592,
+     0.0106
+    ],
+    "right": [
+     -0.0368,
+     1.3546,
+     0.0113
+    ]
+   }
+  },
+  {
+   "id": "muscle_scalenes",
+   "name": "Scalene muscles",
+   "plain": "Muscles at the side of the neck; lift the top ribs during deep breathing",
+   "system": "muscular",
+   "center": [
+    0.0338,
+    1.3777,
+    -0.0123
+   ],
+   "file": "detail-female.glb",
+   "region": "neck",
+   "layer": "superficial",
+   "sides": {
+    "left": [
+     0.0338,
+     1.3777,
+     -0.0123
+    ],
+    "right": [
+     -0.0416,
+     1.3754,
+     -0.012
+    ]
+   }
+  },
+  {
+   "id": "muscle_prevertebral",
+   "name": "Longus colli and longus capitis",
+   "plain": "Deep muscles at the front of the neck; bend the neck forward",
+   "system": "muscular",
+   "center": [
+    0.0021,
+    1.4156,
+    0.0071
+   ],
+   "file": "detail-female.glb",
+   "region": "neck",
+   "layer": "deep"
+  },
+  {
+   "id": "muscle_splenius",
+   "name": "Splenius capitis and cervicis",
+   "plain": "Muscle at the back of the neck; turns and extends the head",
+   "system": "muscular",
+   "center": [
+    0.0215,
+    1.3593,
+    -0.0647
+   ],
+   "file": "detail-female.glb",
+   "region": "neck",
+   "layer": "superficial",
+   "sides": {
+    "left": [
+     0.0215,
+     1.3593,
+     -0.0647
+    ],
+    "right": [
+     -0.0183,
+     1.3514,
+     -0.0712
+    ]
+   }
+  },
+  {
+   "id": "muscle_semispinalis",
+   "name": "Semispinalis",
+   "plain": "Deep muscles along the back of the neck and upper spine; extend the head and spine",
+   "system": "muscular",
+   "center": [
+    -0.0011,
+    1.3342,
+    -0.0704
+   ],
+   "file": "detail-female.glb",
+   "region": "back",
+   "layer": "deep"
+  },
+  {
+   "id": "muscle_suboccipital",
+   "name": "Suboccipital muscles",
+   "plain": "Small muscles just under the base of the skull",
+   "system": "muscular",
+   "center": [
+    0.0271,
+    1.4649,
+    -0.0346
+   ],
+   "file": "detail-female.glb",
+   "region": "neck",
+   "layer": "deep",
+   "sides": {
+    "left": [
+     0.0271,
+     1.4649,
+     -0.0346
+    ],
+    "right": [
+     -0.0266,
+     1.4654,
+     -0.0355
+    ]
+   }
+  },
+  {
+   "id": "muscle_levator_scapulae",
+   "name": "Levator scapulae",
+   "plain": "Lifts the shoulder blade",
+   "system": "muscular",
+   "center": [
+    0.0475,
+    1.377,
+    -0.047
+   ],
+   "file": "detail-female.glb",
+   "region": "neck",
+   "layer": "superficial",
+   "sides": {
+    "left": [
+     0.0475,
+     1.377,
+     -0.047
+    ],
+    "right": [
+     -0.0535,
+     1.3746,
+     -0.0465
+    ]
+   }
+  },
+  {
+   "id": "muscle_trapezius",
+   "name": "Trapezius",
+   "plain": "The large diamond-shaped muscle of the upper back and neck; moves the shoulder blades",
+   "system": "muscular",
+   "center": [
+    0.045,
+    1.3119,
+    -0.0891
+   ],
+   "file": "detail-female.glb",
+   "region": "back",
+   "layer": "superficial",
+   "sides": {
+    "left": [
+     0.045,
+     1.3119,
+     -0.0891
+    ],
+    "right": [
+     -0.0405,
+     1.3238,
+     -0.0864
+    ]
+   }
+  },
+  {
+   "id": "muscle_deltoid",
+   "name": "Deltoid",
+   "plain": "The rounded shoulder muscle; lifts the arm",
+   "system": "muscular",
+   "center": [
+    0.1793,
+    1.295,
+    -0.0349
+   ],
+   "file": "detail-female.glb",
+   "region": "shoulder",
+   "layer": "superficial",
+   "sides": {
+    "left": [
+     0.1793,
+     1.295,
+     -0.0349
+    ],
+    "right": [
+     -0.1773,
+     1.2961,
+     -0.034
+    ]
+   }
+  },
+  {
+   "id": "muscle_rhomboids",
+   "name": "Rhomboid major and minor",
+   "plain": "Muscles between the spine and the shoulder blade; pull the shoulder blades together",
+   "system": "muscular",
+   "center": [
+    0.0372,
+    1.2912,
+    -0.1052
+   ],
+   "file": "detail-female.glb",
+   "region": "back",
+   "layer": "deep",
+   "sides": {
+    "left": [
+     0.0372,
+     1.2912,
+     -0.1052
+    ],
+    "right": [
+     -0.0314,
+     1.2995,
+     -0.1012
+    ]
+   }
+  },
+  {
+   "id": "muscle_supraspinatus",
+   "name": "Supraspinatus",
+   "plain": "Rotator cuff muscle above the shoulder blade spine; starts lifting the arm",
+   "system": "muscular",
+   "center": [
+    0.1497,
+    1.3222,
+    -0.0501
+   ],
+   "file": "detail-female.glb",
+   "region": "shoulder",
+   "layer": "deep",
+   "sides": {
+    "left": [
+     0.1497,
+     1.3222,
+     -0.0501
+    ],
+    "right": [
+     -0.1497,
+     1.3205,
+     -0.0491
+    ]
+   }
+  },
+  {
+   "id": "muscle_infraspinatus",
+   "name": "Infraspinatus",
+   "plain": "Rotator cuff muscle on the back of the shoulder blade; turns the arm outward",
+   "system": "muscular",
+   "center": [
+    0.1386,
+    1.2914,
+    -0.0725
+   ],
+   "file": "detail-female.glb",
+   "region": "shoulder",
+   "layer": "superficial",
+   "sides": {
+    "left": [
+     0.1386,
+     1.2914,
+     -0.0725
+    ],
+    "right": [
+     -0.1405,
+     1.2895,
+     -0.0713
+    ]
+   }
+  },
+  {
+   "id": "muscle_teres_minor",
+   "name": "Teres minor",
+   "plain": "Small rotator cuff muscle; turns the arm outward",
+   "system": "muscular",
+   "center": [
+    0.15,
+    1.2783,
+    -0.069
+   ],
+   "file": "detail-female.glb",
+   "region": "shoulder",
+   "layer": "superficial",
+   "sides": {
+    "left": [
+     0.15,
+     1.2783,
+     -0.069
+    ],
+    "right": [
+     -0.1526,
+     1.2752,
+     -0.0682
+    ]
+   }
+  },
+  {
+   "id": "muscle_teres_major",
+   "name": "Teres major",
+   "plain": "Runs from the lower shoulder blade to the arm; pulls the arm in and back",
+   "system": "muscular",
+   "center": [
+    0.1412,
+    1.2531,
+    -0.067
+   ],
+   "file": "detail-female.glb",
+   "region": "shoulder",
+   "layer": "superficial",
+   "sides": {
+    "left": [
+     0.1412,
+     1.2531,
+     -0.067
+    ],
+    "right": [
+     -0.1443,
+     1.2482,
+     -0.0661
+    ]
+   }
+  },
+  {
+   "id": "muscle_subscapularis",
+   "name": "Subscapularis",
+   "plain": "Rotator cuff muscle on the rib side of the shoulder blade; turns the arm inward",
+   "system": "muscular",
+   "center": [
+    0.1136,
+    1.2839,
+    -0.0668
+   ],
+   "file": "detail-female.glb",
+   "region": "shoulder",
+   "layer": "deep",
+   "sides": {
+    "left": [
+     0.1136,
+     1.2839,
+     -0.0668
+    ],
+    "right": [
+     -0.1153,
+     1.2789,
+     -0.0656
+    ]
+   }
+  },
+  {
+   "id": "muscle_erector_spinae",
+   "name": "Erector spinae",
+   "plain": "The long muscle columns either side of the spine; keep the back upright",
+   "system": "muscular",
+   "center": [
+    0.0441,
+    1.1517,
+    -0.0917
+   ],
+   "file": "detail-female.glb",
+   "region": "back",
+   "layer": "superficial",
+   "sides": {
+    "left": [
+     0.0441,
+     1.1517,
+     -0.0917
+    ],
+    "right": [
+     -0.0456,
+     1.1521,
+     -0.0918
+    ]
+   }
+  },
+  {
+   "id": "muscle_serratus_posterior",
+   "name": "Serratus posterior superior and inferior",
+   "plain": "Thin back muscles attached to the ribs",
+   "system": "muscular",
+   "center": [
+    0.0554,
+    1.1678,
+    -0.0969
+   ],
+   "file": "detail-female.glb",
+   "region": "back",
+   "layer": "deep",
+   "sides": {
+    "left": [
+     0.0554,
+     1.1678,
+     -0.0969
+    ],
+    "right": [
+     -0.0532,
+     1.1832,
+     -0.0949
+    ]
+   }
+  },
+  {
+   "id": "muscle_pectoralis_major",
+   "name": "Pectoralis major",
+   "plain": "The large chest muscle; pulls the arm across the body",
+   "system": "muscular",
+   "center": [
+    0.0992,
+    1.243,
+    0.0485
+   ],
+   "file": "detail-female.glb",
+   "region": "chest",
+   "layer": "superficial",
+   "sides": {
+    "left": [
+     0.0992,
+     1.243,
+     0.0485
+    ],
+    "right": [
+     -0.0963,
+     1.2407,
+     0.0437
+    ]
+   }
+  },
+  {
+   "id": "muscle_pectoralis_minor",
+   "name": "Pectoralis minor",
+   "plain": "Thin chest muscle under the pectoralis major; steadies the shoulder blade",
+   "system": "muscular",
+   "center": [
+    0.113,
+    1.2639,
+    0.021
+   ],
+   "file": "detail-female.glb",
+   "region": "chest",
+   "layer": "deep",
+   "sides": {
+    "left": [
+     0.113,
+     1.2639,
+     0.021
+    ],
+    "right": [
+     -0.1149,
+     1.2556,
+     0.0245
+    ]
+   }
+  },
+  {
+   "id": "muscle_subclavius",
+   "name": "Subclavius",
+   "plain": "Small muscle under the collarbone",
+   "system": "muscular",
+   "center": [
+    0.0792,
+    1.3252,
+    0.0105
+   ],
+   "file": "detail-female.glb",
+   "region": "chest",
+   "layer": "deep",
+   "sides": {
+    "left": [
+     0.0792,
+     1.3252,
+     0.0105
+    ],
+    "right": [
+     -0.0799,
+     1.3221,
+     0.0091
+    ]
+   }
+  },
+  {
+   "id": "muscle_serratus_anterior",
+   "name": "Serratus anterior",
+   "plain": "Finger-like muscle on the side of the rib cage; holds the shoulder blade to the ribs",
+   "system": "muscular",
+   "center": [
+    0.1188,
+    1.24,
+    -0.0456
+   ],
+   "file": "detail-female.glb",
+   "region": "chest",
+   "layer": "superficial",
+   "sides": {
+    "left": [
+     0.1188,
+     1.24,
+     -0.0456
+    ],
+    "right": [
+     -0.1211,
+     1.2343,
+     -0.0413
+    ]
+   }
+  },
+  {
+   "id": "muscle_intercostals",
+   "name": "Intercostal muscles",
+   "plain": "Muscles between the ribs; help breathing",
+   "system": "muscular",
+   "center": [
+    0.1026,
+    1.1894,
+    -0.0257
+   ],
+   "file": "detail-female.glb",
+   "region": "chest",
+   "layer": "deep"
+  },
+  {
+   "id": "muscle_diaphragm",
+   "name": "Diaphragm",
+   "plain": "Dome-shaped main breathing muscle under the lungs",
+   "system": "muscular",
+   "center": [
+    0.0752,
+    1.1216,
+    -0.0346
+   ],
+   "file": "detail-female.glb",
+   "region": "trunk",
+   "layer": "deep",
+   "sides": {
+    "left": [
+     0.0752,
+     1.1216,
+     -0.0346
+    ],
+    "right": [
+     -0.0719,
+     1.1338,
+     -0.0122
+    ]
+   }
+  },
+  {
+   "id": "muscle_rectus_abdominis",
+   "name": "Rectus abdominis",
+   "plain": "The \"six-pack\" muscle down the front of the belly",
+   "system": "muscular",
+   "center": [
+    0.0451,
+    0.9887,
+    0.0895
+   ],
+   "file": "detail-female.glb",
+   "region": "abdomen",
+   "layer": "superficial",
+   "sides": {
+    "left": [
+     0.0451,
+     0.9887,
+     0.0895
+    ],
+    "right": [
+     -0.0388,
+     0.9806,
+     0.0901
+    ]
+   }
+  },
+  {
+   "id": "muscle_external_oblique",
+   "name": "External oblique",
+   "plain": "Outer layer of the side of the belly; twists and bends the trunk",
+   "system": "muscular",
+   "center": [
+    0.1186,
+    1.0164,
+    0.013
+   ],
+   "file": "detail-female.glb",
+   "region": "abdomen",
+   "layer": "superficial",
+   "sides": {
+    "left": [
+     0.1186,
+     1.0164,
+     0.013
+    ],
+    "right": [
+     -0.1093,
+     1.0229,
+     0.0148
+    ]
+   }
+  },
+  {
+   "id": "muscle_internal_oblique",
+   "name": "Internal oblique",
+   "plain": "Middle layer of the belly wall, under the external oblique",
+   "system": "muscular",
+   "center": [
+    0.1073,
+    0.9506,
+    0.013
+   ],
+   "file": "detail-female.glb",
+   "region": "abdomen",
+   "layer": "deep",
+   "sides": {
+    "left": [
+     0.1073,
+     0.9506,
+     0.013
+    ],
+    "right": [
+     -0.0978,
+     0.9467,
+     0.0154
+    ]
+   }
+  },
+  {
+   "id": "muscle_transversus_abdominis",
+   "name": "Transversus abdominis",
+   "plain": "Deepest belly-wall layer; wraps around like a corset",
+   "system": "muscular",
+   "center": [
+    0.0949,
+    0.9925,
+    0.0336
+   ],
+   "file": "detail-female.glb",
+   "region": "abdomen",
+   "layer": "deep",
+   "sides": {
+    "left": [
+     0.0949,
+     0.9925,
+     0.0336
+    ],
+    "right": [
+     -0.084,
+     0.9886,
+     0.0368
+    ]
+   }
+  },
+  {
+   "id": "muscle_iliopsoas",
+   "name": "Iliopsoas (psoas major and iliacus)",
+   "plain": "Deep hip flexor running from the lower spine and pelvis to the thigh bone",
+   "system": "muscular",
+   "center": [
+    0.0632,
+    0.9206,
+    -0.0255
+   ],
+   "file": "detail-female.glb",
+   "region": "pelvis",
+   "layer": "deep",
+   "sides": {
+    "left": [
+     0.0632,
+     0.9206,
+     -0.0255
+    ],
+    "right": [
+     -0.0583,
+     0.9211,
+     -0.0239
+    ]
+   }
+  },
+  {
+   "id": "muscle_biceps_brachii",
+   "name": "Biceps brachii",
+   "plain": "Front of the upper arm; bends the elbow and turns the palm up",
+   "system": "muscular",
+   "center": [
+    0.199,
+    1.1959,
+    -0.0084
+   ],
+   "file": "detail-female.glb",
+   "region": "arm",
+   "layer": "superficial",
+   "sides": {
+    "left": [
+     0.199,
+     1.1959,
+     -0.0084
+    ],
+    "right": [
+     -0.1998,
+     1.1943,
+     -0.0074
+    ]
+   }
+  },
+  {
+   "id": "muscle_triceps_brachii",
+   "name": "Triceps brachii",
+   "plain": "Back of the upper arm; straightens the elbow",
+   "system": "muscular",
+   "center": [
+    0.2061,
+    1.1711,
+    -0.0534
+   ],
+   "file": "detail-female.glb",
+   "region": "arm",
+   "layer": "superficial",
+   "sides": {
+    "left": [
+     0.2061,
+     1.1711,
+     -0.0534
+    ],
+    "right": [
+     -0.2059,
+     1.1704,
+     -0.0526
+    ]
+   }
+  },
+  {
+   "id": "muscle_brachialis",
+   "name": "Brachialis",
+   "plain": "Under the biceps; the main elbow-bending muscle",
+   "system": "muscular",
+   "center": [
+    0.224,
+    1.1379,
+    -0.017
+   ],
+   "file": "detail-female.glb",
+   "region": "arm",
+   "layer": "deep",
+   "sides": {
+    "left": [
+     0.224,
+     1.1379,
+     -0.017
+    ],
+    "right": [
+     -0.2235,
+     1.1368,
+     -0.0168
+    ]
+   }
+  },
+  {
+   "id": "muscle_coracobrachialis",
+   "name": "Coracobrachialis",
+   "plain": "Small muscle on the inner upper arm",
+   "system": "muscular",
+   "center": [
+    0.1685,
+    1.2573,
+    -0.0249
+   ],
+   "file": "detail-female.glb",
+   "region": "arm",
+   "layer": "deep",
+   "sides": {
+    "left": [
+     0.1685,
+     1.2573,
+     -0.0249
+    ],
+    "right": [
+     -0.1696,
+     1.2538,
+     -0.022
+    ]
+   }
+  },
+  {
+   "id": "muscle_brachioradialis",
+   "name": "Brachioradialis",
+   "plain": "Thumb-side forearm muscle; bends the elbow",
+   "system": "muscular",
+   "center": [
+    0.2825,
+    1.0512,
+    0.002
+   ],
+   "file": "detail-female.glb",
+   "region": "forearm",
+   "layer": "superficial",
+   "sides": {
+    "left": [
+     0.2825,
+     1.0512,
+     0.002
+    ],
+    "right": [
+     -0.2801,
+     1.0526,
+     0.0014
+    ]
+   }
+  },
+  {
+   "id": "muscle_forearm_flexors",
+   "name": "Forearm flexor-pronator group",
+   "plain": "Forearm muscles on the palm side; bend the wrist and fingers",
+   "system": "muscular",
+   "center": [
+    0.3045,
+    0.9472,
+    0.014
+   ],
+   "file": "detail-female.glb",
+   "region": "forearm",
+   "layer": "superficial",
+   "sides": {
+    "left": [
+     0.3045,
+     0.9472,
+     0.014
+    ],
+    "right": [
+     -0.3036,
+     0.9461,
+     0.0141
+    ]
+   }
+  },
+  {
+   "id": "muscle_forearm_extensors",
+   "name": "Forearm extensor-supinator group",
+   "plain": "Forearm muscles on the back of the forearm; straighten the wrist and fingers",
+   "system": "muscular",
+   "center": [
+    0.3095,
+    0.9679,
+    -0.0056
+   ],
+   "file": "detail-female.glb",
+   "region": "forearm",
+   "layer": "superficial",
+   "sides": {
+    "left": [
+     0.3095,
+     0.9679,
+     -0.0056
+    ],
+    "right": [
+     -0.3119,
+     0.9604,
+     -0.0043
+    ]
+   }
+  },
+  {
+   "id": "muscle_hand_intrinsic",
+   "name": "Intrinsic muscles of the hand",
+   "plain": "Small muscles of the thumb pad, little-finger pad and between the hand bones; fine finger movements",
+   "system": "muscular",
+   "center": [
+    0.3771,
+    0.8387,
+    0.0225
+   ],
+   "file": "detail-female.glb",
+   "region": "hand",
+   "layer": "superficial",
+   "sides": {
+    "left": [
+     0.3771,
+     0.8387,
+     0.0225
+    ],
+    "right": [
+     -0.3771,
+     0.837,
+     0.0226
+    ]
+   }
+  },
+  {
+   "id": "muscle_gluteus_maximus",
+   "name": "Gluteus maximus",
+   "plain": "The large buttock muscle; extends the hip",
+   "system": "muscular",
+   "center": [
+    0.0974,
+    0.7977,
+    -0.0763
+   ],
+   "file": "detail-female.glb",
+   "region": "hip",
+   "layer": "superficial",
+   "sides": {
+    "left": [
+     0.0974,
+     0.7977,
+     -0.0763
+    ],
+    "right": [
+     -0.0884,
+     0.796,
+     -0.0759
+    ]
+   }
+  },
+  {
+   "id": "muscle_gluteus_medius",
+   "name": "Gluteus medius",
+   "plain": "Upper outer buttock; keeps the pelvis level when walking",
+   "system": "muscular",
+   "center": [
+    0.1339,
+    0.863,
+    -0.0494
+   ],
+   "file": "detail-female.glb",
+   "region": "hip",
+   "layer": "superficial",
+   "sides": {
+    "left": [
+     0.1339,
+     0.863,
+     -0.0494
+    ],
+    "right": [
+     -0.1332,
+     0.8628,
+     -0.0497
+    ]
+   }
+  },
+  {
+   "id": "muscle_gluteus_minimus",
+   "name": "Gluteus minimus",
+   "plain": "Smallest, deepest buttock muscle",
+   "system": "muscular",
+   "center": [
+    0.1373,
+    0.8402,
+    -0.0315
+   ],
+   "file": "detail-female.glb",
+   "region": "hip",
+   "layer": "deep",
+   "sides": {
+    "left": [
+     0.1373,
+     0.8402,
+     -0.0315
+    ],
+    "right": [
+     -0.1381,
+     0.8402,
+     -0.0316
+    ]
+   }
+  },
+  {
+   "id": "muscle_tensor_fasciae_latae",
+   "name": "Tensor fasciae latae",
+   "plain": "Front-outer hip; steadies the hip and knee",
+   "system": "muscular",
+   "center": [
+    0.1668,
+    0.8272,
+    0.0055
+   ],
+   "file": "detail-female.glb",
+   "region": "hip",
+   "layer": "superficial",
+   "sides": {
+    "left": [
+     0.1668,
+     0.8272,
+     0.0055
+    ],
+    "right": [
+     -0.1662,
+     0.827,
+     0.006
+    ]
+   }
+  },
+  {
+   "id": "muscle_deep_hip_rotators",
+   "name": "Deep lateral rotators of the hip",
+   "plain": "Deep buttock muscles (piriformis and its neighbours); turn the thigh outward",
+   "system": "muscular",
+   "center": [
+    0.0825,
+    0.7746,
+    -0.0389
+   ],
+   "file": "detail-female.glb",
+   "region": "hip",
+   "layer": "deep",
+   "sides": {
+    "left": [
+     0.0825,
+     0.7746,
+     -0.0389
+    ],
+    "right": [
+     -0.0877,
+     0.7747,
+     -0.0364
+    ]
+   }
+  },
+  {
+   "id": "muscle_sartorius",
+   "name": "Sartorius",
+   "plain": "Long strap muscle crossing the front of the thigh",
+   "system": "muscular",
+   "center": [
+    0.0887,
+    0.5971,
+    0.0277
+   ],
+   "file": "detail-female.glb",
+   "region": "thigh",
+   "layer": "superficial",
+   "sides": {
+    "left": [
+     0.0887,
+     0.5971,
+     0.0277
+    ],
+    "right": [
+     -0.0958,
+     0.602,
+     0.0288
+    ]
+   }
+  },
+  {
+   "id": "muscle_rectus_femoris",
+   "name": "Rectus femoris",
+   "plain": "Middle quadriceps muscle on the front of the thigh",
+   "system": "muscular",
+   "center": [
+    0.1358,
+    0.6234,
+    0.025
+   ],
+   "file": "detail-female.glb",
+   "region": "thigh",
+   "layer": "superficial",
+   "sides": {
+    "left": [
+     0.1358,
+     0.6234,
+     0.025
+    ],
+    "right": [
+     -0.142,
+     0.6203,
+     0.0267
+    ]
+   }
+  },
+  {
+   "id": "muscle_vastus_lateralis",
+   "name": "Vastus lateralis",
+   "plain": "Outer quadriceps muscle of the thigh",
+   "system": "muscular",
+   "center": [
+    0.1527,
+    0.5634,
+    0.0053
+   ],
+   "file": "detail-female.glb",
+   "region": "thigh",
+   "layer": "superficial",
+   "sides": {
+    "left": [
+     0.1527,
+     0.5634,
+     0.0053
+    ],
+    "right": [
+     -0.1621,
+     0.5627,
+     0.0082
+    ]
+   }
+  },
+  {
+   "id": "muscle_vastus_medialis",
+   "name": "Vastus medialis",
+   "plain": "Inner, teardrop-shaped quadriceps muscle above the knee",
+   "system": "muscular",
+   "center": [
+    0.0998,
+    0.5368,
+    0.0271
+   ],
+   "file": "detail-female.glb",
+   "region": "thigh",
+   "layer": "superficial",
+   "sides": {
+    "left": [
+     0.0998,
+     0.5368,
+     0.0271
+    ],
+    "right": [
+     -0.1088,
+     0.5361,
+     0.0299
+    ]
+   }
+  },
+  {
+   "id": "muscle_vastus_intermedius",
+   "name": "Vastus intermedius",
+   "plain": "Deep quadriceps muscle, under the rectus femoris",
+   "system": "muscular",
+   "center": [
+    0.134,
+    0.5537,
+    0.0165
+   ],
+   "file": "detail-female.glb",
+   "region": "thigh",
+   "layer": "deep",
+   "sides": {
+    "left": [
+     0.134,
+     0.5537,
+     0.0165
+    ],
+    "right": [
+     -0.1432,
+     0.5555,
+     0.0186
+    ]
+   }
+  },
+  {
+   "id": "muscle_adductors",
+   "name": "Adductor group (adductor longus, brevis, magnus, minimus; pectineus)",
+   "plain": "Inner-thigh muscles; pull the legs together",
+   "system": "muscular",
+   "center": [
+    0.085,
+    0.6386,
+    0.0011
+   ],
+   "file": "detail-female.glb",
+   "region": "thigh",
+   "layer": "superficial",
+   "sides": {
+    "left": [
+     0.085,
+     0.6386,
+     0.0011
+    ],
+    "right": [
+     -0.0919,
+     0.6379,
+     0.0024
+    ]
+   }
+  },
+  {
+   "id": "muscle_gracilis",
+   "name": "Gracilis",
+   "plain": "Thin strap muscle on the inner thigh",
+   "system": "muscular",
+   "center": [
+    0.047,
+    0.5652,
+    0.0049
+   ],
+   "file": "detail-female.glb",
+   "region": "thigh",
+   "layer": "superficial",
+   "sides": {
+    "left": [
+     0.047,
+     0.5652,
+     0.0049
+    ],
+    "right": [
+     -0.0542,
+     0.5671,
+     0.0072
+    ]
+   }
+  },
+  {
+   "id": "muscle_biceps_femoris",
+   "name": "Biceps femoris",
+   "plain": "Outer hamstring at the back of the thigh; bends the knee",
+   "system": "muscular",
+   "center": [
+    0.1239,
+    0.5487,
+    -0.0451
+   ],
+   "file": "detail-female.glb",
+   "region": "thigh",
+   "layer": "superficial",
+   "sides": {
+    "left": [
+     0.1239,
+     0.5487,
+     -0.0451
+    ],
+    "right": [
+     -0.1318,
+     0.5485,
+     -0.0423
+    ]
+   }
+  },
+  {
+   "id": "muscle_semitendinosus",
+   "name": "Semitendinosus",
+   "plain": "Inner hamstring at the back of the thigh",
+   "system": "muscular",
+   "center": [
+    0.0711,
+    0.5418,
+    -0.0413
+   ],
+   "file": "detail-female.glb",
+   "region": "thigh",
+   "layer": "superficial",
+   "sides": {
+    "left": [
+     0.0711,
+     0.5418,
+     -0.0413
+    ],
+    "right": [
+     -0.0781,
+     0.5425,
+     -0.0396
+    ]
+   }
+  },
+  {
+   "id": "muscle_semimembranosus",
+   "name": "Semimembranosus",
+   "plain": "Deep inner hamstring at the back of the thigh",
+   "system": "muscular",
+   "center": [
+    0.064,
+    0.5415,
+    -0.0285
+   ],
+   "file": "detail-female.glb",
+   "region": "thigh",
+   "layer": "superficial",
+   "sides": {
+    "left": [
+     0.064,
+     0.5415,
+     -0.0285
+    ],
+    "right": [
+     -0.0718,
+     0.5418,
+     -0.0263
+    ]
+   }
+  },
+  {
+   "id": "muscle_gastrocnemius",
+   "name": "Gastrocnemius",
+   "plain": "The two-headed calf muscle; points the foot",
+   "system": "muscular",
+   "center": [
+    0.1129,
+    0.3274,
+    -0.0538
+   ],
+   "file": "detail-female.glb",
+   "region": "leg",
+   "layer": "superficial",
+   "sides": {
+    "left": [
+     0.1129,
+     0.3274,
+     -0.0538
+    ],
+    "right": [
+     -0.1219,
+     0.3291,
+     -0.0465
+    ]
+   }
+  },
+  {
+   "id": "muscle_soleus",
+   "name": "Soleus",
+   "plain": "Flat calf muscle under the gastrocnemius",
+   "system": "muscular",
+   "center": [
+    0.1285,
+    0.2637,
+    -0.0502
+   ],
+   "file": "detail-female.glb",
+   "region": "leg",
+   "layer": "superficial",
+   "sides": {
+    "left": [
+     0.1285,
+     0.2637,
+     -0.0502
+    ],
+    "right": [
+     -0.1376,
+     0.2649,
+     -0.0424
+    ]
+   }
+  },
+  {
+   "id": "muscle_tibialis_anterior",
+   "name": "Tibialis anterior",
+   "plain": "Front of the shin; lifts the foot",
+   "system": "muscular",
+   "center": [
+    0.1399,
+    0.2107,
+    -0.0059
+   ],
+   "file": "detail-female.glb",
+   "region": "leg",
+   "layer": "superficial",
+   "sides": {
+    "left": [
+     0.1399,
+     0.2107,
+     -0.0059
+    ],
+    "right": [
+     -0.1505,
+     0.2127,
+     -0.0023
+    ]
+   }
+  },
+  {
+   "id": "muscle_toe_extensors",
+   "name": "Extensor digitorum longus and extensor hallucis longus",
+   "plain": "Long muscles at the front of the shin; lift the toes",
+   "system": "muscular",
+   "center": [
+    0.1551,
+    0.157,
+    0.0054
+   ],
+   "file": "detail-female.glb",
+   "region": "leg",
+   "layer": "superficial",
+   "sides": {
+    "left": [
+     0.1551,
+     0.157,
+     0.0054
+    ],
+    "right": [
+     -0.1641,
+     0.1574,
+     0.0102
+    ]
+   }
+  },
+  {
+   "id": "muscle_fibularis",
+   "name": "Fibularis (peroneus) longus, brevis and tertius",
+   "plain": "Muscles on the outer side of the lower leg; turn the foot outward",
+   "system": "muscular",
+   "center": [
+    0.1554,
+    0.165,
+    -0.0415
+   ],
+   "file": "detail-female.glb",
+   "region": "leg",
+   "layer": "superficial",
+   "sides": {
+    "left": [
+     0.1554,
+     0.165,
+     -0.0415
+    ],
+    "right": [
+     -0.1638,
+     0.1587,
+     -0.0328
+    ]
+   }
+  },
+  {
+   "id": "muscle_deep_calf",
+   "name": "Deep posterior leg muscles",
+   "plain": "Deep calf muscles; support the arch and curl the toes",
+   "system": "muscular",
+   "center": [
+    0.1279,
+    0.1848,
+    -0.0168
+   ],
+   "file": "detail-female.glb",
+   "region": "leg",
+   "layer": "deep",
+   "sides": {
+    "left": [
+     0.1279,
+     0.1848,
+     -0.0168
+    ],
+    "right": [
+     -0.1367,
+     0.1831,
+     -0.0112
+    ]
+   }
+  },
+  {
+   "id": "muscle_foot_intrinsic",
+   "name": "Intrinsic muscles of the foot",
+   "plain": "Small muscles of the sole and top of the foot; support the arch and move the toes",
+   "system": "muscular",
+   "center": [
+    0.1373,
+    0.0307,
+    0.0334
+   ],
+   "file": "detail-female.glb",
+   "region": "foot",
+   "layer": "superficial",
+   "sides": {
+    "left": [
+     0.1373,
+     0.0307,
+     0.0334
+    ],
+    "right": [
+     -0.1443,
+     0.0295,
+     0.0377
+    ]
+   }
+  },
+  {
+   "id": "skeleton_hi",
+   "name": "Skeleton (close-up bones)",
+   "plain": "The bones that support and protect the body, in full detail for close-up views",
+   "system": "skeletal",
+   "center": [
+    -0.0018,
+    1.017,
+    -0.0184
+   ],
+   "file": "detail-female.glb"
+  }
+ ]
+}

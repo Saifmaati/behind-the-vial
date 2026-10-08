@@ -83,7 +83,9 @@ const THEME = {
     drug: 0xf1dda8,
   },
   light: {
-    skin: { core: 0xd9ccb2, rim: 0x2e2920, coreAlpha: 0.035, rimAlpha: 0.74, rimPower: 2.6, intensity: 1.0, scan: 0x7a5c28, scanAmt: 0.32, contour: 0.09, additive: false, cutLine: 0x7a5c28 },
+    // the core is an ink wash, not ivory: the output pass converts the (premultiplied) colour to sRGB,
+    // which turned a faint ivory core into a white veil over the organs
+    skin: { core: 0x3a3226, rim: 0x2e2920, coreAlpha: 0.035, rimAlpha: 0.74, rimPower: 2.6, intensity: 1.0, scan: 0x7a5c28, scanAmt: 0.32, contour: 0.09, additive: false, cutLine: 0x7a5c28 },
     artery: { core: 0xa63a33, rim: 0x7a2420, coreAlpha: 0.55, rimAlpha: 0.5, rimPower: 1.4, intensity: 1.0, additive: false },
     vein: { core: 0x3a5a92, rim: 0x22406e, coreAlpha: 0.5, rimAlpha: 0.5, rimPower: 1.4, intensity: 1.0, additive: false },
     bone: { core: 0x8a7f6c, rim: 0x5a5244, coreAlpha: 0.02, rimAlpha: 0.18, rimPower: 2.0, intensity: 1.0, additive: false },
@@ -788,12 +790,13 @@ function taubinSmooth(P, I, iters) {
   const sum = new Float32Array(n * 3), cnt = new Float32Array(n);
   const pass = (f) => {
     sum.fill(0); cnt.fill(0);
+    const edge = (u, v) => {
+      sum[u * 3] += P[v * 3]; sum[u * 3 + 1] += P[v * 3 + 1]; sum[u * 3 + 2] += P[v * 3 + 2]; cnt[u]++;
+      sum[v * 3] += P[u * 3]; sum[v * 3 + 1] += P[u * 3 + 1]; sum[v * 3 + 2] += P[u * 3 + 2]; cnt[v]++;
+    };
     for (let t = 0; t < I.length; t += 3) {
       const a = I[t], b = I[t + 1], c = I[t + 2];
-      for (const [u, v] of [[a, b], [b, c], [c, a]]) {
-        sum[u * 3] += P[v * 3]; sum[u * 3 + 1] += P[v * 3 + 1]; sum[u * 3 + 2] += P[v * 3 + 2]; cnt[u]++;
-        sum[v * 3] += P[u * 3]; sum[v * 3 + 1] += P[u * 3 + 1]; sum[v * 3 + 2] += P[u * 3 + 2]; cnt[v]++;
-      }
+      edge(a, b); edge(b, c); edge(c, a);
     }
     for (let i = 0; i < n; i++) {
       if (!cnt[i]) continue;
@@ -1361,11 +1364,11 @@ function dequantize(geo) {
 // The scanned skin is welded and given a light volume-preserving (Taubin) relaxation before its normals
 // are rebuilt: a few folded sliver triangles of the simplified scan show up as dark flaps on an opaque,
 // lit skin. The surface moves well under a millimetre.
-function relaxSkin(geo) {
+function relaxSkin(geo, iters = 3) {
   for (const k of Object.keys(geo.attributes)) if (k !== 'position') geo.deleteAttribute(k);
   const g = mergeVertices(geo, 1e-5);
   if (g !== geo) geo.dispose();
-  if (g.index) taubinSmooth(g.attributes.position.array, g.index.array, 3);
+  if (g.index && iters > 0) taubinSmooth(g.attributes.position.array, g.index.array, iters);
   g.computeVertexNormals();
   g.computeBoundingSphere();
   return g;
@@ -2263,10 +2266,11 @@ export async function loadAnatomy(stage, { source = 'auto', base, variant = 'mal
       for (const o of found) {
         const name = String(o.name || o.parent?.name || '').toLowerCase().replace(/[\s.-]+/g, '_');
         if (disposed) break;
-        const geo = dequantize(o.geometry.clone());
+        let geo = dequantize(o.geometry.clone());
         geo.applyMatrix4(o.matrixWorld);
         if (!geo.attributes.normal) geo.computeVertexNormals();
         if (name === 'skin_hi') {
+          geo = relaxSkin(geo, 2);
           geo.setAttribute('aMorph', new THREE.BufferAttribute(morphWeights(geo.attributes.position, { height: modelHeight, female }), 3));
           hiSkin = new THREE.Mesh(geo, skinMat);
           hiSkin.name = 'skin_hi'; hiSkin.renderOrder = 10; hiSkin.frustumCulled = false; hiSkin.visible = false;
