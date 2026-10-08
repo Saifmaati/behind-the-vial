@@ -4,6 +4,10 @@
   "type": "module",
   "description": "Dev-only tooling (asset pipeline, screenshots). Not shipped to the site.",
   "devDependencies": {
+    "@gltf-transform/core": "4.5.0",
+    "@gltf-transform/extensions": "4.5.0",
+    "@gltf-transform/functions": "4.5.0",
+    "meshoptimizer": "1.2.0",
     "puppeteer-core": "^24.43.1"
   }
 }

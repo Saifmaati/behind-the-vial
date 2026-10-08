@@ -1,0 +1,18 @@
+# Anatomy: third-party assets
+
+Built by `tools/build-anatomy.mjs` into `assets/anatomy/body.glb` and `assets/anatomy/landmarks.json`.
+Full credits and license text pointers: `assets/anatomy/LICENSE.md`. All sources were checked on their
+official pages on 2026-10-07/08. Downloads live only in `tools/.cache/anatomy-raw/` (git-ignored) and are
+verified by hash on every build.
+
+| Asset | Files in repo | Source (URL, version, hash) | Author | License | Modifications |
+|---|---|---|---|---|---|
+| HRA 3D Reference Organ Set, United Male v1.9 | `assets/anatomy/body.glb` (skin, 12 organs, torso vessels, spine/pelvis/leg bones), `landmarks.json` | https://cdn.humanatlas.io/digital-objects/ref-organ/united-male/v1.9/assets/3d-vh-m-united.glb (SHA-256 `958fcb9f…8274`); DOI https://doi.org/10.48539/HBM884.QCWH.828; dataset page https://lod.humanatlas.io/ref-organ/united-male/v1.9 | Kristen Browne, Heidi Schlehlein (NIH HuBMAP Human Reference Atlas), from the NLM Visible Human Male; brain from the Allen human brain reference atlas (Ding et al. 2016) via HRA brain-male v1.4 | CC BY 4.0 https://creativecommons.org/licenses/by/4.0/ | Selected and merged nodes; organs re-meshed as closed shells (1.2–2.5 mm voxel union, Surface Nets, Taubin); uniform scale 0.9593 to 1.75 m, re-centred; simplified (meshoptimizer), normals recomputed, quantized + meshopt-compressed |
+| VOXEL-MAN Segmented Internal Organs of the Visible Human Male (SIO) | `body.glb` (`stomach`, `thyroid`, rib cage and shoulder girdle in `skeleton`) | https://zenodo.org/records/15882019 , DOI https://doi.org/10.5281/zenodo.15882019, `VOXEL-MAN_segmented-internal-organs.zip` (MD5 `dbdfada2…d9ef`, SHA-256 `b45f2f96…120b`), `SIO Object Labels.xlsx` (MD5 `3f996d6e…89e2`) | Höhne, Pflesser, Pommert, Riemer, Schiemann, Schubert, Schumacher, Tiede (VOXEL-MAN project), from the NLM Visible Human Male | CC BY 4.0 | Only the 16-bit label slices are used; iso-surfaces of selected labels (Surface Nets on a blurred mask, Taubin); similarity registration to HRA (RMS 3.8 mm on 10 organ centroids); shoulder girdle kept under the HRA skin; simplified, compressed |
+| BodyParts3D 4.0 | `body.glb` (limb, neck and head vessels, iliac arteries; skull, arm, hand, foot bones) | https://dbarchive.biosciencedbc.jp/data/bodyparts3d/LATEST/isa_BP3D_4.0_obj_99.zip (SHA-256 `40665852…409e`), `partof_BP3D_4.0_obj_99.zip` (SHA-256 `9fbc713f…1c97`), element tables; license page https://dbarchive.biosciencedbc.jp/en/bodyparts3d/lic.html (updated 2025-02-27) | © The Database Center for Life Science (DBCLS) | CC BY 4.0 (database license page; OBJ headers still quote the legacy CC BY-SA 2.1 JP) | Thin-plate-spline warp from the BodyParts3D body into the HRA body (~400 landmark pairs); vertices outside the HRA skin pushed inside; 6 gap-bridging tubes added (cervical internal carotids, vertebral origins, upper internal jugulars); merged, simplified, compressed |
+| Visible Human Project (underlying data of HRA and SIO) | (indirect) | https://www.nlm.nih.gov/research/visible/visible_human.html | U.S. National Library of Medicine | Credited as the origin of the HRA and SIO data | none directly |
+
+**Footer attribution line (exact):**
+Anatomy adapted from the HRA 3D Reference Organs (NIH HuBMAP, Visible Human Project data, CC BY 4.0), the VOXEL-MAN Segmented Internal Organs of the Visible Human Male (Höhne et al., CC BY 4.0) and BodyParts3D (© The Database Center for Life Science, CC BY 4.0). Modified: merged, re-meshed, aligned, simplified.
+
+Dev-only tools (not shipped): `@gltf-transform/core|extensions|functions` 4.5.0 (MIT), `meshoptimizer` 1.2.0 (MIT), declared in `tools/package.json`.

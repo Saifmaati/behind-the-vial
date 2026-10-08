@@ -1,0 +1,232 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Content sandbox · Behind the Vial</title>
+<link rel="icon" href="data:,">
+<script>
+  // Dev-only sandbox for the content module. ?real=1 uses the real js/bus.js and
+  // css/tokens.css + css/app.css (once foundation has written them); otherwise a
+  // stub bus and the inline tokens below are used so the module runs in isolation.
+  (function () {
+    var q = new URLSearchParams(location.search);
+    var real = q.get('real') === '1';
+    var theme = q.get('theme');
+    if (theme === 'light' || theme === 'dark') document.documentElement.setAttribute('data-theme', theme);
+    var imports = { three: '/vendor/three/three.module.min.js', 'three/addons/': '/vendor/three/addons/' };
+    if (!real) {
+      var src = 'const m=new Map();export const bus={on(t,f){if(!m.has(t))m.set(t,new Set());m.get(t).add(f);return()=>m.get(t)?.delete(f)},emit(t,d){for(const f of [...(m.get(t)||[])])f(d)}};';
+      imports['/js/bus.js'] = 'data:text/javascript,' + encodeURIComponent(src);
+    }
+    var im = document.createElement('script');
+    im.type = 'importmap';
+    im.textContent = JSON.stringify({ imports: imports });
+    document.currentScript.after(im);
+    if (real) {
+      ['/css/tokens.css', '/css/app.css'].forEach(function (h) { var l = document.createElement('link'); l.rel = 'stylesheet'; l.href = h; document.head.appendChild(l); });
+    }
+  })();
+</script>
+<style>
+  /* Stand-in tokens (sandbox only). css/tokens.css is the real source. */
+  :root {
+    color-scheme: dark;
+    --bg: #05070a; --bg-2: #0a0e14; --surface: #0d131b; --surface-2: #131b26; --line: #263445;
+    --text: #e9eff5; --text-2: #b9c5d2; --muted: #8b9aab;
+    --accent: #4fd8ff; --accent-2: #93a8ff; --artery: #ff5a5f; --vein: #4a7dff; --drug: #d8fbff;
+    --warn: #ffb547; --danger: #ff4d5e; --focus: #8be6ff;
+  }
+  @media (prefers-color-scheme: light) {
+    :root:not([data-theme="dark"]) {
+      color-scheme: light;
+      --bg: #f5f7fa; --bg-2: #edf1f6; --surface: #ffffff; --surface-2: #f2f5f9; --line: #cfd8e3;
+      --text: #0b1220; --text-2: #2c3a4c; --muted: #546375;
+      --accent: #00739f; --accent-2: #3c55c9; --artery: #c8323a; --vein: #2350c8; --drug: #0a8fb8;
+      --warn: #a15c00; --danger: #c01d30; --focus: #00739f;
+    }
+  }
+  :root[data-theme="light"] {
+    color-scheme: light;
+    --bg: #f5f7fa; --bg-2: #edf1f6; --surface: #ffffff; --surface-2: #f2f5f9; --line: #cfd8e3;
+    --text: #0b1220; --text-2: #2c3a4c; --muted: #546375;
+    --accent: #00739f; --accent-2: #3c55c9; --artery: #c8323a; --vein: #2350c8; --drug: #0a8fb8;
+    --warn: #a15c00; --danger: #c01d30; --focus: #00739f;
+  }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0; background: radial-gradient(1200px 600px at 70% -10%, color-mix(in oklab, var(--accent) 7%, transparent), transparent 60%), var(--bg);
+    color: var(--text); font: 16px/1.5 Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased; overflow-x: hidden;
+  }
+  .sb-wrap { max-width: 1200px; margin: 0 auto; padding: 0 16px; }
+  .sb-top { position: sticky; top: 0; z-index: 5; backdrop-filter: blur(14px); background: color-mix(in oklab, var(--bg) 78%, transparent); border-bottom: 1px solid var(--line); }
+  .sb-top .sb-wrap { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 56px; }
+  .sb-brand { font-weight: 650; letter-spacing: -0.01em; }
+  .sb-brand small { color: var(--muted); font-weight: 500; margin-left: 8px; }
+  .sb-btn { font: inherit; font-size: .8125rem; color: var(--text); background: var(--surface-2); border: 1px solid var(--line); border-radius: 10px; padding: 7px 12px; cursor: pointer; }
+  #explorer { padding: 28px 0 8px; display: grid; gap: 18px; }
+  @media (min-width: 980px) { #explorer .sb-grid { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 24px; align-items: start; } }
+  .sb-grid > * + * { margin-top: 18px; }
+  @media (min-width: 980px) { .sb-grid > * + * { margin-top: 0; } }
+  .sb-label { font-size: .6875rem; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); margin: 0 0 8px; }
+  #stage-host { position: relative; height: 220px; border-radius: 18px; border: 1px solid var(--line); display: grid; place-items: center; color: var(--muted); font-size: .875rem; background: radial-gradient(60% 80% at 50% 40%, color-mix(in oklab, var(--accent) 10%, transparent), transparent), var(--bg-2); }
+  #sb-log { font: 12px/1.6 ui-monospace, Menlo, monospace; color: var(--text-2); background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; min-height: 96px; max-height: 160px; overflow: auto; margin: 0; white-space: pre-wrap; word-break: break-word; }
+  .content-section { padding: clamp(48px, 7vw, 88px) 0 0; scroll-margin-top: 64px; }
+  .section-head { margin-bottom: clamp(20px, 3vw, 32px); max-width: 760px; }
+  .eyebrow { margin: 0 0 10px; font-size: .75rem; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; color: var(--accent); }
+  .section-head h2 { margin: 0; font-size: clamp(1.75rem, 4vw, 2.5rem); line-height: 1.1; letter-spacing: -0.025em; font-weight: 650; }
+  .lede { margin: 12px 0 0; font-size: 1.0625rem; line-height: 1.6; color: var(--text-2); }
+  .sb-foot { padding: 72px 0 48px; color: var(--muted); font-size: .8125rem; }
+</style>
+<link rel="stylesheet" href="/css/content.css">
+</head>
+<body>
+<header class="sb-top"><div class="sb-wrap">
+  <span class="sb-brand">Behind the Vial <small>content sandbox</small></span>
+  <button class="sb-btn" id="sb-theme" type="button">Toggle theme</button>
+</div></header>
+
+<main id="app" class="sb-wrap">
+  <section id="explorer" aria-label="Explorer (sandbox)">
+    <div class="sb-grid">
+      <div>
+        <p class="sb-label" id="pp-label">Peptide</p>
+        <div id="peptide-picker" role="radiogroup" aria-labelledby="pp-label"></div>
+      </div>
+      <div>
+        <p class="sb-label" id="sp-label">Injection site</p>
+        <div id="site-picker" role="radiogroup" aria-labelledby="sp-label"></div>
+      </div>
+    </div>
+    <div class="sb-grid">
+      <div id="stage-host">3D stage lives here (body3d module, not part of this sandbox)</div>
+      <div><p class="sb-label">Bus events</p><pre id="sb-log" aria-live="off"></pre></div>
+    </div>
+  </section>
+
+  <section id="overview" class="content-section" aria-labelledby="overview-title">
+    <header class="section-head"><p class="eyebrow">01 · Overview</p><h2 id="overview-title">What it is and how it works</h2><p class="lede">Its status, what it is made to do, and the receptors it acts on.</p></header>
+    <div class="section-body" data-render="overview"></div>
+  </section>
+  <section id="pharmacology" class="content-section" aria-labelledby="pharmacology-title">
+    <header class="section-head"><p class="eyebrow">02 · In the body</p><h2 id="pharmacology-title">How long it lasts</h2><p class="lede">When it starts working, when it peaks, and how long it takes to leave.</p></header>
+    <div class="section-body" data-render="pharmacology"></div>
+  </section>
+  <section id="side-effects" class="content-section" aria-labelledby="side-effects-title">
+    <header class="section-head"><p class="eyebrow">03 · Side effects</p><h2 id="side-effects-title">Side effects, organ by organ</h2><p class="lede">Why each one happens, and how to ease it or when it passes.</p></header>
+    <div class="section-body" data-render="side-effects"></div>
+  </section>
+  <section id="red-flags" class="content-section" aria-labelledby="red-flags-title">
+    <header class="section-head"><p class="eyebrow">04 · Red flags</p><h2 id="red-flags-title">When to get help</h2></header>
+    <div class="section-body" data-render="red-flags"></div>
+  </section>
+  <section id="too-much" class="content-section" aria-labelledby="too-much-title">
+    <header class="section-head"><p class="eyebrow">05 · Too much</p><h2 id="too-much-title">If someone takes too much</h2></header>
+    <div class="section-body" data-render="too-much"></div>
+  </section>
+  <section id="dose-facts" class="content-section" aria-labelledby="dose-facts-title">
+    <header class="section-head"><p class="eyebrow">06 · Trial facts</p><h2 id="dose-facts-title">What the trials found, group by group</h2></header>
+    <div class="section-body" data-render="dose-facts"></div>
+  </section>
+  <section id="evidence" class="content-section" aria-labelledby="evidence-title">
+    <header class="section-head"><p class="eyebrow">07 · Evidence</p><h2 id="evidence-title">How strong is the evidence?</h2></header>
+    <div class="section-body" data-render="evidence"></div>
+  </section>
+  <section id="claims" class="content-section" aria-labelledby="claims-title">
+    <header class="section-head"><p class="eyebrow">08 · Fact check</p><h2 id="claims-title">Creator claims vs evidence</h2></header>
+    <div class="section-body" data-render="claims"></div>
+  </section>
+  <section id="gray-market" class="content-section" aria-labelledby="gray-market-title">
+    <header class="section-head"><p class="eyebrow">09 · Gray market</p><h2 id="gray-market-title">What is really in the vial</h2></header>
+    <div class="section-body" data-render="gray-market"></div>
+  </section>
+  <section id="risk-check" class="content-section" aria-labelledby="risk-check-title">
+    <header class="section-head"><p class="eyebrow">10 · Your history</p><h2 id="risk-check-title">Personal risk check</h2><p class="lede">Warnings only.</p></header>
+    <div class="section-body" data-render="risk-check"></div>
+  </section>
+  <section id="sources" class="content-section" aria-labelledby="sources-title">
+    <header class="section-head"><p class="eyebrow">11 · Sources</p><h2 id="sources-title">Sources</h2></header>
+    <div class="section-body" data-render="sources"></div>
+  </section>
+</main>
+<footer class="sb-wrap sb-foot">Sandbox only. Education only, not medical advice. No dosing guidance. Pharmacist review: pending.</footer>
+
+<script type="module">
+  import { PEPTIDES } from '/data/peptides.js';
+  import * as ui from '/js/ui/index.js';
+  import { bus } from '/js/ui/busref.js';
+
+  const q = new URLSearchParams(location.search);
+  const log = document.getElementById('sb-log');
+  const lines = [];
+  for (const t of ['peptide:select', 'peptide:loaded', 'site:select', 'organ:focus', 'risk:change']) {
+    bus.on(t, (d) => {
+      const short = t === 'peptide:loaded' ? { id: d.id, entry: d.entry ? '[entry]' : null } : d;
+      lines.push(`${t}  ${JSON.stringify(short)}`);
+      log.textContent = lines.slice(-8).join('\n');
+      log.scrollTop = log.scrollHeight;
+      (window.__events ||= []).push({ t, d: short });
+    });
+  }
+
+  async function load(id) {
+    const p = PEPTIDES.find((x) => x.id === id);
+    if (!p) return;
+    if (p.ready) {
+      const entry = (await p.load()).default;
+      ui.renderEntry(entry);
+      bus.emit('peptide:loaded', { id, entry });
+    } else {
+      ui.renderComingSoon(p);
+      bus.emit('peptide:loaded', { id, entry: null });
+    }
+    document.documentElement.dataset.loaded = id;
+  }
+  bus.on('peptide:select', ({ id }) => load(id));
+
+  const first = q.get('peptide') || 'retatrutide';
+  ui.mountPicker(document.getElementById('peptide-picker'), PEPTIDES, { selectedId: first });
+  ui.mountSitePicker(document.getElementById('site-picker'), { selected: q.get('site') || 'abdomen' });
+  await load(first);
+
+  document.getElementById('sb-theme').addEventListener('click', () => {
+    const el = document.documentElement;
+    const dark = getComputedStyle(el).colorScheme.includes('dark');
+    el.setAttribute('data-theme', dark ? 'light' : 'dark');
+  });
+
+  // Contrast audit: text color vs the composited background-color chain (gradients ignored).
+  const cv = document.createElement('canvas'); cv.width = cv.height = 1;
+  const cx = cv.getContext('2d', { willReadFrequently: true });
+  const rgba = (css) => { cx.clearRect(0, 0, 1, 1); cx.fillStyle = '#000'; cx.fillStyle = css; cx.fillRect(0, 0, 1, 1); const [r, g, b, a] = cx.getImageData(0, 0, 1, 1).data; return [r, g, b, a / 255]; };
+  const rgbaRaw = (css) => { // keeps alpha: draw on transparent canvas
+    cx.clearRect(0, 0, 1, 1); cx.fillStyle = 'rgba(0,0,0,0)'; cx.fillStyle = css; cx.fillRect(0, 0, 1, 1);
+    const d = cx.getImageData(0, 0, 1, 1).data; const a = d[3] / 255; return a ? [d[0] / a, d[1] / a, d[2] / a, a].map((v, i) => (i < 3 ? Math.min(255, v) : v)) : [0, 0, 0, 0];
+  };
+  const over = (top, bot) => { const a = top[3]; return [0, 1, 2].map((i) => top[i] * a + bot[i] * (1 - a)).concat(1); };
+  const lum = ([r, g, b]) => { const f = (c) => { c /= 255; return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4; }; return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b); };
+  const ratio = (a, b) => { const [x, y] = [lum(a), lum(b)].sort((m, n) => n - m); return (x + 0.05) / (y + 0.05); };
+  window.__contrastAudit = () => {
+    const bad = [];
+    const els = [...document.querySelectorAll('.c-body *, .c-picker *, .c-sites *')].filter((el) => [...el.childNodes].some((n) => n.nodeType === 3 && n.textContent.trim()) && !el.closest('.c-sr, svg'));
+    for (const el of els) {
+      const cs = getComputedStyle(el);
+      if (cs.visibility === 'hidden' || cs.display === 'none' || Number(cs.opacity) === 0) continue;
+      const chain = []; let n = el;
+      while (n && n.nodeType === 1) { chain.push(rgbaRaw(getComputedStyle(n).backgroundColor)); n = n.parentElement; }
+      let bg = rgba(getComputedStyle(document.body).backgroundColor);
+      for (const c of chain.reverse()) if (c[3] > 0) bg = over(c, bg);
+      const fg = over(rgbaRaw(cs.color), bg);
+      const r = ratio(fg, bg);
+      const size = parseFloat(cs.fontSize); const weight = Number(cs.fontWeight) || 400;
+      const large = size >= 24 || (size >= 18.66 && weight >= 700);
+      if (r < (large ? 3 : 4.5)) bad.push(`${r.toFixed(2)}  <${el.tagName.toLowerCase()} class="${el.className}"> "${el.textContent.trim().slice(0, 40)}"`);
+    }
+    return { checked: els.length, failures: bad.length, bad: bad.slice(0, 40) };
+  };
+  window.__overflow = () => ({ docW: document.documentElement.scrollWidth, winW: innerWidth, wide: [...document.querySelectorAll('.c-body *')].filter((e) => e.getBoundingClientRect().right > innerWidth + 1 && !e.closest('.c-table-wrap, .c-picker__rail')).slice(0, 8).map((e) => e.className || e.tagName) });
+  document.documentElement.dataset.ready = '1';
+</script>
+</body>
+</html>

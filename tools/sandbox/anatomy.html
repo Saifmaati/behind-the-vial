@@ -1,0 +1,245 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Anatomy Sandbox</title>
+<meta name="description" content="Dev-only viewer for assets/anatomy/body.glb and landmarks.json (Behind the Vial).">
+<link rel="icon" href="data:,">
+<!--
+  Dev-only viewer for the anatomy asset. Serve the repo root (node tools/serve.mjs 8806) and open
+  /tools/sandbox/anatomy.html. Query parameters (all optional):
+    src=/assets/anatomy/body.glb   landmarks=/assets/anatomy/landmarks.json
+    view=front|side|rside|back|threequarter|backleft|top        focus=full|torso|head|neck|pelvis|arm|thigh|hand|foot
+    layers=skin,organs,vessels,skeleton,paths,sites,labels       only=<organ ids>   paths=<path keys>
+    theme=dark|light   ui=0 (hide toolbar, for screenshots)   waypoints=1   pathr=<tube radius m>
+-->
+<style>
+  :root {
+    --bg: #04070b; --bg-2: #0a1118; --surface: rgba(8, 14, 20, .72); --text: #e6eef5; --text-2: #a9b8c6; --muted: #8796a3; --line: #1f2f3c;
+    --accent: #5fd4e8; --artery: #ff6b5e; --vein: #5b8cff; --drug: #d9fbff; --warn: #f2b84b; --focus: #8fe9ff;
+  }
+  @media (prefers-color-scheme: light) {
+    :root:not([data-theme="dark"]) { --bg: #e9eef2; --bg-2: #ffffff; --surface: rgba(255, 255, 255, .8); --text: #0c1620; --text-2: #33424f; --muted: #4d5c69; --line: #c3ced7; --accent: #00687a; --artery: #c63a2e; --vein: #2c55c9; --drug: #00687a; --warn: #8a5a00; --focus: #005f70; }
+  }
+  :root[data-theme="light"] { --bg: #e9eef2; --bg-2: #ffffff; --surface: rgba(255, 255, 255, .8); --text: #0c1620; --text-2: #33424f; --muted: #4d5c69; --line: #c3ced7; --accent: #00687a; --artery: #c63a2e; --vein: #2c55c9; --drug: #00687a; --warn: #8a5a00; --focus: #005f70; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body { background: radial-gradient(120% 90% at 50% 35%, var(--bg-2), var(--bg) 70%); color: var(--text); font: 13px/1.45 ui-sans-serif, system-ui, -apple-system, "Segoe UI", Inter, sans-serif; overflow: hidden; }
+  #host { position: fixed; inset: 0; }
+  canvas { display: block; outline: none; }
+  canvas:focus-visible { outline: 2px solid var(--focus); outline-offset: -4px; }
+  .hud { position: fixed; left: 16px; top: 16px; max-width: min(380px, calc(100vw - 32px)); pointer-events: none; }
+  .hud h1 { font-size: 12px; letter-spacing: .14em; text-transform: uppercase; color: var(--accent); margin: 0 0 6px; font-weight: 600; }
+  .hud p { margin: 0; color: var(--text-2); font-variant-numeric: tabular-nums; }
+  .legend { position: fixed; right: 16px; bottom: 16px; display: grid; gap: 4px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); backdrop-filter: blur(6px); font: 11px/1.3 ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--text-2); }
+  .legend span { display: inline-block; width: 18px; height: 3px; border-radius: 2px; vertical-align: middle; margin-right: 8px; }
+  .view { position: fixed; left: 16px; bottom: 16px; font: 11px/1.3 ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--muted); letter-spacing: .08em; text-transform: uppercase; }
+  .labels { position: fixed; inset: 0; pointer-events: none; }
+  .labels div { position: absolute; transform: translate(-50%, -50%); font: 10px/1 ui-monospace, Menlo, monospace; color: var(--text); padding: 3px 6px; border-radius: 4px; background: var(--surface); border: 1px solid var(--line); white-space: nowrap; }
+  .toolbar { position: fixed; right: 16px; top: 16px; display: flex; flex-wrap: wrap; gap: 6px; max-width: min(440px, calc(100vw - 32px)); justify-content: flex-end; }
+  .toolbar button, .toolbar label { font: 11px/1 ui-monospace, Menlo, monospace; color: var(--text); background: var(--surface); border: 1px solid var(--line); border-radius: 999px; padding: 8px 10px; min-height: 32px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
+  .toolbar button[aria-pressed="true"] { border-color: var(--accent); color: var(--accent); }
+  .toolbar :focus-visible, .toolbar label:focus-within { outline: 2px solid var(--focus); outline-offset: 2px; }
+  .toolbar input { accent-color: var(--accent); margin: 0; }
+  #err { position: fixed; inset: auto 16px 64px 16px; color: var(--warn); }
+  @media (max-width: 520px) { .legend { display: none; } .toolbar { top: auto; bottom: 44px; right: 16px; left: 16px; justify-content: flex-start; } }
+  .noui .toolbar { display: none; }
+</style>
+<script type="importmap">
+{ "imports": { "three": "/vendor/three/three.module.min.js", "three/addons/": "/vendor/three/addons/" } }
+</script>
+</head>
+<body>
+<div id="host"></div>
+<div class="labels" id="labels" aria-hidden="true"></div>
+<div class="hud"><h1>Behind the Vial · anatomy asset</h1><p id="stats" aria-live="polite">Loading…</p></div>
+<div class="toolbar" role="toolbar" aria-label="Viewer controls" id="toolbar"></div>
+<div class="legend" aria-label="Legend">
+  <div><span style="background:var(--artery)"></span>arteries · arterial paths</div>
+  <div><span style="background:var(--vein)"></span>veins · venous return paths</div>
+  <div><span style="background:var(--drug)"></span>injection sites (outward normal)</div>
+</div>
+<div class="view" id="viewlabel"></div>
+<div id="err" role="alert"></div>
+<script type="module">
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+const q = new URLSearchParams(location.search);
+const src = q.get('src') || '/assets/anatomy/body.glb';
+const lmSrc = q.get('landmarks') || '/assets/anatomy/landmarks.json';
+let view = q.get('view') || 'threequarter';
+const layers = new Set((q.get('layers') || 'skin,organs,vessels,paths,sites').split(','));
+const focus = q.get('focus');
+const pathFilter = q.get('paths') ? new Set(q.get('paths').split(',')) : null;
+const only = q.get('only') ? new Set(q.get('only').split(',')) : null;
+if (q.get('theme')) document.documentElement.dataset.theme = q.get('theme');
+if (q.get('ui') === '0') document.body.classList.add('noui');
+const light = document.documentElement.dataset.theme === 'light' || (!document.documentElement.dataset.theme && matchMedia('(prefers-color-scheme: light)').matches);
+const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+const css = (n) => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const host = document.getElementById('host');
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setSize(innerWidth, innerHeight);
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.domElement.tabIndex = 0;
+renderer.domElement.setAttribute('role', 'img');
+renderer.domElement.setAttribute('aria-label', 'Translucent 3D human body with organs, blood vessels, flow paths and injection sites. Drag or use the arrow keys to look around.');
+host.appendChild(renderer.domElement);
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(30, innerWidth / innerHeight, 0.01, 50);
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = !reduced;
+controls.listenToKeyEvents(renderer.domElement);
+
+scene.add(new THREE.HemisphereLight(light ? 0xffffff : 0xbfe6ff, light ? 0x8a96a3 : 0x0b1520, light ? 2.2 : 1.6));
+const key = new THREE.DirectionalLight(0xffffff, light ? 2.4 : 2.0); key.position.set(1.5, 3, 4); scene.add(key);
+const rim = new THREE.DirectionalLight(0x7fdcff, light ? 0.6 : 1.4); rim.position.set(-3, 2, -4); scene.add(rim);
+
+// Fresnel "glass skin": transparent face-on, luminous at grazing angles.
+function skinMaterial() {
+  return new THREE.ShaderMaterial({
+    transparent: true, depthWrite: false, side: THREE.FrontSide,
+    blending: light ? THREE.NormalBlending : THREE.AdditiveBlending,
+    uniforms: { uColor: { value: new THREE.Color(light ? 0x2f6478 : 0x6fd8f0) }, uBase: { value: light ? 0.06 : 0.025 }, uPow: { value: 2.4 } },
+    vertexShader: `varying vec3 vN; varying vec3 vV;
+      void main(){ vec4 mv = modelViewMatrix * vec4(position,1.); vN = normalize(normalMatrix*normal); vV = normalize(-mv.xyz); gl_Position = projectionMatrix*mv; }`,
+    fragmentShader: `uniform vec3 uColor; uniform float uBase; uniform float uPow; varying vec3 vN; varying vec3 vV;
+      void main(){ float f = pow(1. - abs(dot(normalize(vN), normalize(vV))), uPow); float a = uBase + 0.62*f; gl_FragColor = vec4(uColor*(0.35+0.9*f), a); }`,
+  });
+}
+const ORGAN_COLORS = {
+  brain: 0xd9a6b3, thyroid: 0xc96f86, heart: 0xc8414b, lungs: 0xe7a3a6, liver: 0x8c3b33, gallbladder: 0x6f8f3a,
+  stomach: 0xd88f74, pancreas: 0xe5b86b, spleen: 0x7a3554, small_intestine: 0xe2a184, large_intestine: 0xc98c6a,
+  kidneys: 0xa0453f, bladder: 0xd6b25c, skeleton: 0xe8e2d0,
+};
+const status = document.getElementById('stats');
+const labelsEl = document.getElementById('labels');
+const labelItems = [];
+const groups = { skin: [], organs: [], vessels: [], skeleton: [], paths: [], sites: [] };
+
+const loader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
+const t0 = performance.now();
+const stats = { meshes: {}, totalTris: 0 };
+let box = null;
+try {
+  const gltf = await loader.loadAsync(src);
+  const root = gltf.scene;
+  root.traverse((o) => {
+    if (!o.isMesh) return;
+    const n = o.name; const tris = (o.geometry.index ? o.geometry.index.count : o.geometry.attributes.position.count) / 3;
+    stats.meshes[n] = tris; stats.totalTris += tris;
+    if (n === 'skin') { o.material = skinMaterial(); o.renderOrder = 10; groups.skin.push(o); }
+    else if (n === 'arteries' || n === 'veins') {
+      const c = new THREE.Color(css(n === 'arteries' ? '--artery' : '--vein'));
+      o.material = new THREE.MeshStandardMaterial({ color: c, emissive: c, emissiveIntensity: light ? 0.15 : 0.55, roughness: 0.45, metalness: 0.0 });
+      groups.vessels.push(o);
+    } else if (n === 'skeleton') {
+      o.material = new THREE.MeshStandardMaterial({ color: ORGAN_COLORS.skeleton, roughness: 0.8, transparent: true, opacity: light ? 0.35 : 0.22, depthWrite: false });
+      o.renderOrder = 5; groups.skeleton.push(o);
+    } else {
+      const c = new THREE.Color(ORGAN_COLORS[n] ?? 0xcccccc);
+      o.material = new THREE.MeshStandardMaterial({ color: c, roughness: 0.55, metalness: 0.0, emissive: c, emissiveIntensity: light ? 0.05 : 0.18 });
+      if (!only || only.has(n)) groups.organs.push(o); else o.visible = false;
+    }
+  });
+  scene.add(root);
+  root.updateMatrixWorld(true);
+  box = new THREE.Box3().setFromObject(root.getObjectByName('skin') || root);
+  stats.bounds = { min: box.min.toArray().map((v) => +v.toFixed(4)), max: box.max.toArray().map((v) => +v.toFixed(4)) };
+
+  let lm = null;
+  try { const r = await fetch(lmSrc); if (r.ok) lm = await r.json(); } catch { /* landmarks are optional here */ }
+  if (lm) {
+    stats.paths = Object.keys(lm.paths || {}).length; stats.sites = Object.keys(lm.sites || {}).length;
+    for (const [k, pts] of Object.entries(lm.paths || {})) {
+      if (pathFilter && !pathFilter.has(k)) continue;
+      const venous = /_to_heart$|^heart_to_lungs$/.test(k);
+      const curve = new THREE.CatmullRomCurve3(pts.map((p) => new THREE.Vector3(...p)), false, 'centripetal');
+      const g = new THREE.TubeGeometry(curve, Math.max(32, pts.length * 10), q.get('pathr') ? +q.get('pathr') : 0.0022, 8, false);
+      const col = new THREE.Color(css(venous ? '--vein' : '--artery')).lerp(new THREE.Color(light ? 0x000000 : 0xffffff), light ? 0.1 : 0.18);
+      const m = new THREE.Mesh(g, new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0.95, depthTest: false }));
+      m.renderOrder = 20; scene.add(m); groups.paths.push(m);
+      if (q.get('waypoints')) for (const p of pts) { const s2 = new THREE.Mesh(new THREE.SphereGeometry(0.0045, 10, 8), new THREE.MeshBasicMaterial({ color: col, depthTest: false })); s2.position.set(...p); s2.renderOrder = 21; scene.add(s2); groups.paths.push(s2); }
+      const end = new THREE.Mesh(new THREE.SphereGeometry(0.006, 14, 10), new THREE.MeshBasicMaterial({ color: col, depthTest: false })); end.position.set(...pts[pts.length - 1]); end.renderOrder = 21; scene.add(end); groups.paths.push(end);
+    }
+    for (const [k, s] of Object.entries(lm.sites || {})) {
+      const p = new THREE.Vector3(...s.point), nrm = new THREE.Vector3(...s.normal);
+      const col = new THREE.Color(css('--drug'));
+      const dot = new THREE.Mesh(new THREE.SphereGeometry(0.011, 20, 14), new THREE.MeshBasicMaterial({ color: col, depthTest: false })); dot.position.copy(p); dot.renderOrder = 30;
+      const ring = new THREE.Mesh(new THREE.TorusGeometry(0.022, 0.0016, 8, 48), new THREE.MeshBasicMaterial({ color: col, depthTest: false, transparent: true, opacity: 0.8 }));
+      ring.position.copy(p); ring.lookAt(p.clone().add(nrm)); ring.renderOrder = 30;
+      const ln = new THREE.Line(new THREE.BufferGeometry().setFromPoints([p, p.clone().addScaledVector(nrm, 0.08)]), new THREE.LineBasicMaterial({ color: col, depthTest: false })); ln.renderOrder = 30;
+      scene.add(dot, ring, ln); groups.sites.push(dot, ring, ln);
+      labelItems.push({ text: s.label || k, pos: p.clone().addScaledVector(nrm, 0.1), layer: 'sites' });
+    }
+    for (const [k, o] of Object.entries(lm.organs || {})) labelItems.push({ text: k.replace(/_/g, ' '), pos: new THREE.Vector3(...o.center), layer: 'labels' });
+  }
+  for (const it of labelItems) { const d = document.createElement('div'); d.textContent = it.text; labelsEl.appendChild(d); it.el = d; }
+  applyLayers();
+  setView(view);
+  status.textContent = `${Object.keys(stats.meshes).length} meshes · ${stats.totalTris.toLocaleString()} triangles · ${stats.paths ?? 0} flow paths · ${stats.sites ?? 0} sites · loaded in ${Math.round(performance.now() - t0)} ms`;
+} catch (e) {
+  document.getElementById('err').textContent = `Could not load ${src}: ${e.message}`;
+  console.error(e);
+}
+
+function applyLayers() {
+  for (const [name, objs] of Object.entries(groups)) for (const o of objs) o.visible = layers.has(name);
+  for (const it of labelItems) it.hidden = !layers.has(it.layer);
+}
+
+// Camera presets. azimuth 0 = looking at the front (+Z side), 90 = from the person's left (+X).
+function setView(v) {
+  if (!box) return;
+  view = v;
+  const H = box.max.y - box.min.y;
+  const presets = { front: { az: 0, el: 4 }, back: { az: 180, el: 4 }, side: { az: 90, el: 2 }, rside: { az: -90, el: 2 }, threequarter: { az: 35, el: 10 }, top: { az: 0, el: 80 }, backleft: { az: 140, el: 8 } };
+  const targets = { torso: [0, 0.62, 0, 0.62], head: [0, 0.9, 0, 0.32], pelvis: [0, 0.5, 0, 0.5], full: [0, 0.5, 0, 1.0], neck: [0, 0.82, 0, 0.3], arm: [0.2, 0.68, 0, 0.5], thigh: [0.1, 0.35, 0, 0.55], hand: [0.4, 0.5, 0, 0.18], foot: [0.1, 0.04, 0.05, 0.16] };
+  const [tx, ty, tz, frac] = targets[focus || 'full'];
+  const pr = presets[v] || presets.threequarter;
+  const fit = ((frac * H * 0.5) / Math.tan(THREE.MathUtils.degToRad(camera.fov / 2))) * (innerWidth < innerHeight ? (1.35 * innerHeight / innerWidth) * 0.75 : 1.08);
+  const az = THREE.MathUtils.degToRad(pr.az), el = THREE.MathUtils.degToRad(pr.el);
+  const y = box.min.y + ty * H;
+  controls.target.set(tx, y, tz);
+  camera.position.set(tx + fit * Math.sin(az) * Math.cos(el), y + fit * Math.sin(el), tz + fit * Math.cos(az) * Math.cos(el));
+  controls.update();
+  document.getElementById('viewlabel').textContent = `${v} view${focus ? ' · ' + focus : ''} · ${H.toFixed(3)} m`;
+  for (const b of document.querySelectorAll('[data-view]')) b.setAttribute('aria-pressed', String(b.dataset.view === v));
+}
+
+// Toolbar: view buttons and layer toggles (keyboard reachable; state reflected with aria-pressed / checkboxes).
+const tb = document.getElementById('toolbar');
+for (const [v, label] of [['front', 'Front'], ['side', 'Side'], ['threequarter', '3/4'], ['back', 'Back']]) {
+  const b = document.createElement('button'); b.type = 'button'; b.dataset.view = v; b.textContent = label; b.setAttribute('aria-pressed', String(v === view));
+  b.addEventListener('click', () => setView(v)); tb.appendChild(b);
+}
+for (const l of ['skin', 'organs', 'vessels', 'skeleton', 'paths', 'sites', 'labels']) {
+  const lab = document.createElement('label'); const cb = document.createElement('input'); cb.type = 'checkbox'; cb.checked = layers.has(l);
+  cb.addEventListener('change', () => { if (cb.checked) layers.add(l); else layers.delete(l); applyLayers(); });
+  lab.append(cb, document.createTextNode(l)); tb.appendChild(lab);
+}
+
+const v3 = new THREE.Vector3();
+function frame() {
+  controls.update();
+  renderer.render(scene, camera);
+  for (const it of labelItems) {
+    v3.copy(it.pos).project(camera);
+    const vis = !it.hidden && v3.z < 1 && Math.abs(v3.x) < 1.05 && Math.abs(v3.y) < 1.05;
+    it.el.style.display = vis ? '' : 'none';
+    it.el.style.left = `${(v3.x * 0.5 + 0.5) * innerWidth}px`; it.el.style.top = `${(-v3.y * 0.5 + 0.5) * innerHeight}px`;
+  }
+}
+renderer.setAnimationLoop(frame);
+addEventListener('resize', () => { camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight); setView(view); });
+setTimeout(() => { window.__anatomy = { ready: true, stats }; document.body.dataset.ready = '1'; }, 400);
+</script>
+</body>
+</html>

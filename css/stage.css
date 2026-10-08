@@ -1,0 +1,287 @@
+/* Behind the Vial: #stage-host internals (body3d).
+   Canvas, callout labels in #callout-layer, the small 3D toolbar, the skip button, the colour key and
+   the zoom hint. The frame itself (size, background, HUD, loading, fallback) belongs to app.css.
+   Colours come from tokens.css with fallbacks so the sandbox works without it. */
+
+/* ---------------------------------------------------------------- canvas */
+#stage-canvas-host > canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  /* one-finger vertical swipes keep scrolling the page; horizontal drags rotate; pinch zooms */
+  touch-action: pan-y;
+  outline: none;
+  cursor: grab;
+}
+#stage-canvas-host > canvas:active { cursor: grabbing; }
+#stage-canvas-host > canvas:focus-visible {
+  outline: 2px solid var(--focus, #8fe9ff);
+  outline-offset: -4px;
+  border-radius: inherit;
+}
+
+/* ---------------------------------------------------------------- callouts */
+.bv-callouts { overflow: hidden; contain: layout paint; }
+.bv-callout-leaders {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+}
+.bv-callout-line {
+  fill: none;
+  stroke: var(--line-strong, rgba(150, 196, 230, 0.22));
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+.bv-callout-line--warn { stroke: var(--warn-line, rgba(255, 181, 71, 0.4)); }
+.bv-callout-line--danger { stroke: var(--danger-line, rgba(255, 92, 108, 0.45)); }
+.bv-callout-line--drug,
+.bv-callout-line--info,
+.bv-callout-line--site { stroke: var(--accent-line, rgba(79, 216, 235, 0.42)); }
+.bv-callout-line--tissue { stroke: var(--neutral-line, rgba(194, 204, 214, 0.3)); }
+
+.bv-callout-dot {
+  position: absolute;
+  left: -3.5px;
+  top: -3.5px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--accent, #4fd8eb);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent, #4fd8eb) 25%, transparent), 0 0 10px var(--accent, #4fd8eb);
+  pointer-events: none;
+  will-change: transform;
+}
+.bv-callout-dot--warn { background: var(--warn, #ffb547); box-shadow: 0 0 0 2px var(--warn-soft, rgba(255, 181, 71, 0.1)), 0 0 10px var(--warn, #ffb547); }
+.bv-callout-dot--danger { background: var(--danger, #ff5c6c); box-shadow: 0 0 0 2px var(--danger-soft, rgba(255, 92, 108, 0.1)), 0 0 10px var(--danger, #ff5c6c); }
+.bv-callout-dot--drug { background: var(--drug, #d6fbff); box-shadow: 0 0 0 2px var(--accent-soft, rgba(79, 216, 235, 0.1)), 0 0 12px var(--accent, #4fd8eb); }
+.bv-callout-dot--tissue { background: var(--neutral, #c2ccd6); box-shadow: none; width: 5px; height: 5px; left: -2.5px; top: -2.5px; }
+
+.bv-callout {
+  position: absolute;
+  left: 0;
+  top: 0;
+  display: inline-flex;
+  flex-direction: column;
+  gap: 1px;
+  max-width: 230px;
+  padding: 6px 10px 7px 11px;
+  border: 1px solid var(--line-strong, rgba(150, 196, 230, 0.22));
+  border-left: 2px solid var(--accent, #4fd8eb);
+  border-radius: var(--radius-s, 6px);
+  background: var(--surface-glass, rgba(7, 12, 18, 0.72));
+  -webkit-backdrop-filter: blur(8px) saturate(1.2);
+  backdrop-filter: blur(8px) saturate(1.2);
+  box-shadow: 0 6px 22px -10px rgba(0, 0, 0, 0.55);
+  color: var(--text, #e9f0f6);
+  font: inherit;
+  font-family: var(--font-sans, ui-sans-serif, system-ui, sans-serif);
+  text-align: left;
+  line-height: 1.25;
+  pointer-events: none;
+  will-change: transform;
+  animation: bv-callout-in var(--dur-2, 400ms) var(--ease, cubic-bezier(.2, .7, .1, 1)) both;
+}
+.bv-callout[hidden] { display: none; }
+.bv-callout--interactive { pointer-events: auto; cursor: pointer; }
+.bv-callout--interactive:hover {
+  border-color: var(--accent-line, rgba(79, 216, 235, 0.42));
+  background: color-mix(in srgb, var(--surface-glass, rgba(7, 12, 18, 0.72)) 85%, var(--accent, #4fd8eb) 15%);
+}
+.bv-callout--interactive:focus-visible {
+  outline: 2px solid var(--focus, #8fe9ff);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 5px var(--focus-halo, rgba(143, 233, 255, 0.28));
+}
+.bv-callout__title {
+  font-size: 0.78rem;
+  font-weight: var(--weight-semibold, 600);
+  letter-spacing: 0.005em;
+  white-space: nowrap;
+}
+.bv-callout__text {
+  font-size: 0.72rem;
+  color: var(--text-2, #b3c1ce);
+}
+.bv-callout__text[hidden] { display: none; }
+.bv-callout--warn { border-left-color: var(--warn, #ffb547); }
+.bv-callout--warn .bv-callout__title { color: var(--text, #e9f0f6); }
+.bv-callout--danger { border-left-color: var(--danger, #ff5c6c); border-color: var(--danger-line, rgba(255, 92, 108, 0.45)); border-left-color: var(--danger, #ff5c6c); }
+.bv-callout--danger .bv-callout__title { color: var(--danger, #ff5c6c); }
+.bv-callout--drug { border-left-color: var(--drug, #d6fbff); }
+.bv-callout--tissue {
+  border-left-color: var(--neutral, #c2ccd6);
+  padding: 4px 8px 5px 9px;
+}
+.bv-callout--tissue .bv-callout__title { font-size: 0.74rem; }
+.bv-callout--tissue .bv-callout__text { font-size: 0.68rem; }
+.bv-callout--site {
+  border-left-color: var(--accent, #4fd8eb);
+  padding: 4px 9px 5px 10px;
+}
+.bv-callout--site .bv-callout__title { font-size: 0.76rem; }
+.bv-callout--site .bv-callout__text {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 0.62rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted, #8696a7);
+}
+html[data-theme="light"] .bv-callout { box-shadow: 0 6px 20px -12px rgba(10, 30, 50, 0.35); }
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) .bv-callout { box-shadow: 0 6px 20px -12px rgba(10, 30, 50, 0.35); }
+}
+
+@keyframes bv-callout-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@container stage (max-width: 559.98px) {
+  .bv-callout { max-width: 150px; padding: 4px 7px 5px 8px; }
+  .bv-callout__title { font-size: 0.72rem; }
+  .bv-callout__text { font-size: 0.66rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .bv-callout--site .bv-callout__text { display: none; }
+}
+
+/* ---------------------------------------------------------------- toolbar, skip, key, hint */
+.stage-tools {
+  position: absolute;
+  right: 14px;
+  top: 50%;
+  z-index: var(--z-callouts, 3);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  transform: translateY(-50%);
+}
+.stage-tool {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 1px solid var(--line-strong, rgba(150, 196, 230, 0.22));
+  border-radius: var(--radius-s, 6px);
+  background: var(--surface-glass, rgba(7, 12, 18, 0.72));
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  color: var(--text-2, #b3c1ce);
+  cursor: pointer;
+  transition: color var(--dur-1, 200ms) var(--ease, ease), border-color var(--dur-1, 200ms) var(--ease, ease), background var(--dur-1, 200ms) var(--ease, ease);
+}
+.stage-tool:hover { color: var(--accent, #4fd8eb); border-color: var(--accent-line, rgba(79, 216, 235, 0.42)); }
+.stage-tool:focus-visible,
+.stage-skip:focus-visible {
+  outline: 2px solid var(--focus, #8fe9ff);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 5px var(--focus-halo, rgba(143, 233, 255, 0.28));
+}
+
+.stage-skip {
+  position: absolute;
+  left: 50%;
+  bottom: 36px;
+  z-index: var(--z-callouts, 3);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 36px;
+  padding: 0 14px 0 11px;
+  border: 1px solid var(--accent-line, rgba(79, 216, 235, 0.42));
+  border-radius: var(--radius-pill, 999px);
+  background: var(--surface-glass, rgba(7, 12, 18, 0.72));
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  color: var(--text, #e9f0f6);
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: var(--weight-medium, 500);
+  cursor: pointer;
+  transform: translateX(-50%);
+  animation: bv-callout-in var(--dur-2, 400ms) var(--ease, ease) both;
+}
+.stage-skip[hidden] { display: none; }
+.stage-skip svg { color: var(--accent, #4fd8eb); }
+.stage-skip:hover { background: color-mix(in srgb, var(--surface-glass, rgba(7, 12, 18, 0.72)) 80%, var(--accent, #4fd8eb) 20%); }
+
+.stage-legend {
+  position: absolute;
+  top: 40px;
+  left: 40px;
+  z-index: var(--z-stage-hud, 2);
+  display: flex;
+  gap: 14px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  color: var(--text-2, #b3c1ce);
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 0.62rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  pointer-events: none;
+}
+.stage-legend li { display: inline-flex; align-items: center; gap: 6px; }
+.stage-legend .sw { width: 14px; height: 3px; border-radius: 2px; }
+.stage-legend .sw--artery { background: var(--artery, #ff6b6b); box-shadow: 0 0 6px var(--artery, #ff6b6b); }
+.stage-legend .sw--vein { background: var(--vein, #6e93ff); box-shadow: 0 0 6px var(--vein, #6e93ff); }
+.stage-legend .sw--drug { width: 7px; height: 7px; border-radius: 50%; background: var(--drug, #d6fbff); box-shadow: 0 0 8px var(--accent, #4fd8eb); }
+.stage-host[data-phase]:not([data-phase=""]) .stage-legend,
+.stage-host.is-sequence-playing .stage-legend { opacity: 1; }
+
+.stage-zoom-hint {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  z-index: var(--z-stage-overlay, 4);
+  padding: 8px 14px;
+  border: 1px solid var(--line-strong, rgba(150, 196, 230, 0.22));
+  border-radius: var(--radius-pill, 999px);
+  background: var(--surface-glass, rgba(7, 12, 18, 0.72));
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  color: var(--text, #e9f0f6);
+  font-size: 0.8rem;
+  pointer-events: none;
+  opacity: 0;
+  transform: translate(-50%, -50%);
+  transition: opacity var(--dur-2, 400ms) var(--ease, ease);
+}
+.stage-zoom-hint.is-visible { opacity: 1; }
+
+/* The stage frame is a size container (app.css); follow its width, like the HUD does. */
+@container stage (max-width: 600px) {
+  .stage-legend { top: 20px; }
+}
+@container stage (max-width: 430px) {
+  .stage-tools { right: 10px; gap: 4px; }
+  .stage-tool { width: 34px; height: 34px; }
+  /* the phase label moves to the top-left here, so the key drops to the free bottom-left corner */
+  .stage-legend { top: auto; bottom: 20px; left: 36px; gap: 10px; font-size: 0.58rem; }
+  .stage-skip { bottom: 42px; }
+}
+@container stage (max-width: 360px) {
+  .stage-legend { gap: 8px; letter-spacing: 0.08em; }
+}
+
+/* ---------------------------------------------------------------- reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .bv-callout, .stage-skip { animation: none; }
+  .stage-tool, .stage-zoom-hint { transition: none; }
+}
+html[data-motion="reduce"] .bv-callout,
+html[data-motion="reduce"] .stage-skip { animation: none; }
+html[data-motion="reduce"] .stage-tool,
+html[data-motion="reduce"] .stage-zoom-hint { transition: none; }
+
+/* ---------------------------------------------------------------- forced colours */
+@media (forced-colors: active) {
+  .bv-callout, .stage-tool, .stage-skip { border: 1px solid CanvasText; background: Canvas; color: CanvasText; }
+  .bv-callout-dot { background: Highlight; box-shadow: none; }
+  .bv-callout-line { stroke: CanvasText; }
+}

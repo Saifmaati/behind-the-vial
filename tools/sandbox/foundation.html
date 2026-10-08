@@ -1,0 +1,204 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Foundation sandbox · Behind the Vial</title>
+  <script type="importmap">
+    { "imports": { "three": "/vendor/three/three.module.min.js", "three/addons/": "/vendor/three/addons/" } }
+  </script>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/css/tokens.css">
+  <link rel="stylesheet" href="/css/app.css">
+  <style>
+    body { padding: 32px 0 80px; }
+    .sb { max-width: 1200px; margin: 0 auto; padding: 0 var(--gutter); display: grid; gap: 40px; }
+    .sb h2 { font-size: var(--step-2); margin-bottom: 14px; letter-spacing: -0.02em; }
+    .sb .row { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+    .sb .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 10px; }
+    .sw { border: 1px solid var(--line); border-radius: 10px; overflow: hidden; background: var(--surface); font-size: 12px; }
+    .sw i { display: block; height: 44px; }
+    .sw div { padding: 8px 10px; display: grid; gap: 2px; }
+    .sw code { font-family: var(--font-mono); color: var(--text-2); }
+    .sw .cr { font-family: var(--font-mono); color: var(--muted); }
+    .bar { position: sticky; top: 0; z-index: 5; padding: 10px var(--gutter); background: var(--surface-glass); backdrop-filter: blur(12px); border-bottom: 1px solid var(--line); display: flex; gap: 8px; align-items: center; }
+    .stage-demo { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; }
+    .stage-demo .stage-host { height: 300px; min-height: 0; }
+    #bus-results li { font-family: var(--font-mono); font-size: 13px; padding: 4px 0; }
+    #bus-results li[data-pass="true"]::before { content: "PASS  "; color: var(--accent); }
+    #bus-results li[data-pass="false"]::before { content: "FAIL  "; color: var(--danger); }
+  </style>
+</head>
+<body>
+  <svg class="sprite" aria-hidden="true"><symbol id="i-play" viewBox="0 0 24 24"><path d="M8 5.8v12.4a.8.8 0 0 0 1.2.7l10-6.2a.8.8 0 0 0 0-1.4l-10-6.2A.8.8 0 0 0 8 5.8z" fill="currentColor"/></symbol>
+    <symbol id="i-replay" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 12a7.5 7.5 0 1 0 2.2-5.3"/><path d="M4.5 3.5v4h4"/></g></symbol>
+    <symbol id="i-cube" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><path d="M12 2.8 20 7.4v9.2l-8 4.6-8-4.6V7.4z"/><path d="M4 7.4l8 4.6 8-4.6M12 12v9.2"/></g></symbol>
+  </svg>
+  <div class="bar">
+    <strong>Foundation sandbox</strong>
+    <span class="muted" style="font-size:13px">design tokens, shared components, bus self-test</span>
+    <span style="flex:1"></span>
+    <button class="btn btn--sm" type="button" id="sb-theme">Toggle theme</button>
+    <button class="btn btn--sm" type="button" id="sb-motion" aria-pressed="false">Reduce motion</button>
+  </div>
+
+  <main class="sb">
+    <section>
+      <h2>Colour tokens <span class="muted" style="font-size:13px">(contrast vs --bg)</span></h2>
+      <div class="grid" id="swatches"></div>
+    </section>
+
+    <section>
+      <h2>Type</h2>
+      <p class="eyebrow">01 · Eyebrow</p>
+      <p style="font-size:var(--step-5);font-weight:600;letter-spacing:-0.04em;line-height:1">Step 5 display</p>
+      <p style="font-size:var(--step-4);font-weight:620;letter-spacing:-0.03em">Step 4 section heading</p>
+      <p style="font-size:var(--step-2);font-weight:600">Step 2 card heading</p>
+      <p class="lede">Lede: one plain-language line that explains the section to a regular reader.</p>
+      <p>Body copy at step 0 with a citation<sup class="cite"><a href="#">3</a></sup> and <a href="#">a link</a>.</p>
+      <p class="hint">Hint text, muted.</p>
+      <p class="mono">Mono 0123456789 · 86% of peak · 3.5 days</p>
+    </section>
+
+    <section>
+      <h2>Buttons</h2>
+      <div class="row">
+        <button class="btn btn--primary" type="button">Primary</button>
+        <button class="btn" type="button">Default</button>
+        <button class="btn btn--ghost" type="button">Ghost</button>
+        <button class="btn btn--primary btn--sm" type="button">Small</button>
+        <button class="btn btn--primary btn--lg" type="button">Large</button>
+        <button class="btn btn--primary" type="button" aria-disabled="true">Disabled</button>
+      </div>
+      <div class="row" style="margin-top:12px; max-width: 900px">
+        <button class="btn btn--primary btn--block btn--inject" data-mode="inject" type="button" style="flex:1"><svg class="btn-icon btn-icon--play" aria-hidden="true"><use href="#i-play"/></svg><svg class="btn-icon btn-icon--replay" aria-hidden="true"><use href="#i-replay"/></svg><span class="btn-label">Inject</span></button>
+        <button class="btn btn--primary btn--block btn--inject" data-mode="playing" aria-disabled="true" type="button" style="flex:1"><svg class="btn-icon btn-icon--play" aria-hidden="true"><use href="#i-play"/></svg><svg class="btn-icon btn-icon--replay" aria-hidden="true"><use href="#i-replay"/></svg><span class="btn-label">Playing…</span></button>
+        <button class="btn btn--primary btn--block btn--inject" data-mode="replay" type="button" style="flex:1"><svg class="btn-icon btn-icon--play" aria-hidden="true"><use href="#i-play"/></svg><svg class="btn-icon btn-icon--replay" aria-hidden="true"><use href="#i-replay"/></svg><span class="btn-label">Replay</span></button>
+      </div>
+    </section>
+
+    <section>
+      <h2>Chips and badges</h2>
+      <div class="row" role="radiogroup" aria-label="Demo chips">
+        <button class="chip" role="radio" aria-checked="true" type="button">Retatrutide</button>
+        <button class="chip" role="radio" aria-checked="false" type="button">Not selected</button>
+        <button class="chip chip--soon" role="radio" aria-checked="false" type="button">Semaglutide <span class="chip-tag">Soon</span></button>
+      </div>
+      <div class="row" style="margin-top:12px">
+        <span class="badge badge--approved">Approved</span>
+        <span class="badge badge--in-trials">In trials</span>
+        <span class="badge badge--research-only">Research chemical</span>
+        <span class="badge badge--accent">Accent</span>
+        <span class="badge badge--warn">Warning</span>
+        <span class="badge badge--danger">Call 911</span>
+        <span class="badge badge--pending"><span class="badge-dot"></span>Pharmacist review: pending</span>
+      </div>
+    </section>
+
+    <section>
+      <h2>Notices and panels</h2>
+      <div class="stack" style="max-width:560px">
+        <p class="module-notice">An informational notice, shown when a module is not ready yet.</p>
+        <p class="module-notice module-notice--warn">A warning notice, shown when a module failed to load.</p>
+      </div>
+      <div class="row" style="margin-top:16px; align-items:stretch">
+        <section class="panel" style="width:330px">
+          <header class="panel-head"><h3 class="panel-title">What’s happening now</h3></header>
+          <ol class="phase-track" aria-hidden="true">
+            <li data-phase="syringe" data-state="done"><span>Needle</span></li>
+            <li data-phase="depot" data-state="done"><span>Depot</span></li>
+            <li data-phase="absorption" data-state="active"><span>Absorb</span></li>
+            <li data-phase="bloodstream"><span>Blood</span></li>
+            <li data-phase="distribution"><span>Organs</span></li>
+          </ol>
+          <div class="narration"><p class="narration-phase">Slow absorption</p><p class="narration-text">Over hours to days, the drug seeps out of the depot into tiny blood vessels and lymph channels nearby.</p></div>
+          <dl class="readout"><div class="readout-item"><dt>Time since injection</dt><dd>3.5 days</dd></div><div class="readout-item"><dt>Level in the blood</dt><dd>86% of peak</dd></div></dl>
+        </section>
+      </div>
+    </section>
+
+    <section>
+      <h2>Stage frame states</h2>
+      <div class="stage-demo">
+        <div class="stage-host" data-state="ready" data-phase="depot">
+          <div class="stage-hud" aria-hidden="true">
+            <span class="hud-corner hud-corner--tl"></span><span class="hud-corner hud-corner--tr"></span><span class="hud-corner hud-corner--bl"></span><span class="hud-corner hud-corner--br"></span>
+            <span class="hud-ruler hud-ruler--y"></span><span class="hud-ruler hud-ruler--x"></span>
+            <span class="hud-label hud-label--tl">Simplified model · Not to scale</span>
+            <span class="hud-label hud-label--tr"><span class="hud-dot"></span><span>A depot forms</span></span>
+            <span class="hud-label hud-label--bl">Drag to rotate · Scroll to zoom</span>
+            <span class="hud-label hud-label--br">Site <span>Abdomen</span></span>
+          </div>
+        </div>
+        <div class="stage-host" data-state="loading">
+          <div class="stage-hud" aria-hidden="true"><span class="hud-corner hud-corner--tl"></span><span class="hud-corner hud-corner--tr"></span><span class="hud-corner hud-corner--bl"></span><span class="hud-corner hud-corner--br"></span></div>
+          <div class="stage-loading" role="status"><span class="loader" aria-hidden="true"><span></span></span><span class="stage-loading-text">Preparing the 3D body…</span></div>
+        </div>
+        <div class="stage-host" data-state="fallback">
+          <div class="stage-hud" aria-hidden="true"><span class="hud-corner hud-corner--tl"></span><span class="hud-corner hud-corner--tr"></span><span class="hud-corner hud-corner--bl"></span><span class="hud-corner hud-corner--br"></span></div>
+          <div class="stage-fallback"><div class="stage-fallback-inner"><svg class="stage-fallback-icon" aria-hidden="true"><use href="#i-cube"/></svg><p class="stage-fallback-title">The 3D view isn’t available here</p><p class="stage-fallback-text">Everything else still works.</p></div></div>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2>Bus self-test</h2>
+      <ol id="bus-results" class="stack" style="list-style:none;padding:0"></ol>
+    </section>
+  </main>
+
+  <script type="module">
+    import { bus } from '/js/bus.js';
+
+    // ---------- swatches with live contrast
+    const names = ['bg','bg-2','surface','surface-2','line','text','text-2','muted','accent','accent-2','artery','vein','drug','warn','danger','focus','neutral'];
+    const parse = (c) => { const m = c.match(/rgba?\(([^)]+)\)/); if (m) return m[1].split(/[ ,/]+/).filter(Boolean).slice(0, 3).map(Number); const h = c.replace('#',''); return [0,2,4].map(i => parseInt(h.slice(i, i + 2), 16)); };
+    const lum = (rgb) => { const [r,g,b] = rgb.map(v => { v /= 255; return v <= .04045 ? v / 12.92 : ((v + .055) / 1.055) ** 2.4; }); return .2126*r + .7152*g + .0722*b; };
+    const ratio = (a, b) => { const [x, y] = [lum(a), lum(b)].sort((p, q) => q - p); return (x + .05) / (y + .05); };
+    function swatches() {
+      const cs = getComputedStyle(document.documentElement);
+      const probe = document.createElement('i'); document.body.append(probe);
+      const resolve = (v) => { probe.style.color = v; return getComputedStyle(probe).color; };
+      const bg = parse(resolve(cs.getPropertyValue('--bg').trim()));
+      document.getElementById('swatches').innerHTML = names.map((n) => {
+        const v = cs.getPropertyValue(`--${n}`).trim();
+        const cr = ratio(parse(resolve(v)), bg).toFixed(2);
+        return `<div class="sw"><i style="background:var(--${n})"></i><div><strong>--${n}</strong><code>${v}</code><span class="cr">${cr}:1</span></div></div>`;
+      }).join('');
+      probe.remove();
+    }
+    swatches();
+
+    document.getElementById('sb-theme').addEventListener('click', () => {
+      const h = document.documentElement;
+      h.dataset.theme = h.dataset.theme === 'dark' ? 'light' : 'dark';
+      swatches();
+    });
+    document.getElementById('sb-motion').addEventListener('click', (e) => {
+      const h = document.documentElement;
+      const on = h.dataset.motion !== 'reduce';
+      if (on) h.dataset.motion = 'reduce'; else delete h.dataset.motion;
+      e.currentTarget.setAttribute('aria-pressed', String(on));
+    });
+
+    // ---------- bus tests
+    const results = [];
+    const t = (name, fn) => { let pass = false; try { pass = fn() === true; } catch (err) { pass = false; } results.push({ name, pass }); };
+    t('on + emit delivers the detail', () => { let got; const off = bus.on('t:a', (d) => { got = d; }); bus.emit('t:a', { x: 1 }); off(); return got?.x === 1; });
+    t('off() returned by on stops delivery', () => { let n = 0; const off = bus.on('t:b', () => n++); bus.emit('t:b'); off(); bus.emit('t:b'); return n === 1; });
+    t('once fires exactly once', () => { let n = 0; bus.once('t:c', () => n++); bus.emit('t:c'); bus.emit('t:c'); return n === 1; });
+    t('last() returns the latest detail', () => { bus.emit('t:d', { v: 1 }); bus.emit('t:d', { v: 2 }); return bus.last('t:d').v === 2 && bus.last('t:none') === undefined; });
+    t('emit with no detail sends {}', () => { let got; const off = bus.on('t:e', (d) => { got = d; }); bus.emit('t:e'); off(); return got && typeof got === 'object'; });
+    t('a throwing listener does not stop the others', () => {
+      const orig = console.error; console.error = () => {};
+      let ok = false; const o1 = bus.on('t:f', () => { throw new Error('boom'); }); const o2 = bus.on('t:f', () => { ok = true; });
+      try { bus.emit('t:f'); } finally { console.error = orig; o1(); o2(); }
+      return ok;
+    });
+    t('unsubscribing during emit does not skip later listeners', () => { let n = 0; let o2; const o1 = bus.on('t:g', () => { o1(); }); o2 = bus.on('t:g', () => n++); bus.emit('t:g'); o2(); return n === 1; });
+    t('bus is frozen', () => Object.isFrozen(bus));
+    document.getElementById('bus-results').innerHTML = results.map((r) => `<li data-pass="${r.pass}">${r.name}</li>`).join('');
+    window.__busTests = { passed: results.filter((r) => r.pass).length, failed: results.filter((r) => !r.pass).map((r) => r.name) };
+  </script>
+</body>
+</html>

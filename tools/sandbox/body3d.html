@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="icon" href="data:,">
+<title>Body3D Sandbox</title>
+<!-- Dev-only harness for js/scene/* (body3d). Simulates the bus: sites, sequence, time, effects, risk, focus, theme.
+     Query: ?anatomy=placeholder|auto  ?theme=light|dark  ?site=abdomen|thigh|arm  ?rm=1 (reduced motion)
+            ?speed=N (scales scene time; headless SwiftShader renders at a few fps and dt is clamped)
+            ?assets=/tools/.cache/body3d-glbtest/ (load body.glb + landmarks.json from another folder) -->
+<script type="importmap">
+{ "imports": { "three": "/vendor/three/three.module.min.js", "three/addons/": "/vendor/three/addons/" } }
+</script>
+<script>
+  (function () {
+    var q = new URLSearchParams(location.search);
+    var t = q.get('theme') || (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+    document.documentElement.dataset.theme = t;
+    if (q.get('rm') === '1') document.documentElement.dataset.motion = 'reduce';
+  })();
+</script>
+<link rel="stylesheet" href="/css/tokens.css">
+<link rel="stylesheet" href="/css/app.css">
+<link rel="stylesheet" href="/css/stage.css">
+<style>
+  html, body { margin: 0; background: var(--bg); color: var(--text); font-family: var(--font-sans); }
+  .sb { display: grid; gap: 10px; padding: 12px 16px 16px; max-width: 1180px; margin: 0 auto; }
+  .sb-bar { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; font-size: 0.78rem; }
+  .sb-bar b { font-weight: 600; color: var(--text-2); margin-right: 4px; font-size: 0.7rem; letter-spacing: 0.1em; text-transform: uppercase; }
+  .sb-bar button { font: inherit; padding: 6px 10px; border-radius: 6px; border: 1px solid var(--line-strong); background: var(--surface); color: var(--text); cursor: pointer; }
+  .sb-bar button[aria-pressed="true"] { border-color: var(--accent); color: var(--accent); }
+  .sb-bar input[type=range] { width: 200px; }
+  .sb-log { font: 0.72rem/1.4 var(--font-mono); color: var(--muted); min-height: 1.4em; }
+  #stage-host { height: min(76vh, 760px); }
+  @media (max-width: 600px) { .sb { padding: 8px 12px 12px; } #stage-host { height: 62vh; } .sb-bar button { padding: 5px 8px; } }
+</style>
+</head>
+<body>
+<div class="sb">
+  <div class="sb-bar" id="bar-sites"><b>Site</b>
+    <button data-site="abdomen">Abdomen</button><button data-site="thigh">Thigh</button><button data-site="arm">Upper arm</button>
+    <button id="inject">Inject</button><button id="skip">Skip</button>
+    <button id="theme">Theme</button>
+  </div>
+  <div class="sb-bar"><b>Time (test)</b><input id="time" type="range" min="0" max="22" step="0.05" value="0" aria-label="Time since injection, days (test harness)"><span id="time-out">0 d</span>
+    <button id="fx">Effects</button><button id="risk">Risk</button><button id="focus">Focus liver</button><button id="clear">Clear</button>
+  </div>
+  <div id="stage-host" class="stage-host" data-state="loading" role="region" aria-label="3D body view">
+    <div id="stage-canvas-host" class="stage-canvas-host"></div>
+    <div class="stage-hud" aria-hidden="true">
+      <span class="hud-corner hud-corner--tl"></span><span class="hud-corner hud-corner--tr"></span>
+      <span class="hud-corner hud-corner--bl"></span><span class="hud-corner hud-corner--br"></span>
+      <span class="hud-ruler hud-ruler--y"></span><span class="hud-ruler hud-ruler--x"></span>
+      <span class="hud-label hud-label--tl">Simplified model · Not to scale</span>
+      <span class="hud-label hud-label--tr"><span class="hud-dot"></span><span id="hud-phase">Standby</span></span>
+      <span class="hud-label hud-label--bl" id="hud-hint">Drag to rotate · Scroll to zoom</span>
+      <span class="hud-label hud-label--br">Site <span id="hud-site">not set</span></span>
+    </div>
+    <div id="callout-layer" class="callout-layer"></div>
+    <div id="stage-loading" class="stage-loading" role="status"><span class="loader" aria-hidden="true"><span></span></span><span class="stage-loading-text">Preparing the 3D body…</span></div>
+    <div id="stage-fallback" class="stage-fallback" hidden><div class="stage-fallback-inner"><p class="stage-fallback-title">The 3D view isn’t available here</p></div></div>
+  </div>
+  <div class="sb-log" id="log" aria-live="polite"></div>
+</div>
+<script type="module">
+  import { bus } from '/js/bus.js';
+  import { mountBody } from '/js/scene/index.js';
+  const q = new URLSearchParams(location.search);
+  const html = document.documentElement;
+  const $ = (s) => document.querySelector(s);
+  const log = (m) => { $('#log').textContent = m; };
+  const host = $('#stage-host');
+  let entry = null;
+  try { entry = (await import('/data/retatrutide.js')).default; } catch (e) { console.warn('no data', e); }
+  const t0 = performance.now();
+  const body = await mountBody(host, {
+    bus, theme: html.dataset.theme, reducedMotion: html.dataset.motion === 'reduce' || matchMedia('(prefers-reduced-motion: reduce)').matches,
+    anatomy: q.get('anatomy') || 'auto', assetBase: q.get('assets') || undefined,
+  });
+  if (q.get('speed')) body.stage.timeScale = Number(q.get('speed')) || 1;
+  host.dataset.state = 'ready';
+  $('#stage-loading').hidden = true;
+  const mountMs = Math.round(performance.now() - t0);
+  bus.emit('peptide:loaded', { id: entry?.id || 'retatrutide', entry });
+
+  bus.on('sequence:phase', (d) => { $('#hud-phase').textContent = d.label; host.dataset.phase = d.phase === 'done' ? '' : d.phase; log(`phase ${d.phase}: ${d.label}`); window.__phases.push(d.phase); });
+  bus.on('sequence:done', () => { window.__done = true; });
+  bus.on('site:select', ({ site }) => {
+    $('#hud-site').textContent = site;
+    for (const b of document.querySelectorAll('[data-site]')) b.setAttribute('aria-pressed', String(b.dataset.site === site));
+  });
+  bus.on('organ:focus', ({ organ }) => log(`organ:focus ${organ}`));
+  window.__phases = [];
+
+  for (const b of document.querySelectorAll('[data-site]')) b.addEventListener('click', () => bus.emit('site:select', { site: b.dataset.site }));
+  let site = q.get('site');
+  bus.on('site:select', (d) => { site = d.site; });
+  $('#inject').addEventListener('click', () => bus.emit('sequence:start', { site: site || 'abdomen', peptideId: entry?.id }));
+  $('#skip').addEventListener('click', () => body.injection.skip());
+  $('#theme').addEventListener('click', () => {
+    const t = html.dataset.theme === 'light' ? 'dark' : 'light';
+    html.dataset.theme = t;
+    bus.emit('theme:change', { theme: t });
+  });
+  // simple one-shot curve for the harness (normalized, peak = 1)
+  const hl = entry?.pk?.halfLifeDays || 6, tmax = entry?.pk?.tmaxDays || 1.1;
+  const ke = Math.log(2) / hl;
+  let ka = 3; for (let i = 0; i < 60; i++) { const f = Math.log(ka / ke) / (ka - ke); ka *= f > tmax ? 1.08 : 0.94; }
+  const raw = (t) => (Math.exp(-ke * t) - Math.exp(-ka * t));
+  let peak = 0; for (let t = 0; t < 10; t += 0.01) peak = Math.max(peak, raw(t));
+  function setTime(t) {
+    const level = Math.max(0, raw(t) / peak);
+    $('#time').value = t; $('#time-out').textContent = `${t.toFixed(1)} d · ${Math.round(level * 100)}%`;
+    bus.emit('time:change', { tDays: t, level, mode: 'single' });
+    if (entry?.sideEffects) {
+      const items = entry.sideEffects.filter((s) => t >= s.timing.fromDays && t <= s.timing.toDays)
+        .map((x) => ({ id: x.id, organ: x.organ, severity: x.severity, name: x.name, alsoOrgans: x.alsoOrgans || [] }));
+      bus.emit('effects:active', { ids: items.map((x) => x.id), items });
+    }
+  }
+  $('#time').addEventListener('input', (e) => setTime(Number(e.target.value)));
+  let fxOn = false, riskOn = false;
+  $('#fx').addEventListener('click', () => {
+    fxOn = !fxOn;
+    const items = fxOn && entry ? entry.sideEffects.filter((s) => ['nausea', 'pancreatitis', 'heart-rate', 'injection-site', 'gallbladder'].includes(s.id))
+      .map((x) => ({ id: x.id, organ: x.organ, severity: x.severity, name: x.name, alsoOrgans: x.alsoOrgans || [] })) : [];
+    bus.emit('effects:active', { ids: items.map((x) => x.id), items });
+  });
+  $('#risk').addEventListener('click', () => {
+    riskOn = !riskOn;
+    const ids = riskOn ? ['heart-rhythm', 'thyroid-mtc', 'pancreatitis'] : [];
+    const warnings = ids.flatMap((id) => (entry?.risk?.[id] || []).map((w) => ({ organ: w.organ, title: w.title, item: id })));
+    bus.emit('risk:change', { items: ids, warnings });
+  });
+  $('#focus').addEventListener('click', () => bus.emit('organ:focus', { organ: 'liver' }));
+  $('#clear').addEventListener('click', () => {
+    bus.emit('effects:active', { ids: [], items: [] }); bus.emit('risk:change', { items: [], warnings: [] });
+    body.stage.homeView();
+  });
+  window.__sb = { bus, body, entry, setTime, mountMs, emit: (t, d) => bus.emit(t, d) };
+  if (site) bus.emit('site:select', { site });
+  html.classList.add('sb-ready');
+  log(`ready · anatomy: ${body.anatomy.source} · mount ${mountMs} ms`);
+</script>
+</body>
+</html>
