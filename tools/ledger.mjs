@@ -1,6 +1,6 @@
 // Turns the research workflow output into the claims ledger and the source registry.
 //
-//   node tools/ledger.mjs <research-result.json>
+//   node tools/ledger.mjs <research-result.json> [more-results.json ...]
 //
 // Writes:
 //   research/claims.json   every claim with its fact-check verdict applied
@@ -14,8 +14,9 @@ import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
-const raw = JSON.parse(readFileSync(process.argv[2], 'utf8'));
-const groups = [...(raw.topics || []), ...(raw.gaps || [])];
+// Accepts one or more research result files (later batches add topics; same ids override earlier ones).
+const raws = process.argv.slice(2).map(p => JSON.parse(readFileSync(p, 'utf8')));
+const groups = raws.flatMap(raw => [...(raw.topics || []), ...(raw.gaps || [])]);
 
 const normUrl = u => {
   try {

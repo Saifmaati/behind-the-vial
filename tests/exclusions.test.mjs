@@ -96,6 +96,13 @@ test('no dose calculators, safe-dose language, titration, reconstitution or tech
     /\byou can safely\b/gi,
     /\b(start|begin) (at|with) \d+(\.\d+)?\s*mg\b/gi,
     /(increase|escalate|step(?:ped)? up|go up)[^.]{0,60}\bevery \d+ (days?|weeks?)\b/gi,
+    // v4: no storage/handling or duration instructions (owner asked; declined: brief + minors)
+    /\brefrigerat\w*/gi,
+    /\b(keep|store) (it|them|the vials?|vials?|the pen|pens|the peptide)\b[^.]{0,40}\b(cold|fridge|cool|freezer|room temperature|out of (the )?light)/gi,
+    /\bhow long (to|should you|you should) (use|take|dose|inject|run)\b/gi,
+    /\b(cycle|run) (it|reta\w*) for \d+/gi,
+    /\b\d+\s*weeks? on\b[^.]{0,20}\bweeks? off\b/gi,
+    /\bhow to (dose|inject|use) (it|reta\w*|peptides?|the vial)\b/gi,
   ];
   const hits = phrases.flatMap(re => findAll(re));
   assert.deepEqual(hits, []);

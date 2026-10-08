@@ -518,3 +518,95 @@ genuinely tell the anatomy of the human body so it's very lifelike."
 - **Labels**: hover (desktop) or tap (touch) a structure → label with its
   anatomical name and plain-language name from the atlas; keyboard users get
   a structure list in the layers panel.
+
+---
+
+# v4: simpler, faster, for teens (owner, 2026-10-08 evening). SUPERSEDES the v2 luxury palette and the v2 film intro.
+
+Owner: "This is targeted for kids that watch social media and want to understand
+what will actually happen to their bodies. The introduction is too short and has
+too much information. I don't want a fake-looking needle or blood vessels in the
+intro: I want a real vial and a real syringe, the orange one at the ends. The
+layout should be simpler; it's very laggy; I don't like the colours; everything's
+bunched up. Use 21st.dev and the skill from GitHub (ui-ux-pro-max)."
+
+Declined (logged in DECISIONS.md): "show how to dose it, how to store/refrigerate,
+what to do with it, how long to dose for". PeptideScope never gives dosing,
+storage/handling or duration instructions (brief hard exclusion; minors; unknown
+vial contents). Instead each peptide gets protective sections: **If you have one**
+(don't use it, tell a trusted adult, ask a doctor or pharmacist, how to get rid of
+it safely per FDA take-back / sharps guidance) and **Real medicine vs. internet
+vial** (FDA/regulator-cited differences). tests/exclusions.test.mjs bans storage,
+refrigeration and duration wording.
+
+## Audience and tone
+Kids and teens (about 12+) who saw it on TikTok/Instagram. One idea per screen,
+short sentences (grade 6–8), friendly but serious, never preachy, never scary for
+effect. Details live behind "Learn more" / expandable cards (progressive disclosure).
+
+## Design system (ui-ux-pro-max: "Minimalism & Swiss", spacious, light-first)
+Fonts (self-hosted, OFL): **Nunito** (headings, 800/900, rounded) + **DM Sans**
+(body/UI 400/500/700). Base 17px, line-height 1.55, max 62ch.
+Spacing: spacious scale 8 · 12 · 16 · 24 · 32 · 48 · 64 · 96. Radius 16/24, pill buttons.
+Colours (no green anywhere, no neon):
+
+| token | light (default) | dark |
+|---|---|---|
+| `--bg` | `#F7F6FB` | `#0F0E17` |
+| `--surface` | `#FFFFFF` | `#17162A` |
+| `--surface-2` | `#F0EEF8` | `#1F1D35` |
+| `--line` | `#E4E1F0` | `#2C2A45` |
+| `--text` | `#17142B` | `#F3F2FA` |
+| `--muted` | `#5B5873` | `#A9A6C4` |
+| `--primary` (violet) | `#6246EA` | `#9D8CFF` |
+| `--on-primary` | `#FFFFFF` | `#17142B` |
+| `--primary-soft` | `#ECE8FF` | `#2A2550` |
+| `--info` (calm blue) | `#2563EB` | `#7AA2FF` |
+| `--warn` (amber) | `#B45309` (text) / `#FFF4E5` (bg) | `#F5B454` / `#3A2A12` |
+| `--danger` | `#D92D20` / `#FDECEA` | `#FF7A70` / `#3D1714` |
+| `--artery` | `#E5484D` | `#FF6369` |
+| `--vein` | `#3E63DD` | `#7B93FF` |
+| `--drug` | `#6246EA` | `#B3A4FF` |
+| `--focus` | `#6246EA` | `#B3A4FF` |
+
+Light is the default (respects prefers-color-scheme; toggle kept). Text ≥ 4.5:1.
+
+## Layout (simple)
+- Header: logo + "PeptideScope" + tagline, a "Learn" link, theme toggle. Nothing else.
+- Explorer = 3-step stepper (21st.dev "basic stepper" pattern): **1 Pick a peptide ·
+  2 Pick a spot · 3 Watch**. One step's controls visible at a time, big body in the
+  middle, one short sentence of narration. After Watch: a plain-text timeline
+  (Starts working · Peak · Half gone · Mostly cleared) with the time scrubber.
+  Body editor and anatomy layers live behind one small "Body" button.
+- Learn = a grid of big friendly cards (What is it? · Is it approved? · How it
+  works · Side effects · When to get help · Too much · What's really in the vial ·
+  If you have one · Real medicine vs. internet vial · Creator claims vs. facts ·
+  The trials · Sources); each opens an expandable panel. No charts anywhere.
+- Persistent slim disclaimer; footer with tagline, "Pharmacist review: pending".
+
+## Intro (no WebGL; real photographs)
+Scroll-triggered chapter story (21st.dev "scroll-triggered video hero" pattern:
+sticky media, cross-fades, progress dots, accessible text overlays), 8–10 slow
+chapters, ONE short line each, lots of space:
+1. "It's all over your feed." 2. A real peptide vial (licensed photo). 3. "Sold
+online as 'research chemicals.'" 4. A real insulin syringe with orange caps
+(licensed photo). 5. "People inject it under the skin." (no technique) 6. Real
+anatomy render (our own still of the body). 7. Real blood cells (public-domain
+micrograph): "It gets into your blood…" 8. "…and travels to your brain, gut and
+heart." (our render with organs) 9. "What does it really do? Let's look." →
+Start / Read the facts. First frame shows "Education only · Not a seller · Nothing
+for sale". Photos: properly licensed (public domain / CC0 / CC BY / CC BY-SA),
+recorded in ASSETS.md with author, source URL and licence; served as WebP
+(≤ 200 KB each, responsive sizes). Reduced motion: chapters as a simple vertical story.
+
+## Performance budget (it was laggy)
+- Intro: zero WebGL, images lazy-loaded, transforms/opacity only.
+- 3D stage: render on demand (only while the camera moves or an animation plays),
+  device-pixel-ratio ≤ 1.25 desktop / 1 mobile, bloom off by default, ≤ 1,500
+  particles (≤ 600 mobile), MeshStandard materials, no shadows, detail assets only
+  on deep zoom (never on mobile by default), pause offscreen. Target 60 fps on a
+  MacBook Air and smooth on a mid-range phone.
+
+## Modesty (kids audience)
+Lifelike skin mode shows tasteful fitted shorts (and a top on the female body);
+glass mode frosts the pelvic region. Anatomy stays educational.
