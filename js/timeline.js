@@ -218,7 +218,11 @@ function buildModel(entry) {
 
 export function mountTimeline(host, entry, { reducedMotion } = {}) {
   if (!host) throw new TypeError('mountTimeline: host element required');
-  const rm = reducedMotion ?? (typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches);
+  // Reduced motion: the mount option, else the page's html[data-motion] (set by main.js), else the OS
+  // setting; `motion:change` (main.js) switches it live.
+  const motionAttr = typeof document !== 'undefined' ? document.documentElement.dataset.motion : undefined;
+  let rm = reducedMotion ?? (motionAttr === 'reduce' ? true : motionAttr === 'full' ? false
+    : (typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches));
   const uid = `tl${(++uidCounter).toString(36)}${Math.random().toString(36).slice(2, 6)}`;
   const offs = [];
   let model = null;
@@ -873,6 +877,15 @@ export function mountTimeline(host, entry, { reducedMotion } = {}) {
     setCue(true);
   });
   safeOn('peptide:loaded', (d) => init(d?.entry ?? null));
+  safeOn('motion:change', (d) => {
+    const next = !!d?.reducedMotion;
+    if (next === rm) return;
+    const wasPlaying = playing;
+    pause();
+    rm = next;
+    root.classList.toggle('tl-rm', rm);
+    if (wasPlaying) play(); // continue in the new style (phase jumps or continuous)
+  });
 
   init(entry ?? null);
   lastW = Math.round(chartWrap.clientWidth);

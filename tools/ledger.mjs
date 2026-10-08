@@ -29,6 +29,24 @@ const slug = s => String(s || '').toLowerCase().normalize('NFKD').replace(/[^\w\
   .filter(w => !/^(the|a|an|of|and|for|in|on|to|with|by|at|from|vs|versus)$/.test(w)).join('-');
 const year = d => (String(d || '').match(/(19|20)\d\d/) || ['nd'])[0];
 
+// STRICT SOURCE POLICY (owner, 2026-10-08: "don't use any sources that aren't incredibly accurate").
+// Allowed: regulators and official registries, government health agencies, peer-reviewed journals
+// (and their supplements), trial registries, the manufacturer's own official releases/documents,
+// major national medical societies, Public Citizen, America's Poison Centers, WADA (doping status),
+// and independent testing labs' own published results. Excluded: news outlets, press-release
+// re-hosts, computed database properties, and any claim whose value was read off a chart.
+const EXCLUDED_HOSTS = new Set(['www.abc.net.au', 'www.cbsnews.com', 'www.yahoo.com', 'www.cnbc.com', 'abcnews.com',
+  'www.healio.com', 'www.raps.org', 'www.placera.se', 'www.biospace.com', 'pubchem.ncbi.nlm.nih.gov']);
+const EXCLUDED_TYPES = new Set(['news']);
+const host = u => { try { return new URL(u).host; } catch { return ''; } };
+const policyReject = (c, url) => {
+  if (EXCLUDED_TYPES.has(c.sourceType)) return 'news source';
+  if (EXCLUDED_HOSTS.has(host(url))) return `excluded host ${host(url)}`;
+  if (/chart read|read (?:off|from) (?:the )?(?:chart|figure|graph)|estimated from (?:a )?figure/i.test(`${c.value} ${c.notes}`)) return 'value read off a chart';
+  if (c.status === 'unverified') return 'researcher could not open the source text';
+  return '';
+};
+
 const claims = [];
 for (const g of groups) {
   const verdicts = new Map((g.verdicts || []).map(v => [v.id, v]));
@@ -37,9 +55,11 @@ for (const g of groups) {
     const verdict = v ? v.verdict : 'unchecked';
     const disallowed = v && v.sourceAllowed === false;
     const corrected = verdict === 'corrected';
-    const usable = !disallowed && (verdict === 'confirmed' || corrected || verdict === 'unverifiable' || (verdict === 'unchecked' && c.status === 'verified'));
     const evidenceUrl = v && v.evidenceUrl ? normUrl(v.evidenceUrl) : '';
     const sourceUrl = normUrl(c.sourceUrl);
+    const rejected = policyReject(c, sourceUrl);
+    // Only claims an independent checker confirmed (or corrected, with its own quote) are usable.
+    const usable = !disallowed && !rejected && (verdict === 'confirmed' || corrected);
     claims.push({
       id: c.id,
       topic: g.topic,
@@ -49,7 +69,8 @@ for (const g of groups) {
       originalValue: corrected ? c.value : undefined,
       verdict,
       usable,
-      unverified: verdict === 'unverifiable' || verdict === 'unchecked' || c.status !== 'verified',
+      unverified: false, // unusable claims are dropped outright under the strict policy
+      rejected: rejected || (disallowed ? 'checker: source type not allowed' : undefined),
       source: { title: c.sourceTitle, publisher: c.sourcePublisher, url: sourceUrl, date: c.sourceDate, type: c.sourceType },
       evidenceUrl: evidenceUrl && evidenceUrl !== sourceUrl ? evidenceUrl : undefined,
       quote: c.quote,
@@ -85,13 +106,13 @@ const count = k => claims.filter(c => c.verdict === k).length;
 const lines = [
   '# Research ledger',
   '',
-  'Every fact in the app traces to a row here. Researcher agents collected each claim with a verbatim quote from an allowed source; independent fact-checker agents re-opened the source and tried to refute it.',
+  'Every fact in the app traces to a row here. Researcher agents collected each claim with a verbatim quote from an allowed source; independent fact-checker agents re-opened the source and tried to refute it. Strict policy: only claims a checker confirmed or corrected are usable, and news outlets, press-release re-hosts, computed database values and chart-read values are excluded.',
   '',
   `Claims: ${claims.length}. Confirmed ${count('confirmed')}, corrected ${count('corrected')}, unverifiable ${count('unverifiable')}, refuted ${count('refuted')}, unchecked ${count('unchecked')}. Usable: ${claims.filter(c => c.usable).length}. Sources used: ${sources.size}.`,
   '',
   '| id | verdict | statement | value | source |',
   '|---|---|---|---|---|',
-  ...claims.map(c => `| ${c.id} | ${c.verdict}${c.usable ? '' : ' (dropped)'} | ${String(c.statement).replace(/\|/g, '/').replace(/\n/g, ' ')} | ${String(c.value || '').replace(/\|/g, '/')} | [${String(c.source.publisher || c.source.title || 'link').replace(/[|\]]/g, ' ')}](${c.source.url}) |`),
+  ...claims.map(c => `| ${c.id} | ${c.verdict}${c.usable ? '' : ` (dropped${c.rejected ? `: ${c.rejected}` : ''})`} | ${String(c.statement).replace(/\|/g, '/').replace(/\n/g, ' ')} | ${String(c.value || '').replace(/\|/g, '/')} | [${String(c.source.publisher || c.source.title || 'link').replace(/[|\]]/g, ' ')}](${c.source.url}) |`),
   '',
   '## Open questions reported by researchers',
   ...groups.flatMap(g => (g.openQuestions || []).map(q => `- (${g.topic}) ${q}`)),

@@ -52,7 +52,7 @@
       <span class="hud-corner hud-corner--tl"></span><span class="hud-corner hud-corner--tr"></span>
       <span class="hud-corner hud-corner--bl"></span><span class="hud-corner hud-corner--br"></span>
       <span class="hud-ruler hud-ruler--y"></span><span class="hud-ruler hud-ruler--x"></span>
-      <span class="hud-label hud-label--tl">Simplified model · Not to scale</span>
+      <span class="hud-label hud-label--tl"><span class="hud-tl-kind">Anatomical model · </span>Visible Human Male · 1.75 m</span>
       <span class="hud-label hud-label--tr"><span class="hud-dot"></span><span id="hud-phase">Standby</span></span>
       <span class="hud-label hud-label--bl" id="hud-hint">Drag to rotate · Scroll to zoom</span>
       <span class="hud-label hud-label--br">Site <span id="hud-site">not set</span></span>
@@ -76,7 +76,7 @@
   const t0 = performance.now();
   const body = await mountBody(host, {
     bus, theme: html.dataset.theme, reducedMotion: html.dataset.motion === 'reduce' || matchMedia('(prefers-reduced-motion: reduce)').matches,
-    anatomy: q.get('anatomy') || 'auto', assetBase: q.get('assets') || undefined,
+    anatomy: q.get('anatomy') || 'auto', assetBase: q.get('assets') || undefined, creditHref: '/ASSETS.md',
   });
   if (q.get('speed')) body.stage.timeScale = Number(q.get('speed')) || 1;
   host.dataset.state = 'ready';

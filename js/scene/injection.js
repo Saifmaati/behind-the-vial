@@ -4,15 +4,17 @@
 //   const injection = createInjection(stage, anatomy, vessels, { emit, callouts });
 //   injection.play({ site, peptide }) → Promise     emits sequence:phase { phase, label, text, step, total }
 //                                                    and sequence:done {}
-//   injection.skip(); injection.reset(); injection.playing
+//   injection.skip(); injection.reset(); injection.playing; injection.phase
+//   injection.fadeArrivals()   after the sequence: let the time-driven drug glow take over
 //
 // What it shows, never how to do it: no angle labels, no depth numbers, no amounts. The syringe
-// barrel ticks carry no numbers (syringe.js). A small layered tissue block (skin, fat, muscle) fades in
-// at the site in a medical-illustration style so the needle tip, the depot and the capillaries can be
-// seen; the cut face looks toward the camera.
+// barrel ticks carry no numbers (syringe.js). A small layered tissue block (skin, fat, muscle) is the
+// cut face of a section through the body at the site: its top lies on the skin, the skin in front of
+// the section fades away, and the syringe comes in along the site's skin normal inside the section
+// plane, so the needle is seen passing the skin and stopping in the fat, where the depot forms.
 //
-// Normal motion: ~17 s. Reduced motion: no camera flights and no particle travel; it steps through
-// the end state of each phase with short cross-fades (~2 s per phase) and emits the same events.
+// Normal motion: ~19 s. Reduced motion: no camera flights and no particle travel; it steps through
+// the end state of each phase with short cross-fades (~2.2 s per phase) and emits the same events.
 import * as THREE from 'three';
 
 const PHASES = ['syringe', 'depot', 'absorption', 'bloodstream', 'distribution'];
@@ -155,7 +157,7 @@ const SEEP_FRAG = /* glsl */`
   void main() {
     vec2 c = gl_PointCoord * 2.0 - 1.0; float r2 = dot(c, c);
     if (r2 > 1.0) discard;
-    gl_FragColor = vec4(uColor * (0.8 + 0.6 * uCore * exp(-r2 * 10.0)), exp(-r2 * 3.0) * vAlpha);
+    gl_FragColor = vec4(uColor * (0.72 + 0.4 * uCore * exp(-r2 * 10.0)), exp(-r2 * 3.2) * vAlpha * 0.8);
   }`;
 
 const DEPOT_FRAG = /* glsl */`
@@ -262,6 +264,31 @@ function standInSyringe(envMap) {
 }
 
 // =====================================================================================
+// ------------------------------------------------------------------ site frames + close-up views
+// The close-up is a section through the body at the site. In the site frame
+//   n = outward skin normal (from landmarks), t = horizontal, perpendicular to n: the section plane's
+//   normal, which faces the camera, b = n × t (close to world up on all three sites).
+// The tissue block's top face lies on the skin at the site, its cut face is the section plane, and the
+// syringe travels along n inside that plane, so the needle is seen entering the layers side-on.
+// VIEW_HINT picks which side of the site the camera looks from (the cut face faces it):
+//   abdomen and thigh from the person's left side (the belly or thigh in profile);
+//   upper arm from behind and to the left, because that site sits on the back/outer arm.
+// VIEW_SWING turns the camera from the cut-face normal toward the skin normal so the skin surface
+// and the needle read in depth.
+const DEG = Math.PI / 180;
+const UP = new THREE.Vector3(0, 1, 0);
+const VIEW_HINT = { abdomen: [1, 0, 0.25], thigh: [1, 0, 0.15], arm: [0.35, 0, -1] };
+const VIEW_SWING = { abdomen: 10, thigh: 10, arm: 15 };
+const VIEW_LIFT = 0.16;
+const BLOOD_AZ = { abdomen: 14, thigh: 16, arm: 30 };
+// Syringe geometry used for framing (syringe.js: needle 12.7 mm, hub to 22.2 mm, barrel to 98 mm,
+// thumb press up to ~124 mm with the plunger partly drawn).
+const SYR_FRONT = 0.05;
+const SYR_FULL = 0.124;
+const SYR_APPROACH = 0.018;   // needle tip distance from the skin when the syringe arrives
+const NEEDLE_OFF = 0.0007;    // the needle runs just in front of the cut face
+
+// =====================================================================================
 export function createInjection(stage, anatomy, vessels, { emit, callouts } = {}) {
   const { scene } = stage;
   const fire = (type, detail) => {
@@ -273,6 +300,29 @@ export function createInjection(stage, anatomy, vessels, { emit, callouts } = {}
   const root = new THREE.Group();
   root.name = 'injection';
   scene.add(root);
+
+  // ---------------------------------------------------------------- site frames
+  const frames = {};
+  function frameFor(site) {
+    if (frames[site]) return frames[site];
+    const f = anatomy.siteFrame(site);
+    if (!f) return null;
+    const n = f.normal.clone().normalize();
+    const hint = new THREE.Vector3().fromArray(VIEW_HINT[site] || [1, 0, 0]).normalize();
+    const t = new THREE.Vector3(n.z, 0, -n.x);
+    if (t.lengthSq() < 1e-6) t.set(1, 0, 0);
+    t.normalize();
+    if (t.dot(hint) < 0) t.negate();
+    const b = new THREE.Vector3().crossVectors(n, t).normalize();
+    const a = (VIEW_SWING[site] ?? 20) * DEG;
+    const view = t.clone().multiplyScalar(Math.cos(a)).addScaledVector(n, Math.sin(a)).addScaledVector(UP, VIEW_LIFT).normalize();
+    const basis = new THREE.Matrix4().makeBasis(b, n, t);
+    const quat = new THREE.Quaternion().setFromRotationMatrix(basis);
+    // which end of the block is lower on screen (labels go under it)
+    const down = b.y >= 0 ? -1 : 1;
+    frames[site] = { point: f.point.clone(), n, t, b, view, quat, down };
+    return frames[site];
+  }
 
   // ---------------------------------------------------------------- syringe (guarded import)
   let syringe = null;
@@ -311,6 +361,7 @@ export function createInjection(stage, anatomy, vessels, { emit, callouts } = {}
           // remember material states so the syringe can fade in and out
           syringe.group.traverse((o) => {
             if (!o.isMesh) return;
+            o.renderOrder = 11;
             const mats = Array.isArray(o.material) ? o.material : [o.material];
             for (const m of mats) if (m && !m.userData.__fade) m.userData.__fade = { transparent: m.transparent, opacity: m.opacity ?? 1, depthWrite: m.depthWrite };
           });
@@ -320,10 +371,8 @@ export function createInjection(stage, anatomy, vessels, { emit, callouts } = {}
     return syringeLoad;
   }
   loadSyringe();
-  let syrOpacity = 1;
   function setSyringeOpacity(o) {
     if (!syringe) return;
-    syrOpacity = o;
     syringePivot.visible = o > 0.005;
     const liquidMesh = syringe.parts?.liquid;
     syringe.group.traverse((m) => {
@@ -337,6 +386,13 @@ export function createInjection(stage, anatomy, vessels, { emit, callouts } = {}
         else { mat.transparent = true; mat.opacity = f.opacity * o; mat.depthWrite = false; }
       }
     });
+  }
+  // tipOffset: needle tip position along the skin normal (positive = outside the skin, negative = depth)
+  function placeSyringe(site, tipOffset) {
+    const F = frameFor(site);
+    if (!F) return;
+    syringePivot.quaternion.copy(F.quat); // local +Y (barrel) = n, +Z (ticks, bevel) = t (camera side)
+    syringePivot.position.copy(F.point).addScaledVector(F.t, NEEDLE_OFF).addScaledVector(F.n, tipOffset);
   }
 
   // ---------------------------------------------------------------- tissue block
@@ -364,42 +420,43 @@ export function createInjection(stage, anatomy, vessels, { emit, callouts } = {}
     uniforms: { uColor: { value: drugColor }, uOpacity: { value: 0 }, uTime: { value: 0 }, uAnim: { value: 1 } },
     vertexShader: DEPOT_VERT, fragmentShader: DEPOT_FRAG, transparent: true, depthWrite: false,
   });
-  const SEEP_N = 110, SEEP_TRAIL = 3;
+  const SEEP_N = 120, SEEP_TRAIL = 3;
   const seepGeo = new THREE.BufferGeometry();
   const seepPos = new Float32Array(SEEP_N * SEEP_TRAIL * 3);
   const seepAlpha = new Float32Array(SEEP_N * SEEP_TRAIL);
   seepGeo.setAttribute('position', new THREE.BufferAttribute(seepPos, 3).setUsage(THREE.DynamicDrawUsage));
   seepGeo.setAttribute('aAlpha', new THREE.BufferAttribute(seepAlpha, 1).setUsage(THREE.DynamicDrawUsage));
   const seepMat = new THREE.ShaderMaterial({
-    uniforms: { uColor: { value: drugColor }, uScale: { value: 500 }, uSize: { value: 0.0014 }, uCore: { value: 1 } },
+    uniforms: { uColor: { value: drugColor }, uScale: { value: 500 }, uSize: { value: 0.00085 }, uCore: { value: 1 } },
     vertexShader: SEEP_VERT, fragmentShader: SEEP_FRAG, transparent: true, depthWrite: false, depthTest: false, blending: THREE.AdditiveBlending,
   });
 
   let blockMesh = null, edges = null, capMesh = null, depotMesh = null, seepPoints = null;
   let blockDims = null;
-  let routes = [];          // absorption routes (local space polylines with arc samples)
-  let labelAnchors = {};    // world-space anchors for tissue labels
+  let routes = [];          // absorption routes (local polylines, arc-length samples)
+  let labelAnchors = {};    // local-space anchors for tissue labels
   let builtFor = null;
   const seep = Array.from({ length: SEEP_N }, () => ({ r: 0, delay: 0, dur: 2, t: -1, jx: 0, jy: 0 }));
 
   function buildBlock(site, peptide) {
-    const f = anatomy.siteFrame(site);
-    if (!f) return false;
+    const F = frameFor(site);
+    if (!F) return false;
     const hasLymph = !!peptide?.absorption?.steps?.some?.((s) => s.id === 'lymph');
     const key = `${site}|${hasLymph}`;
-    // place in the site frame: x = bitangent, y = normal (0 at the skin, negative = deeper), z = tangent (cut face at 0)
-    const m = new THREE.Matrix4().makeBasis(f.bitangent, f.normal, f.tangent);
-    block.quaternion.setFromRotationMatrix(m);
-    block.position.copy(f.point);
+    // local frame: x = b, y = n (0 at the skin, negative = deeper), z = t (cut face at z = 0, facing the camera)
+    block.quaternion.copy(F.quat);
+    block.position.copy(F.point);
     block.updateMatrixWorld(true);
     if (builtFor === key) return true;
     builtFor = key;
-    // dispose previous
-    for (const o of [blockMesh, edges, capMesh, depotMesh, seepPoints]) if (o) { o.geometry.dispose(); block.remove(o); }
+    for (const o of [blockMesh, edges, capMesh, depotMesh]) if (o) { o.geometry.dispose(); block.remove(o); }
+    if (seepPoints) block.remove(seepPoints);
     const small = site === 'arm';
-    const W = small ? 0.034 : 0.05, D = small ? 0.026 : 0.03, TH = small ? 0.016 : 0.022;
-    const epi = 0.0012, derm = 0.0045, fat = small ? 0.016 : 0.0185;
-    blockDims = { W, D, TH, epi, derm, fat, tip: 0.0105 };
+    // Illustrative proportions (not a measurement): skin ≈ 4.5 mm, fat below it, then muscle.
+    const W = small ? 0.036 : 0.05, D = small ? 0.026 : 0.03, TH = small ? 0.016 : 0.022;
+    const epi = 0.0012, derm = 0.0045, fat = small ? 0.0165 : 0.0185;
+    const tip = small ? 0.0095 : 0.0105; // the needle tip stops in the middle of the fat layer
+    blockDims = { W, D, TH, epi, derm, fat, tip };
     blockMat.uniforms.uLayers.value.set(epi, derm, fat, D);
     const bg = new THREE.BoxGeometry(W, D, TH, 1, 1, 1);
     bg.translate(0, -D / 2, -TH / 2);
@@ -407,9 +464,8 @@ export function createInjection(stage, anatomy, vessels, { emit, callouts } = {}
     blockMesh.renderOrder = 6;
     edges = new THREE.LineSegments(new THREE.EdgesGeometry(bg), edgeMat);
     edges.renderOrder = 7;
-    // depot
-    const tip = blockDims.tip;
-    const dr = new THREE.Vector3(small ? 0.0048 : 0.006, 0.0036, 0.0042);
+    // depot: a flattened bolus centred on the needle tip, in the fat layer
+    const dr = new THREE.Vector3(small ? 0.0048 : 0.0058, small ? 0.0032 : 0.0036, 0.0042);
     depotMesh = new THREE.Mesh(new THREE.SphereGeometry(1, 40, 28), depotMat);
     depotMesh.position.set(0, -tip, 0.0003);
     depotMesh.userData.r = dr;
@@ -417,7 +473,8 @@ export function createInjection(stage, anatomy, vessels, { emit, callouts } = {}
     depotMesh.renderOrder = 9;
     blockMat.uniforms.uDepot.value.set(0, -tip, 0);
     blockMat.uniforms.uDepotR.value.copy(dr);
-    // capillary network on the cut face
+
+    // ---- vessels drawn on the cut face
     const zc = 0.00045;
     const R = rng(site.length * 7919 + 17);
     const geos = [];
@@ -447,7 +504,7 @@ export function createInjection(stage, anatomy, vessels, { emit, callouts } = {}
       const top = -(epi + 0.0004 + R() * 0.0004);
       geos.push(capTube([[x, plexY + 0.0002, zc], [x + 0.0002, (plexY + top) / 2, zc], [x + 0.0006, top, zc], [x + 0.001, (plexY + top) / 2, zc], [x + 0.0012, plexY - 0.0004, zc]], 0.00011, 0, null, 5).geo);
     }
-    // septal capillaries through the fat (skip the needle track)
+    // septal capillaries through the fat (kept clear of the needle track)
     for (let i = 0; i < 7; i++) {
       let x = -halfW + 0.004 + (W - 0.008) * (i + 0.3 + R() * 0.4) / 7;
       if (Math.abs(x) < 0.0035) x += x < 0 ? -0.004 : 0.004;
@@ -455,27 +512,63 @@ export function createInjection(stage, anatomy, vessels, { emit, callouts } = {}
       for (let k = 0; k <= 6; k++) { const y = plexY - 0.0004 + (deepY - plexY + 0.0004) * (k / 6); pts.push([x + (R() - 0.5) * 0.0018, y, zc]); }
       geos.push(capTube(pts, 0.00014, 0, null, 5).geo);
     }
-    // absorption routes: depot edge → capillary → venule → exit edge
+    // a fine capillary mesh in the fat around the depot: jittered ring nodes joined to their nearest
+    // neighbours; it fills with drug from the depot outward during absorption
+    const nodes = [];
+    const fatTop = -(derm + 0.0009), fatBot = -(fat - 0.0009);
+    for (let ring = 0; ring < 3; ring++) {
+      const k = 1.3 + ring * 0.55;
+      const cnt = 9 + ring * 4;
+      for (let i = 0; i < cnt; i++) {
+        const a = ((i + R() * 0.6) / cnt) * Math.PI * 2;
+        const x = Math.cos(a) * dr.x * k * (0.9 + R() * 0.25);
+        const y = -tip + Math.sin(a) * dr.y * k * (0.9 + R() * 0.25);
+        if (y > fatTop || y < fatBot || Math.abs(x) > halfW - 0.0015) continue;
+        if (Math.abs(x) < 0.0006 && y > -tip) continue; // the needle track
+        nodes.push([x, y, zc + 0.0001]);
+      }
+    }
+    const meshEdges = new Set();
+    const dist2 = (p, q) => (p[0] - q[0]) ** 2 + (p[1] - q[1]) ** 2;
+    nodes.forEach((p, i) => {
+      const near = nodes.map((q, j) => [j, dist2(p, q)]).filter(([j]) => j !== i).sort((u, v) => u[1] - v[1]).slice(0, 3);
+      for (const [j, d2] of near) {
+        if (d2 > (dr.x * 1.6) ** 2) continue;
+        const k = i < j ? `${i}-${j}` : `${j}-${i}`;
+        if (meshEdges.has(k)) continue;
+        meshEdges.add(k);
+        const q = nodes[j];
+        const mx = (p[0] + q[0]) / 2 + (R() - 0.5) * 0.0007, my = (p[1] + q[1]) / 2 + (R() - 0.5) * 0.0007;
+        const dc = Math.min(Math.hypot(p[0], p[1] + tip), Math.hypot(q[0], q[1] + tip)) / (dr.x * 2.6);
+        geos.push(capTube([p, [mx, my, p[2]], q], 0.00012, 0, () => 0.05 + 0.4 * clamp01(dc), 5).geo);
+      }
+    });
+    const nearestNode = (x, y) => {
+      let best = null, bd = 1e9;
+      for (const p of nodes) { const d = (p[0] - x) ** 2 + (p[1] - y) ** 2; if (d < bd) { bd = d; best = p; } }
+      return best;
+    };
+    // absorption routes: depot edge → a mesh capillary → venule → out of the block
     routes = [];
-    const angles = [200, 235, 270, 305, 340, 20, 160, 250, 290];
+    const angles = [200, 235, 270, 305, 340, 20, 160, 250, 290, 140];
     angles.forEach((deg, i) => {
       const a = (deg * Math.PI) / 180;
       const sx = Math.cos(a) * dr.x * 0.9, sy = -tip + Math.sin(a) * dr.y * 0.9;
+      const node = nearestNode(sx * 1.6, -tip + (sy + tip) * 1.6);
       const goUp = Math.sin(a) > 0.2 || (i % 2 === 0 && Math.sin(a) > -0.3);
       const targetY = goUp ? venPlex[0][1] : venDeep[0][1];
-      const jx = THREE.MathUtils.clamp(sx + (R() - 0.5) * 0.008 - 0.002, -halfW + 0.004, xJmax - 0.001);
-      const pts = [[sx, sy, zc]];
-      const steps = 5;
+      const ox = node ? node[0] : sx, oy = node ? node[1] : sy;
+      const jx = THREE.MathUtils.clamp(ox + (R() - 0.5) * 0.008 - 0.002, -halfW + 0.004, xJmax - 0.001);
+      const pts = [[sx, sy, zc], [ox, oy, zc]];
+      const steps = 4;
       for (let k = 1; k <= steps; k++) {
         const t = k / steps;
-        pts.push([sx + (jx - sx) * t + Math.sin(t * Math.PI) * (R() - 0.5) * 0.003, sy + (targetY - sy) * easeInOut(t) + (R() - 0.5) * 0.0006 * Math.sin(t * Math.PI), zc]);
+        pts.push([ox + (jx - ox) * t + Math.sin(t * Math.PI) * (R() - 0.5) * 0.003, oy + (targetY - oy) * easeInOut(t) + (R() - 0.5) * 0.0006 * Math.sin(t * Math.PI), zc]);
       }
-      const capPts = pts.slice();
-      geos.push(capTube(capPts, 0.00016, 0, (u) => u * 0.5, 5).geo);
-      // continue along the venule to the exit edge
+      geos.push(capTube(pts, 0.00013, 0, (u) => u * 0.5, 5).geo);
       const ven = goUp ? venPlex : venDeep;
       const tail = ven.filter((p) => p[0] < jx - 0.0005).reverse();
-      const all = [...capPts, ...tail, [exitX - 0.0015, tail.length ? tail[tail.length - 1][1] : targetY, zc]];
+      const all = [...pts, ...tail, [exitX - 0.0015, tail.length ? tail[tail.length - 1][1] : targetY, zc]];
       const curve = new THREE.CatmullRomCurve3(all.map((p) => new THREE.Vector3(p[0], p[1], p[2] + 0.0002)), false, 'centripetal');
       routes.push({ curve, length: curve.getLength(), lymph: false, pts: curve.getSpacedPoints(160) });
     });
@@ -490,22 +583,22 @@ export function createInjection(stage, anatomy, vessels, { emit, callouts } = {}
       const curve = new THREE.CatmullRomCurve3([...lead, ...lpts.slice(1), [halfW + 0.0015, lpts[lpts.length - 1][1], zc]].map((p) => new THREE.Vector3(p[0], p[1], p[2] + 0.0003)), false, 'centripetal');
       routes.push({ curve, length: curve.getLength(), lymph: true, pts: curve.getSpacedPoints(160) });
     }
-    const merged = mergeCap(geos);
-    capMesh = new THREE.Mesh(merged, capMat);
+    capMesh = new THREE.Mesh(mergeCap(geos), capMat);
     capMesh.renderOrder = 8;
     seepPoints = new THREE.Points(seepGeo, seepMat);
     seepPoints.frustumCulled = false;
     seepPoints.renderOrder = 10;
     block.add(blockMesh, edges, capMesh, depotMesh, seepPoints);
-    // label anchors on the lower edge of the cut face (local → world at use time)
-    const lowX = (f.bitangent.y >= 0 ? -1 : 1) * W / 2;
+    // label anchors: tissue layers on the lower edge of the cut face; depot, capillaries and lymph inside
+    const lowX = F.down * W / 2;
+    const highX = -lowX;
     labelAnchors = {
       skin: new THREE.Vector3(lowX, -derm * 0.5, 0),
       fat: new THREE.Vector3(lowX, -(derm + fat) / 2, 0),
       muscle: new THREE.Vector3(lowX, -(fat + D) / 2, 0),
-      depot: new THREE.Vector3(dr.x * 0.6, -tip + dr.y * 0.4, dr.z * 0.7),
-      capillaries: new THREE.Vector3(W * 0.28, plexY, zc),
-      lymph: new THREE.Vector3(W * 0.36, -(derm + (fat - derm) * 0.55), zc),
+      depot: new THREE.Vector3(0, -tip, 0.0035),
+      capillaries: new THREE.Vector3(highX * 0.55, plexY - 0.0004, zc),
+      lymph: new THREE.Vector3(0.62 * halfW, -(derm + (fat - derm) * 0.55), zc), // the lymph vessel runs toward +x
     };
     return true;
   }
@@ -534,11 +627,14 @@ export function createInjection(stage, anatomy, vessels, { emit, callouts } = {}
     out.setIndex(new THREE.BufferAttribute(idx, 1));
     return out;
   }
+  // Callout anchors are functions so they follow the block; each key has its own output vector.
+  const anchorOut = {};
   const worldAnchor = (key) => {
     const v = labelAnchors[key];
-    return v ? () => block.localToWorld(_anchorTmp.copy(v)) : null;
+    if (!v) return null;
+    const out = anchorOut[key] || (anchorOut[key] = new THREE.Vector3());
+    return () => block.localToWorld(out.copy(labelAnchors[key]));
   };
-  const _anchorTmp = new THREE.Vector3();
 
   function setBlockOpacity(o) {
     block.visible = o > 0.003;
@@ -549,6 +645,7 @@ export function createInjection(stage, anatomy, vessels, { emit, callouts } = {}
     capMat.transparent = o < 0.999;
     edgeMat.opacity = o * (stage.theme === 'light' ? 0.45 : 0.4);
   }
+  let depotVis = 1;
   function setDepot(k) {
     if (!depotMesh) return;
     const r = depotMesh.userData.r;
@@ -558,7 +655,12 @@ export function createInjection(stage, anatomy, vessels, { emit, callouts } = {}
     blockMat.uniforms.uDepotR.value.set(r.x * Math.max(0.05, k), r.y * Math.max(0.05, k), r.z * Math.max(0.05, k));
     blockMat.uniforms.uDepotAmt.value = Math.min(1, k * 1.2);
   }
-  let depotVis = 1;
+  // Section cut through the skin at the site (the block is the cut face).
+  function setCut(site, amount) {
+    const F = frameFor(site);
+    if (!F || amount <= 0.001) { anatomy.setSkinCut(null); return; }
+    anatomy.setSkinCut(F.point, site === 'arm' ? 0.065 : 0.08, amount, F.t);
+  }
 
   // ---------------------------------------------------------------- seep particles (absorption)
   let seepMode = 'off'; // off | flow | still
@@ -567,14 +669,14 @@ export function createInjection(stage, anatomy, vessels, { emit, callouts } = {}
     seepMode = mode;
     const R = rng(4242);
     const n = routes.length;
+    const lymph = routes[n - 1]?.lymph;
     for (let i = 0; i < SEEP_N; i++) {
       const p = seep[i];
-      const lymphOnly = routes[n - 1]?.lymph;
-      p.r = lymphOnly && i % 5 === 0 ? n - 1 : i % (lymphOnly ? n - 1 : n);
-      p.delay = R() * 2.2;
-      p.dur = (routes[p.r].lymph ? 2.6 : 1.7) + R() * 0.8;
+      p.r = lymph && i % 5 === 0 ? n - 1 : i % (lymph ? n - 1 : n);
+      p.delay = R() * 2.4;
+      p.dur = (routes[p.r].lymph ? 2.8 : 1.9) + R() * 0.8;
       p.t = mode === 'still' ? R() : -1;
-      p.jx = (R() - 0.5) * 0.00025; p.jy = (R() - 0.5) * 0.00025;
+      p.jx = (R() - 0.5) * 0.00022; p.jy = (R() - 0.5) * 0.00022;
     }
   }
   function stopSeep() { seepMode = 'off'; seepAlpha.fill(0); seepGeo.attributes.aAlpha.needsUpdate = true; }
@@ -584,6 +686,7 @@ export function createInjection(stage, anatomy, vessels, { emit, callouts } = {}
     const i0 = Math.floor(x), i1 = Math.min(pts.length - 1, i0 + 1);
     return out.lerpVectors(pts[i0], pts[i1], x - i0);
   }
+  const seepRand = rng(99);
   function updateSeep(dt) {
     if (seepMode === 'off' || !routes.length) return;
     for (let i = 0; i < SEEP_N; i++) {
@@ -594,7 +697,7 @@ export function createInjection(stage, anatomy, vessels, { emit, callouts } = {}
         if (p.delay > 0) { p.delay -= dt; for (let k = 0; k < SEEP_TRAIL; k++) seepAlpha[b + k] = 0; continue; }
         if (p.t < 0) p.t = 0;
         p.t += dt / p.dur;
-        if (p.t > 1) { p.t = -1; p.delay = 0.2 + Math.random() * 0.6; for (let k = 0; k < SEEP_TRAIL; k++) seepAlpha[b + k] = 0; continue; }
+        if (p.t > 1) { p.t = -1; p.delay = 0.2 + seepRand() * 0.6; for (let k = 0; k < SEEP_TRAIL; k++) seepAlpha[b + k] = 0; continue; }
       }
       const fade = Math.min(1, p.t * 6) * (1 - Math.max(0, (p.t - 0.85) / 0.15));
       for (let k = 0; k < SEEP_TRAIL; k++) {
@@ -608,50 +711,86 @@ export function createInjection(stage, anatomy, vessels, { emit, callouts } = {}
     seepGeo.attributes.aAlpha.needsUpdate = true;
   }
 
-  // ---------------------------------------------------------------- syringe placement
-  const f0 = new THREE.Vector3();
-  function placeSyringe(site, tipOffset) {
-    const f = anatomy.siteFrame(site);
-    if (!f) return;
-    // syringe local +Y (barrel) along the outward normal; tip at the site + offset along the normal
-    syringePivot.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), f.normal);
-    // keep the printed tick side (+Z) toward the camera side (tangent)
-    const q2 = new THREE.Quaternion();
-    const z = new THREE.Vector3(0, 0, 1).applyQuaternion(syringePivot.quaternion);
-    const proj = f.tangent.clone().addScaledVector(f.normal, -f.tangent.dot(f.normal)).normalize();
-    const ang = Math.atan2(new THREE.Vector3().crossVectors(z, proj).dot(f.normal), z.dot(proj));
-    q2.setFromAxisAngle(f.normal, ang);
-    syringePivot.quaternion.premultiply(q2);
-    f0.copy(f.point).addScaledVector(f.tangent, 0.0008).addScaledVector(f.normal, tipOffset);
-    syringePivot.position.copy(f0);
-  }
-
   // ---------------------------------------------------------------- camera views
-  const UP = new THREE.Vector3(0, 1, 0);
-  function dirAngles(dir) {
+  // Fit a set of world points for a camera looking along `dir` (from the points toward the camera):
+  // returns a stage.flyTo view whose target is the centre of the points' screen footprint and whose
+  // distance fits them inside fillX × fillY of the stage at its current aspect.
+  const _r = new THREE.Vector3(), _u = new THREE.Vector3(), _p = new THREE.Vector3();
+  function fitView(points, dir, { fillX = 0.8, fillY = 0.76, minDist = 0.12, padRight = 56 } = {}) {
     const d = dir.clone().normalize();
-    return { azimuth: (Math.atan2(d.x, d.z) * 180) / Math.PI, elevation: (Math.asin(THREE.MathUtils.clamp(d.y, -1, 1)) * 180) / Math.PI };
+    _r.crossVectors(UP, d).normalize();
+    _u.crossVectors(d, _r).normalize();
+    let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity, z1 = -Infinity;
+    const o = points[0];
+    for (const p of points) {
+      _p.subVectors(p, o);
+      const x = _p.dot(_r), y = _p.dot(_u), z = _p.dot(d);
+      if (x < x0) x0 = x; if (x > x1) x1 = x;
+      if (y < y0) y0 = y; if (y > y1) y1 = y;
+      if (z > z1) z1 = z;
+    }
+    const W = Math.max(1, stage.size.width), H = Math.max(1, stage.size.height);
+    // the zoom buttons take a column on the right: fit into the stage minus that column
+    const wFrac = Math.max(0.5, (W - padRight) / W);
+    const cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
+    const target = o.clone().addScaledVector(_r, cx).addScaledVector(_u, cy);
+    const cz = target.clone().sub(o).dot(d);
+    const dist = Math.max(minDist, stage.fitDistance(((y1 - y0) / 2) / fillY, ((x1 - x0) / 2) / (fillX * wFrac)) + Math.max(0, z1 - cz));
+    // shift the view so the footprint is centred in the free part of the stage
+    const worldPerPx = (2 * dist * Math.tan((stage.camera.fov * DEG) / 2)) / H;
+    target.addScaledVector(_r, (padRight / 2) * worldPerPx);
+    return {
+      target: target.toArray(), distance: dist,
+      azimuth: Math.atan2(d.x, d.z) / DEG, elevation: Math.asin(THREE.MathUtils.clamp(d.y, -1, 1)) / DEG,
+    };
   }
-  function closeView(site, zoom = 1) {
-    // Look at the cut face almost straight on (a side view of the layers), a touch from above and
-    // from the skin side, so the needle, the depot and the capillaries all read clearly.
-    const f = anatomy.siteFrame(site);
-    const dir = f.tangent.clone().multiplyScalar(0.93).addScaledVector(f.normal, 0.2).addScaledVector(UP, 0.17);
-    const target = f.point.clone().addScaledVector(f.normal, zoom < 1 ? -0.013 : 0.022);
-    const dist = Math.max(0.12, stage.fitDistance(0.042 * zoom, 0.078 * zoom));
-    return { target: target.toArray(), distance: dist, ...dirAngles(dir) };
+  const local = (F, x, y, z) => new THREE.Vector3().copy(F.point).addScaledVector(F.b, x).addScaledVector(F.n, y).addScaledVector(F.t, z);
+  // mode: 'needle' (block + syringe), 'tissue' (block only, closer)
+  function closeView(site, mode = 'needle') {
+    const F = frameFor(site);
+    const { W, D, TH } = blockDims;
+    const pts = [];
+    for (const x of [-W / 2, W / 2]) for (const y of [0, -D]) for (const z of [0, -TH]) pts.push(local(F, x, y, z));
+    // room for the label row under the block (and over it while absorbing)
+    pts.push(local(F, F.down * W * (mode === 'tissue' ? 0.85 : 0.95), -D * 0.5, 0));
+    if (mode === 'tissue') pts.push(local(F, -F.down * W * 0.8, -D * 0.5, 0));
+    if (mode === 'needle') {
+      const aspect = stage.size.width / Math.max(1, stage.size.height);
+      // wide stages show the whole syringe; narrow ones keep the needle, hub and the front of the barrel
+      const reach = aspect > 1.25 ? SYR_FULL : aspect > 0.8 ? SYR_FRONT : 0.028;
+      for (const x of [-0.004, 0.004]) pts.push(local(F, x, SYR_APPROACH + reach, NEEDLE_OFF));
+    }
+    const v = fitView(pts, F.view, mode === 'tissue' ? { fillX: 0.7, fillY: 0.8 } : { fillX: 0.84, fillY: 0.76 });
+    return v;
   }
+  function routePoints(name, n = 14) {
+    const r = vessels.routes?.[name];
+    if (!r?.curve) return [];
+    const out = [];
+    for (let i = 0; i <= n; i++) out.push(r.curve.getPointAt(i / n));
+    return out;
+  }
+  const dirFromAngles = (azDeg, elDeg) => new THREE.Vector3(
+    Math.sin(azDeg * DEG) * Math.cos(elDeg * DEG), Math.sin(elDeg * DEG), Math.cos(azDeg * DEG) * Math.cos(elDeg * DEG));
   function bloodView(site) {
-    const t = site === 'thigh' ? [0.04, 0.98, 0.0] : site === 'arm' ? [0.06, 1.24, 0.0] : [0.02, 1.12, 0.0];
-    const hh = site === 'thigh' ? 0.4 : 0.33;
-    return { target: t, distance: stage.fitDistance(hh, 0.26), azimuth: 20, elevation: 6 };
+    const pts = [...routePoints(`${site}_to_heart`), ...routePoints('heart_to_lungs', 6), ...routePoints('lungs_to_heart', 6)];
+    pts.push(anatomy.organCenter('heart'));
+    if (pts.length < 3) return { target: [0.03, 1.15, 0], distance: stage.fitDistance(0.36, 0.26), azimuth: 18, elevation: 6 };
+    return fitView(pts, dirFromAngles(BLOOD_AZ[site] ?? 16, 6), { fillX: 0.7, fillY: 0.74 });
   }
-  function distView() {
-    return { target: [0, 1.17, 0.0], distance: stage.fitDistance(0.6, 0.3), azimuth: 14, elevation: 4 };
+  function distView(targets) {
+    const pts = [anatomy.organCenter('heart'), anatomy.organCenter('lungs')];
+    for (const o of targets) {
+      const c = anatomy.organCenter(o);
+      const r = Math.min(0.12, anatomy.organRadius(o) || 0.05) * 0.8;
+      pts.push(c.clone().addScaledVector(UP, r), c.clone().addScaledVector(UP, -r));
+    }
+    return fitView(pts, dirFromAngles(12, 4), { fillX: 0.62, fillY: 0.78 });
   }
   const fly = (view, ms) => stage.flyTo({ ...view, duration: stage.reducedMotion ? 0 : ms });
+  const flyHome = (ms) => stage.homeView({ duration: stage.reducedMotion ? 0 : ms });
 
-  // ---------------------------------------------------------------- labels
+  // ---------------------------------------------------------------- copy
   function phaseCopy(peptide) {
     const steps = peptide?.absorption?.steps || [];
     const out = {};
@@ -662,52 +801,40 @@ export function createInjection(stage, anatomy, vessels, { emit, callouts } = {}
         ? { label: st[0].title || DEFAULT_LABELS[ph].label, text: st.map((s) => s.text).filter(Boolean).join(' ') || DEFAULT_LABELS[ph].text }
         : { ...DEFAULT_LABELS[ph] };
     }
-    if (peptide?.route) out.syringe.text = DEFAULT_LABELS.syringe.text;
     return out;
   }
-  // Which way the skin faces on screen in the close-up (labels go to the skin side / the deep side).
-  function skinSide(site) {
-    const f = anatomy.siteFrame(site);
-    const dir = f.tangent.clone().multiplyScalar(0.93).addScaledVector(f.normal, 0.2).addScaledVector(UP, 0.17).normalize();
-    const right = new THREE.Vector3().crossVectors(dir.clone().negate(), UP).normalize();
-    return f.normal.dot(right) < 0 ? 'left' : 'right';
-  }
-  function tissueLabels(on, hasLymph) {
+
+  // ---------------------------------------------------------------- labels
+  function tissueLabels(on) {
     if (!callouts) return;
     if (!on) { callouts.clear('tissue'); return; }
-    const sk = skinSide(current?.site || 'abdomen');
-    const deep = sk === 'left' ? 'right' : 'left';
-    callouts.set('tissue:skin', { anchor: worldAnchor('skin'), title: 'Skin', text: 'outer layers', tone: 'tissue', group: 'tissue', interactive: false, side: sk });
-    callouts.set('tissue:fat', { anchor: worldAnchor('fat'), title: 'Fat layer', text: 'under the skin', tone: 'tissue', group: 'tissue', interactive: false, side: sk });
-    callouts.set('tissue:muscle', { anchor: worldAnchor('muscle'), title: 'Muscle', text: 'deeper layer', tone: 'tissue', group: 'tissue', interactive: false, side: deep });
-    void hasLymph;
+    callouts.set('tissue:skin', { anchor: worldAnchor('skin'), title: 'Skin', text: 'outer layers', tone: 'tissue', group: 'tissue', interactive: false, side: 'below' });
+    callouts.set('tissue:fat', { anchor: worldAnchor('fat'), title: 'Fat layer', text: 'under the skin', tone: 'tissue', group: 'tissue', interactive: false, side: 'below' });
+    callouts.set('tissue:muscle', { anchor: worldAnchor('muscle'), title: 'Muscle', text: 'deeper layer', tone: 'tissue', group: 'tissue', interactive: false, side: 'below' });
   }
   function depotLabel(on) {
     if (!callouts) return;
-    const deep = skinSide(current?.site || 'abdomen') === 'left' ? 'right' : 'left';
-    if (on) callouts.set('tissue:depot', { anchor: worldAnchor('depot'), title: 'Depot', text: 'a pocket that releases slowly', tone: 'drug', group: 'tissue', interactive: false, side: deep });
+    if (on) callouts.set('tissue:depot', { anchor: worldAnchor('depot'), title: 'Depot', text: 'a pocket that releases slowly', tone: 'drug', group: 'tissue', interactive: false, side: 'above' });
     else callouts.remove('tissue:depot');
   }
   function capLabels(on, hasLymph) {
     if (!callouts) return;
     if (!on) { callouts.remove('tissue:cap'); callouts.remove('tissue:lymph'); return; }
-    const deep = skinSide(current?.site || 'abdomen') === 'left' ? 'right' : 'left';
-    callouts.set('tissue:cap', { anchor: worldAnchor('capillaries'), title: 'Capillaries', text: 'tiny vessels take it up', tone: 'info', group: 'tissue', interactive: false, side: deep });
-    if (hasLymph) callouts.set('tissue:lymph', { anchor: worldAnchor('lymph'), title: 'Lymph vessel', text: 'carries some of it too', tone: 'tissue', group: 'tissue', interactive: false, side: deep });
+    callouts.set('tissue:cap', { anchor: worldAnchor('capillaries'), title: 'Capillaries', text: 'tiny vessels take it up', tone: 'info', group: 'tissue', interactive: false, side: 'above' });
+    if (hasLymph) callouts.set('tissue:lymph', { anchor: worldAnchor('lymph'), title: 'Lymph vessel', text: 'carries some of it too', tone: 'tissue', group: 'tissue', interactive: false, side: 'above' });
   }
 
   // ---------------------------------------------------------------- arrivals
-  const arrivalTimers = new Set();
-  let arrivalLevel = 0;
   const arrived = new Set();
+  const arrivalFades = [];   // { organ, start, from, to, dur }
+  const arrivalTimers = new Set();
+  let clock = 0;
+  const ARRIVAL_REST = 0.7;
   function onArrive(organ, peptide) {
     if (arrived.has(organ)) return;
     arrived.add(organ);
-    const color = ORGAN_DRUG[stage.theme] || ORGAN_DRUG.dark;
-    anatomy.highlight(organ, { channel: 'arrival', color, intensity: 1.1, pulse: 0 });
-    // settle to a calm glow
-    const start = clock;
-    arrivalFades.push({ organ, start });
+    anatomy.highlight(organ, { channel: 'arrival', color: ORGAN_DRUG[stage.theme] || ORGAN_DRUG.dark, intensity: 1.6, pulse: 0 });
+    arrivalFades.push({ organ, start: clock, from: 1.6, to: ARRIVAL_REST, dur: 2.2 });
     if (callouts) {
       const t = peptide?.targets?.find?.((x) => x.organ === organ);
       const rec = t?.receptors?.length ? `${t.receptors.join(' + ')} receptors` : 'drug arrives';
@@ -717,29 +844,33 @@ export function createInjection(stage, anatomy, vessels, { emit, callouts } = {}
       });
     }
   }
-  const arrivalFades = [];
+  // After the sequence the timeline takes over: the arrival glow fades and the time-driven drug level
+  // (vessels.setDrugLevel) is what remains.
+  function fadeArrivals() {
+    if (!arrived.size || playing) return;
+    arrivalFades.length = 0;
+    for (const o of arrived) arrivalFades.push({ organ: o, start: clock, from: ARRIVAL_REST, to: 0, dur: stage.reducedMotion ? 0 : 1.2, release: true });
+    callouts?.clear('arrival');
+  }
 
   // ---------------------------------------------------------------- state machine
   let playing = false;
   let tl = null;
   let resolvePlay = null;
-  let clock = 0;
   let stream = null;
   let current = null;
   let token = 0;
 
   function emitPhase(phase, copy, step) {
     const c = copy[phase] || DEFAULT_LABELS[phase];
+    if (current) current.phase = phase;
     fire('sequence:phase', { phase, label: c.label, text: c.text, step, total: PHASES.length });
   }
-
   function isolate(on) {
     anatomy.setIsolate?.(on);
     vessels.setDim?.(on ? 0.04 : 1);
   }
-
-  function hideStage(instant = true) {
-    void instant;
+  function hideStage() {
     setBlockOpacity(0);
     setSyringeOpacity(0);
     syringePivot.visible = false;
@@ -768,6 +899,7 @@ export function createInjection(stage, anatomy, vessels, { emit, callouts } = {}
     isolate(false);
     const wasPlaying = playing;
     playing = false;
+    current = null;
     if (resolvePlay) { const r = resolvePlay; resolvePlay = null; r({ cancelled: wasPlaying }); }
   }
 
@@ -785,7 +917,7 @@ export function createInjection(stage, anatomy, vessels, { emit, callouts } = {}
     emitPhase('done', copy, PHASES.length + 1);
     fire('sequence:done', {});
     const myToken = token;
-    const tm = setTimeout(() => { if (token === myToken) callouts?.clear('arrival'); arrivalTimers.delete(tm); }, 9000);
+    const tm = setTimeout(() => { if (token === myToken) callouts?.clear('arrival'); arrivalTimers.delete(tm); }, 12000);
     arrivalTimers.add(tm);
     if (resolvePlay) { const r = resolvePlay; resolvePlay = null; r({ cancelled: false }); }
   }
@@ -795,11 +927,11 @@ export function createInjection(stage, anatomy, vessels, { emit, callouts } = {}
     const myToken = ++token;
     await loadSyringe();
     if (myToken !== token) return { cancelled: true };
-    if (!anatomy.siteFrame(site)) site = 'abdomen';
+    if (!frameFor(site)) site = 'abdomen';
     const copy = phaseCopy(peptide);
     const targets = (peptide?.targets || []).map((t) => t.organ).filter(Boolean);
     const hasLymph = !!peptide?.absorption?.steps?.some?.((s) => s.id === 'lymph');
-    current = { site, peptide, copy, targets, hasLymph };
+    current = { site, peptide, copy, targets, hasLymph, phase: null };
     buildBlock(site, peptide);
     playing = true;
     clock = 0;
@@ -810,97 +942,104 @@ export function createInjection(stage, anatomy, vessels, { emit, callouts } = {}
     return done;
   }
 
+  // ~19 s. Times in seconds.
   function buildTimeline({ site, peptide, copy, targets, hasLymph }) {
     const T = makeTimeline();
-    const f = anatomy.siteFrame(site);
-    const tipDepth = blockDims.tip;
+    const { tip } = blockDims;
     syringe.setPlunger(0.34);
     syringe.setLiquid(0.34);
-    placeSyringe(site, 0.05);
+    placeSyringe(site, SYR_APPROACH + 0.012);
     setSyringeOpacity(0);
     T.at(0, () => {
       emitPhase('syringe', copy, 1);
       isolate(true);
-      fly(closeView(site), 1500);
+      fly(closeView(site, 'needle'), 1700);
     });
-    T.track(0.5, 1.5, (k) => { setBlockOpacity(easeOut(k)); anatomy.setSkinCut(f.point, 0.055, 0.8 * easeOut(k)); });
-    T.at(1.2, () => tissueLabels(true, hasLymph));
-    T.track(0.9, 1.5, (k) => { placeSyringe(site, 0.05 - 0.012 * easeOut(k)); setSyringeOpacity(easeOut(k)); });
-    T.track(1.6, 2.6, (k) => placeSyringe(site, 0.038 - (0.038 + tipDepth) * easeInOut(k)));
-    T.track(2.8, 4.3, (k) => {
+    T.track(0.5, 1.5, (k) => { const e = easeOut(k); setBlockOpacity(e); setCut(site, e); });
+    T.at(1.3, () => tissueLabels(true));
+    // the syringe arrives along the skin normal, lined up with the section plane
+    T.track(1.1, 1.8, (k) => { placeSyringe(site, SYR_APPROACH + 0.012 * (1 - easeOut(k))); setSyringeOpacity(easeOut(k)); });
+    // insertion: through the skin and the dermis, stopping in the fat
+    T.track(1.95, 3.0, (k) => placeSyringe(site, SYR_APPROACH - (SYR_APPROACH + tip) * easeInOut(k)));
+    // the plunger goes down and the depot grows at the needle tip
+    T.track(3.15, 4.6, (k) => {
       const e = easeInOut(k);
       syringe.setPlunger(0.34 * (1 - e));
       setDepot(easeOut(k));
     });
-    T.at(4.4, () => { emitPhase('depot', copy, 2); depotLabel(true); });
-    T.track(4.7, 5.6, (k) => { placeSyringe(site, -tipDepth + (0.05 + tipDepth) * easeInOut(k)); });
-    T.track(5.1, 5.7, (k) => setSyringeOpacity(1 - k));
-    T.at(6.2, () => {
+    T.at(4.7, () => { emitPhase('depot', copy, 2); depotLabel(true); });
+    // withdraw along the same line
+    T.track(5.0, 5.9, (k) => placeSyringe(site, -tip + (SYR_APPROACH + tip + 0.02) * easeInOut(k)));
+    T.track(5.45, 6.0, (k) => setSyringeOpacity(1 - k));
+    T.at(6.3, () => {
       emitPhase('absorption', copy, 3);
       depotLabel(false);
       capLabels(true, hasLymph);
-      fly(closeView(site, 0.72), 1300);
+      fly(closeView(site, 'tissue'), 1400);
       startSeep('flow');
     });
-    T.track(6.2, 9.6, (k) => {
+    T.track(6.3, 10.0, (k) => {
       capMat.uniforms.uFill.value = 1.15 * easeInOut(k);
       blockMat.uniforms.uSeep.value = easeOut(k);
-      setDepot(1 - 0.45 * easeInOut(k));
+      setDepot(1 - 0.6 * easeInOut(k));
     });
-    T.at(9.8, () => {
+    T.at(10.2, () => {
       emitPhase('bloodstream', copy, 4);
       tissueLabels(false); capLabels(false);
-      fly(bloodView(site), 1700);
+      fly(bloodView(site), 1800);
       anatomy.setFocus('blood');
       stream = vessels.release({
-        site, targets, count: 150,
-        timing: { emit: 1.2, venous: 2.0, pulmonary: 1.2, arterial: 1.8 },
+        site, targets, count: 160,
+        timing: { emit: 1.2, venous: 2.1, pulmonary: 1.2, arterial: 1.8 },
         onArrive: (o) => onArrive(o, peptide),
       });
     });
-    T.track(9.8, 10.8, (k) => {
+    T.track(10.2, 11.2, (k) => {
       seepOpacity = 1 - k;
       setBlockOpacity(1 - easeInOut(k));
-      anatomy.setSkinCut(f.point, 0.055, 0.8 * (1 - easeInOut(k)));
+      setCut(site, 1 - easeInOut(k));
       if (k >= 1) { stopSeep(); seepOpacity = 1; }
     });
-    T.at(10.2, () => isolate(false));
-    T.at(12.8, () => { emitPhase('distribution', copy, 5); anatomy.setFocus(null); fly(distView(), 1500); });
-    T.at(17.0, () => finish(copy));
+    T.at(10.6, () => isolate(false));
+    T.at(13.4, () => { emitPhase('distribution', copy, 5); anatomy.setFocus(null); fly(distView(targets), 1500); });
+    // final pull-back: the whole body with the target organs glowing
+    T.at(16.6, () => flyHome(2000));
+    T.at(19.2, () => finish(copy));
     return T;
   }
 
+  // Reduced motion: no flights and no particle travel; each phase is its end state, cross-faded.
   function buildReducedTimeline({ site, peptide, copy, targets, hasLymph }) {
     const T = makeTimeline();
-    const f = anatomy.siteFrame(site);
-    const tipDepth = blockDims.tip;
-    const XF = 0.35; // cross-fade length (s)
+    const { tip } = blockDims;
+    const XF = 0.35;
     syringe.setPlunger(0.34);
     syringe.setLiquid(0.34);
-    placeSyringe(site, -tipDepth);
+    placeSyringe(site, -tip);
     setSyringeOpacity(0);
     T.at(0, () => {
       emitPhase('syringe', copy, 1);
       isolate(true);
-      fly(closeView(site), 0);
-      tissueLabels(true, hasLymph);
+      fly(closeView(site, 'needle'), 0);
+      tissueLabels(true);
     });
-    T.track(0, XF, (k) => { setBlockOpacity(k); setSyringeOpacity(k); anatomy.setSkinCut(f.point, 0.055, 0.8 * k); });
-    T.at(2, () => { emitPhase('depot', copy, 2); depotLabel(true); syringe.setPlunger(0); });
-    T.track(2, 2 + XF, (k) => { setDepot(k); setSyringeOpacity(1 - k); });
-    T.at(4, () => {
+    T.track(0, XF, (k) => { setBlockOpacity(k); setSyringeOpacity(k); setCut(site, k); });
+    T.at(2.2, () => { emitPhase('depot', copy, 2); depotLabel(true); syringe.setPlunger(0); });
+    T.track(2.2, 2.2 + XF, (k) => { setDepot(k); setSyringeOpacity(1 - k); });
+    T.at(4.4, () => {
       emitPhase('absorption', copy, 3);
       depotLabel(false); capLabels(true, hasLymph);
+      fly(closeView(site, 'tissue'), 0);
       startSeep('still');
       seepOpacity = 0;
     });
-    T.track(4, 4 + XF, (k) => {
+    T.track(4.4, 4.4 + XF, (k) => {
       capMat.uniforms.uFill.value = 1.15 * k;
       blockMat.uniforms.uSeep.value = k;
-      setDepot(1 - 0.45 * k);
+      setDepot(1 - 0.6 * k);
       seepOpacity = k;
     });
-    T.at(6, () => {
+    T.at(6.6, () => {
       emitPhase('bloodstream', copy, 4);
       tissueLabels(false); capLabels(false);
       fly(bloodView(site), 0);
@@ -908,21 +1047,21 @@ export function createInjection(stage, anatomy, vessels, { emit, callouts } = {}
       anatomy.setFocus('blood');
       stream = vessels.trace({ site, targets, segments: [0, 1], count: 160, opacity: 0 });
     });
-    T.track(6, 6 + XF, (k) => {
+    T.track(6.6, 6.6 + XF, (k) => {
       setBlockOpacity(1 - k); seepOpacity = 1 - k;
-      anatomy.setSkinCut(f.point, 0.055, 0.8 * (1 - k));
+      setCut(site, 1 - k);
       stream?.setOpacity?.(k);
       if (k >= 1) stopSeep();
     });
-    T.at(8, () => {
+    T.at(8.8, () => {
       emitPhase('distribution', copy, 5);
       anatomy.setFocus(null);
-      fly(distView(), 0);
+      flyHome(0);
       stream?.cancel?.();
       stream = vessels.trace({ site, targets, segments: [2], count: 160, opacity: 0, onArrive: (o) => onArrive(o, peptide) });
     });
-    T.track(8, 8 + XF, (k) => stream?.setOpacity?.(k));
-    T.at(10, () => finish(copy));
+    T.track(8.8, 8.8 + XF, (k) => stream?.setOpacity?.(k));
+    T.at(11, () => finish(copy));
     return T;
   }
 
@@ -933,7 +1072,7 @@ export function createInjection(stage, anatomy, vessels, { emit, callouts } = {}
     if (stream) { stream.cancel(); stream = null; }
     for (const o of targets) onArrive(o, peptide);
     hideStage();
-    fly(distView(), 0);
+    flyHome(0);
     finish(copy);
   }
 
@@ -945,18 +1084,23 @@ export function createInjection(stage, anatomy, vessels, { emit, callouts } = {}
     depotMat.uniforms.uAnim.value = stage.reducedMotion ? 0 : 1;
     seepMat.uniforms.uScale.value = stage.viewScale || 500;
     updateSeep(dt);
-    // arrival glow settles from a flash to a calm level
+    // arrival glow: a flash that settles to a calm level; later it can fade out completely
     for (let i = arrivalFades.length - 1; i >= 0; i--) {
       const a = arrivalFades[i];
-      const k = Math.min(1, (clock - a.start) / 1.6);
-      const inten = stage.reducedMotion ? 0.45 : 1.1 - 0.65 * easeOut(k);
-      anatomy.highlight(a.organ, { channel: 'arrival', color: ORGAN_DRUG[stage.theme] || ORGAN_DRUG.dark, intensity: inten, pulse: 0 });
+      const k = a.dur > 0 && !stage.reducedMotion ? Math.min(1, (clock - a.start) / a.dur) : 1;
+      const inten = a.from + (a.to - a.from) * easeOut(k);
+      if (inten <= 0.001) {
+        anatomy.unhighlight(a.organ, { channel: 'arrival' });
+        if (a.release) arrived.delete(a.organ);
+      } else {
+        anatomy.highlight(a.organ, { channel: 'arrival', color: ORGAN_DRUG[stage.theme] || ORGAN_DRUG.dark, intensity: inten, pulse: 0 });
+      }
       if (k >= 1) arrivalFades.splice(i, 1);
     }
   }
   const offFrame = stage.onFrame(update);
 
-  const offTheme = stage.onTheme((theme) => {
+  function applyTheme(theme) {
     drugColor.setHex(DRUG[theme] || DRUG.dark);
     const dark = theme !== 'light';
     blockMat.uniforms.uGlow.value = dark ? 1 : 0.15;
@@ -965,21 +1109,22 @@ export function createInjection(stage, anatomy, vessels, { emit, callouts } = {}
     seepMat.blending = dark ? THREE.AdditiveBlending : THREE.NormalBlending;
     seepMat.needsUpdate = true;
     edgeMat.color.setHex(dark ? 0xd8f6ff : 0x24465c);
-    for (const o of arrived) anatomy.highlight(o, { channel: 'arrival', color: ORGAN_DRUG[theme] || ORGAN_DRUG.dark, intensity: 0.45 });
-  });
-  {
-    const dark = stage.theme !== 'light';
-    blockMat.uniforms.uGlow.value = dark ? 1 : 0.15;
-    capMat.uniforms.uGlow.value = dark ? 1 : 0;
-    seepMat.uniforms.uCore.value = dark ? 1 : 0;
-    if (!dark) seepMat.blending = THREE.NormalBlending;
-    edgeMat.color.setHex(dark ? 0xd8f6ff : 0x24465c);
   }
+  const offTheme = stage.onTheme((theme) => {
+    applyTheme(theme);
+    for (const o of arrived) {
+      if (arrivalFades.some((a) => a.organ === o)) continue;
+      anatomy.highlight(o, { channel: 'arrival', color: ORGAN_DRUG[theme] || ORGAN_DRUG.dark, intensity: ARRIVAL_REST });
+    }
+  });
+  applyTheme(stage.theme);
 
   return {
-    play, skip, reset,
+    play, skip, reset, fadeArrivals,
     get playing() { return playing; },
+    get phase() { return current?.phase || null; },
     get phaseTime() { return tl ? tl.time : 0; },
+    get hasArrivals() { return arrived.size > 0; },
     dispose() {
       reset();
       offFrame(); offTheme();

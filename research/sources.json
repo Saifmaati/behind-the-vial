@@ -1,0 +1,3056 @@
+[
+ {
+  "id": "new-england-2023-triple-hormone-receptor-agonist",
+  "title": "Triple-Hormone-Receptor Agonist Retatrutide for Obesity - A Phase 2 Trial (Jastreboff et al., N Engl J Med 2023;389:514-526)",
+  "publisher": "New England Journal of Medicine / Massachusetts Medical Society",
+  "url": "https://www.nejm.org/doi/full/10.1056/NEJMoa2301972",
+  "date": "2023-06-26",
+  "type": "journal",
+  "usedBy": [
+   "pk-identity-developer-code",
+   "pk-receptor-relative-potency",
+   "pk-weight-not-plateaued-48wk",
+   "pk-heart-rate-phase2",
+   "pk-dropout-phase2",
+   "trials-ph2-nausea-by-arm",
+   "trials-ph2-vomiting-by-arm",
+   "trials-ph2-ae-discontinuation",
+   "trials-ph2-skin-sensation",
+   "trials-ph2-skin-sensation-mild",
+   "trials-ph2-death",
+   "trials-ph2-pancreatitis"
+  ]
+ },
+ {
+  "id": "eli-lilly-2026-what-know-about-retatrutide",
+  "title": "What to know about retatrutide (FAQ)",
+  "publisher": "Eli Lilly and Company",
+  "url": "https://www.lilly.com/news/stories/what-to-know-about-retatrutide",
+  "date": "2026-09",
+  "type": "company",
+  "usedBy": [
+   "pk-identity-lilly-description",
+   "pk-regulatory-not-approved-lilly",
+   "safety-retatrutide-not-approved",
+   "safety-unknown-strength-lilly-mhra",
+   "gray-core-lilly-faq-contents",
+   "gap-pk-peak-and-steady-state-primary-not-approved-no-label",
+   "gap-gray-contaminant-sterility-data-lilly-contaminant-warning"
+  ]
+ },
+ {
+  "id": "john-wiley-2026-detection-excretion-profile-retatrutide",
+  "title": "Detection and Excretion Profile of Retatrutide in Human Plasma and Urine by LC-HRMS: Implications for Antidoping Analysis (Carneiro et al., Rapid Commun Mass Spectrom 2026;40:e70179)",
+  "publisher": "John Wiley & Sons (Rapid Communications in Mass Spectrometry)",
+  "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC13578828",
+  "date": "2026-09-15",
+  "type": "journal",
+  "usedBy": [
+   "pk-structure-39-amino-acids-c20",
+   "pk-tmax-small-self-injection-study",
+   "pk-half-life-small-study-estimate",
+   "pk-depot-retatrutide-profile",
+   "pk-albumin-binding-retatrutide",
+   "pk-clearance-detectable-56-days",
+   "pk-clearance-not-in-urine",
+   "gap-pk-peak-and-steady-state-primary-users-peak-24-48h",
+   "gap-pk-peak-and-steady-state-primary-users-detectable-56-days",
+   "gap-pk-peak-and-steady-state-primary-users-half-life-estimate",
+   "gap-pk-peak-and-steady-state-primary-users-depot-pattern",
+   "gap-pk-peak-and-steady-state-primary-users-product-source"
+  ]
+ },
+ {
+  "id": "u-s-2026-global-substance-registration-system",
+  "title": "Global Substance Registration System record: RETATRUTIDE (UNII NOP2Y096GV)",
+  "publisher": "U.S. FDA / NCATS Global Substance Registration System (GSRS)",
+  "url": "https://gsrs.ncats.nih.gov/api/v1/substances(52f7c547-14ed-454d-9bc2-c9137d0b5922)?view=full",
+  "date": "accessed 2026-10-07",
+  "type": "regulator",
+  "usedBy": [
+   "pk-structure-fda-substance-registry"
+  ]
+ },
+ {
+  "id": "diabetes-obesity-2025-retatrutide-treatment-obesity-obstruct",
+  "title": "Retatrutide for the treatment of obesity, obstructive sleep apnea and knee osteoarthritis: Rationale and design of the TRIUMPH registrational clinical trials (Diabetes Obes Metab 2026)",
+  "publisher": "Diabetes, Obesity and Metabolism (Wiley)",
+  "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC12673447",
+  "date": "2025-10-15",
+  "type": "journal",
+  "usedBy": [
+   "pk-route-once-weekly-subcutaneous",
+   "trials-triumph4-registry-id",
+   "trials-unknown-pregnancy-stop",
+   "gap-side-effect-mechanism-and-mitigation-dys-triumph-protocol-no-specific-plan"
+  ]
+ },
+ {
+  "id": "lancet-elsevier-2022-ly3437943-novel-triple-gip",
+  "title": "LY3437943, a novel triple GIP, GLP-1, and glucagon receptor agonist in people with type 2 diabetes: a phase 1b, multicentre, double-blind, placebo-controlled, randomised, multiple-ascending dose trial (Urva et al., Lancet 2022;400:1869-1881)",
+  "publisher": "The Lancet (Elsevier)",
+  "url": "https://pubmed.ncbi.nlm.nih.gov/36354040",
+  "date": "2022-11-26",
+  "type": "journal",
+  "usedBy": [
+   "pk-half-life-6-days",
+   "claims-12-long-half-life",
+   "gap-pk-peak-and-steady-state-primary-mad-half-life-abstract",
+   "gap-surgery-pregnancy-practical-guidance-reta-half-life-6-days"
+  ]
+ },
+ {
+  "id": "clinicaltrials-gov-2023-clinicaltrials-gov-nct04867785-resul",
+  "title": "ClinicalTrials.gov NCT04867785 results: A Study of LY3437943 in Participants With Type 2 Diabetes (secondary outcome)",
+  "publisher": "ClinicalTrials.gov (U.S. National Library of Medicine)",
+  "url": "https://clinicaltrials.gov/study/NCT04867785",
+  "date": "2023-07-03",
+  "type": "trial-registry",
+  "usedBy": [
+   "pk-blood-levels-by-dose-arm"
+  ]
+ },
+ {
+  "id": "biomolecules-mdpi-2025-retatrutide-a-game-changer",
+  "title": "Retatrutide-A Game Changer in Obesity Pharmacotherapy (Katsi et al., Biomolecules 2025;15:796)",
+  "publisher": "Biomolecules (MDPI)",
+  "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC12190491",
+  "date": "2025-05-30",
+  "type": "journal",
+  "usedBy": [
+   "pk-tmax-single-dose-healthy",
+   "pk-onset-glucagon-hormone-24h"
+  ]
+ },
+ {
+  "id": "journal-pharmacy-2024-weight-new-agent-is",
+  "title": "The 'Weight' for a New Agent Is Almost Over: A Commentary on the Novel Triagonist Retatrutide for Obesity (Deravi et al., J Pharm Technol 2024)",
+  "publisher": "Journal of Pharmacy Technology (SAGE)",
+  "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC11536522",
+  "date": "2024-10-19",
+  "type": "journal",
+  "usedBy": [
+   "pk-tmax-multiple-dose-t2d"
+  ]
+ },
+ {
+  "id": "novo-nordisk-2026-ozempic-semaglutide-injection",
+  "title": "OZEMPIC (semaglutide) injection - US Prescribing Information, section 12.3",
+  "publisher": "Novo Nordisk / U.S. FDA label via DailyMed",
+  "url": "https://dailymed.nlm.nih.gov/dailymed/lookup.cfm?setid=adec4fd2-6858-4c99-91d4-531f5f2a2d79",
+  "date": "2026-06-10",
+  "type": "label",
+  "usedBy": [
+   "pk-steady-state-class-semaglutide",
+   "catalog-semaglutide-status-ozempic",
+   "gap-side-effect-mechanism-and-mitigation-dys-fda-postmarketing-ozempic"
+  ]
+ },
+ {
+  "id": "eli-lilly-2026-zepbound-tirzepatide-injection",
+  "title": "ZEPBOUND (tirzepatide) injection - US Prescribing Information, section 12.3",
+  "publisher": "Eli Lilly / U.S. FDA label via DailyMed",
+  "url": "https://dailymed.nlm.nih.gov/dailymed/lookup.cfm?setid=487cd7e7-434c-4925-99fa-aa80b1cc776b",
+  "date": "2026-09-02",
+  "type": "label",
+  "usedBy": [
+   "pk-steady-state-class-tirzepatide",
+   "pk-class-tirzepatide-sites-bioavailability",
+   "pk-albumin-binding-tirzepatide-class",
+   "pk-clearance-class-breakdown",
+   "safety-gi-when-it-passes",
+   "safety-gi-stomach-emptying-label",
+   "safety-reflux-belching-label-rates",
+   "safety-abdominal-pain-and-severe-gi",
+   "safety-injection-site",
+   "safety-gallbladder-rates-and-cause",
+   "safety-pancreatitis-label",
+   "safety-hypoglycemia-insulin-su",
+   "safety-dehydration-kidney",
+   "safety-hair-loss",
+   "safety-thyroid-boxed-warning",
+   "safety-retinopathy",
+   "safety-aspiration-anesthesia",
+   "safety-allergy-anaphylaxis",
+   "safety-birth-control-pill",
+   "safety-pregnancy-label",
+   "safety-redflag-next-visit-thyroid-vision",
+   "safety-overdose-label-zepbound",
+   "safety-history-gastroparesis",
+   "safety-history-tell-provider-list",
+   "safety-history-kidney",
+   "catalog-tirzepatide-zepbound-osa",
+   "gap-side-effect-mechanism-and-mitigation-dys-tirzepatide-label-rare",
+   "gap-side-effect-mechanism-and-mitigation-hypo-zepbound-bp-meds-and-dehydration",
+   "gap-side-effect-mechanism-and-mitigation-hypo-mg-drink-fluids",
+   "gap-side-effect-mechanism-and-mitigation-dizzy-zepbound-rates",
+   "gap-side-effect-mechanism-and-mitigation-fatigue-zepbound-rates",
+   "gap-side-effect-mechanism-and-mitigation-hair-zepbound-linked-to-weight-loss-women",
+   "gap-side-effect-mechanism-and-mitigation-isr-zepbound-antibody-link",
+   "gap-side-effect-mechanism-and-mitigation-isr-ifu-rotation-skin-damage",
+   "gap-surgery-pregnancy-practical-guidance-fda-label-aspiration-reports",
+   "gap-surgery-pregnancy-practical-guidance-fda-label-insufficient-data",
+   "gap-surgery-pregnancy-practical-guidance-fda-zepbound-oc-advice",
+   "gap-surgery-pregnancy-practical-guidance-fda-zepbound-oc-data",
+   "gap-surgery-pregnancy-practical-guidance-fda-zepbound-no-preconception-period"
+  ]
+ },
+ {
+  "id": "clinicaltrials-gov-2024-clinicaltrials-gov-nct05959096-effec",
+  "title": "ClinicalTrials.gov NCT05959096: Effect of Injection Site on the Relative Bioavailability of a Single Dose of LY3437943 in Healthy Participants With a High Body Mass Index",
+  "publisher": "ClinicalTrials.gov (U.S. National Library of Medicine)",
+  "url": "https://clinicaltrials.gov/study/NCT05959096",
+  "date": "2024-10-01",
+  "type": "trial-registry",
+  "usedBy": [
+   "pk-injection-site-study-unpublished",
+   "gap-pk-peak-and-steady-state-primary-nct05959096-design",
+   "gap-pk-peak-and-steady-state-primary-nct05959096-iv-arm",
+   "gap-pk-peak-and-steady-state-primary-nct05959096-no-results"
+  ]
+ },
+ {
+  "id": "novo-nordisk-2026-wegovy-semaglutide-injection",
+  "title": "WEGOVY (semaglutide) injection - US Prescribing Information, section 12.3",
+  "publisher": "Novo Nordisk / U.S. FDA label via DailyMed",
+  "url": "https://dailymed.nlm.nih.gov/dailymed/lookup.cfm?setid=ee06186f-2aa3-4990-a760-757579d8f77b",
+  "date": "2026-06-30",
+  "type": "label",
+  "usedBy": [
+   "pk-class-semaglutide-sites-bioavailability",
+   "pk-albumin-binding-kidney-semaglutide",
+   "pk-clearance-class-washout-semaglutide",
+   "safety-dysesthesia-semaglutide-high-dose",
+   "safety-heart-rate-wegovy-label",
+   "safety-redflag-doctor-today-heart",
+   "safety-overdose-label-wegovy",
+   "safety-history-heart-rhythm",
+   "catalog-semaglutide-wegovy-heart",
+   "catalog-semaglutide-wegovy-mash",
+   "gap-side-effect-mechanism-and-mitigation-dys-dose-and-blood-level-linked",
+   "gap-side-effect-mechanism-and-mitigation-dys-label-actions-and-recovery",
+   "gap-side-effect-mechanism-and-mitigation-dys-label-faster-when-action-taken",
+   "gap-side-effect-mechanism-and-mitigation-dys-label-not-always-gone-by-trial-end",
+   "gap-side-effect-mechanism-and-mitigation-dys-label-comes-back-on-reescalation",
+   "gap-side-effect-mechanism-and-mitigation-hypo-wegovy-volume-loss-bp-meds",
+   "gap-side-effect-mechanism-and-mitigation-dizzy-label-rates-high-dose",
+   "gap-side-effect-mechanism-and-mitigation-dizzy-label-rates-standard-dose",
+   "gap-side-effect-mechanism-and-mitigation-dizzy-headache-low-blood-sugar",
+   "gap-side-effect-mechanism-and-mitigation-isr-wegovy-rate",
+   "gap-surgery-pregnancy-practical-guidance-fda-wegovy-2-months",
+   "gap-surgery-pregnancy-practical-guidance-fda-wegovy-5-7-weeks"
+  ]
+ },
+ {
+  "id": "aaps-journal-2012-mechanistic-determinants-biotherapeutics-a",
+  "title": "Mechanistic determinants of biotherapeutics absorption following SC administration (Richter, Bhansali & Morris, AAPS J 2012;14:559-570)",
+  "publisher": "The AAPS Journal (Springer)",
+  "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC3385825",
+  "date": "2012-05-23",
+  "type": "journal",
+  "usedBy": [
+   "pk-absorption-subcutaneous-space",
+   "pk-absorption-capillaries-vs-lymph"
+  ]
+ },
+ {
+  "id": "pharmaceutical-research-1990-effect-molecular-weight-lymphat",
+  "title": "Effect of molecular weight on the lymphatic absorption of water-soluble compounds following subcutaneous administration (Supersaxo, Hein & Steffen, Pharm Res 1990;7:167-169)",
+  "publisher": "Pharmaceutical Research (Springer)",
+  "url": "https://pubmed.ncbi.nlm.nih.gov/2137911",
+  "date": "1990-02",
+  "type": "journal",
+  "usedBy": [
+   "pk-absorption-lymph-threshold-primary"
+  ]
+ },
+ {
+  "id": "european-journal-2024-lymphatic-uptake-lipidated-non",
+  "title": "Lymphatic uptake of the lipidated and non-lipidated GLP-1 agonists liraglutide and exenatide is similar in rats (Reddiar et al., Eur J Pharm Biopharm 2024;200:114339)",
+  "publisher": "European Journal of Pharmaceutics and Biopharmaceutics (Elsevier)",
+  "url": "https://pubmed.ncbi.nlm.nih.gov/38789061",
+  "date": "2024-05-23",
+  "type": "journal",
+  "usedBy": [
+   "pk-absorption-lipidated-peptide-lymph"
+  ]
+ },
+ {
+  "id": "frontiers-endocrinology-2019-discovery-development-liragluti",
+  "title": "The Discovery and Development of Liraglutide and Semaglutide (Knudsen & Lau, Front Endocrinol 2019;10:155)",
+  "publisher": "Frontiers in Endocrinology",
+  "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC6474072",
+  "date": "2019-04-12",
+  "type": "journal",
+  "usedBy": [
+   "pk-depot-concept-self-assembly",
+   "pk-native-glp1-short-half-life"
+  ]
+ },
+ {
+  "id": "molecular-metabolism-2019-glucagon-like-peptide-1",
+  "title": "Glucagon-like peptide 1 (GLP-1) (Müller et al., Mol Metab 2019;30:72-130)",
+  "publisher": "Molecular Metabolism (Elsevier)",
+  "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC6812410",
+  "date": "2019-09-30",
+  "type": "journal",
+  "usedBy": [
+   "pk-receptor-glp1r-pancreas",
+   "pk-receptor-glp1r-brain",
+   "pk-receptor-glp1r-stomach-not-liver",
+   "pk-receptor-glp1r-heart",
+   "pk-receptor-glp1-actions"
+  ]
+ },
+ {
+  "id": "jci-insight-2020-semaglutide-lowers-body-weight",
+  "title": "Semaglutide lowers body weight in rodents via distributed neural pathways (Gabery et al., JCI Insight 2020;5:e133429)",
+  "publisher": "JCI Insight",
+  "url": "https://pubmed.ncbi.nlm.nih.gov/32213703",
+  "date": "2020-03-26",
+  "type": "journal",
+  "usedBy": [
+   "pk-receptor-brain-access"
+  ]
+ },
+ {
+  "id": "endocrine-journal-2025-physiology-clinical-applications-gip",
+  "title": "Physiology and clinical applications of GIP (Yamane, Harada & Inagaki, Endocr J 2025)",
+  "publisher": "Endocrine Journal (Japan Endocrine Society)",
+  "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC12260194",
+  "date": "2025-04-03",
+  "type": "journal",
+  "usedBy": [
+   "pk-receptor-gipr-beta-cells",
+   "pk-receptor-gipr-organs",
+   "pk-receptor-gipr-appetite-brain",
+   "pk-receptor-gipr-fat-tissue"
+  ]
+ },
+ {
+  "id": "pharmacological-research-2025-iuphar-review-foe-friend",
+  "title": "IUPHAR review: From foe to friend: Repurposing glucagon to treat obesity and type 2 diabetes (Elmendorf et al., Pharmacol Res 2026)",
+  "publisher": "Pharmacological Research (Elsevier)",
+  "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC12910462",
+  "date": "2025-12-30",
+  "type": "journal",
+  "usedBy": [
+   "pk-receptor-gcgr-liver-highest",
+   "pk-receptor-gcgr-liver-fat-burning"
+  ]
+ },
+ {
+  "id": "diabetologia-springer-2023-100-years-glucagon-100",
+  "title": "100 years of glucagon and 100 more (Wewer Albrechtsen et al., Diabetologia 2023;66:1378-1394)",
+  "publisher": "Diabetologia (Springer)",
+  "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC13288116",
+  "date": "2023-06-27",
+  "type": "journal",
+  "usedBy": [
+   "pk-receptor-gcgr-heart-uncertain",
+   "pk-receptor-gcgr-human-fat-conflict"
+  ]
+ },
+ {
+  "id": "cell-metabolism-2022-ly3437943-novel-triple-glucagon",
+  "title": "LY3437943, a novel triple glucagon, GIP, and GLP-1 receptor agonist for glycemic control and weight loss: From discovery to clinical proof of concept (Coskun et al., Cell Metab 2022;34:1234-1247)",
+  "publisher": "Cell Metabolism (Cell Press / Elsevier)",
+  "url": "https://pubmed.ncbi.nlm.nih.gov/35985340",
+  "date": "2022-09-06",
+  "type": "journal",
+  "usedBy": [
+   "pk-receptor-gcgr-energy-expenditure-mice",
+   "pk-single-dose-weight-day43",
+   "claims-8-energy-burn-in-mice",
+   "gap-surgery-pregnancy-practical-guidance-reta-effect-day-43"
+  ]
+ },
+ {
+  "id": "nature-medicine-2024-triple-hormone-receptor-agonist",
+  "title": "Triple hormone receptor agonist retatrutide for metabolic dysfunction-associated steatotic liver disease: a randomized phase 2a trial (Sanyal et al., Nat Med 2024;30:2037-2048)",
+  "publisher": "Nature Medicine (Springer Nature)",
+  "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC11271400",
+  "date": "2024-06-10",
+  "type": "journal",
+  "usedBy": [
+   "pk-liver-fat-reduction-phase2",
+   "pk-liver-fat-burning-marker",
+   "trials-liver-fat-24wk",
+   "trials-liver-fat-normal-24wk",
+   "trials-liver-fat-normal-48wk",
+   "claims-7-liver-fat-drop",
+   "claims-7-normal-liver-fat",
+   "claims-7-no-biopsy-small",
+   "claims-7-mostly-mild-disease",
+   "gap-pk-peak-and-steady-state-primary-pk-data-not-shared",
+   "gap-pk-peak-and-steady-state-primary-natmed-half-life-restated"
+  ]
+ },
+ {
+  "id": "diabetes-obesity-2023-novel-gip-glp-1",
+  "title": "The novel GIP, GLP-1 and glucagon receptor agonist retatrutide delays gastric emptying (Urva et al., Diabetes Obes Metab 2023;25:2784-2788)",
+  "publisher": "Diabetes, Obesity and Metabolism (Wiley)",
+  "url": "https://dom-pubs.onlinelibrary.wiley.com/doi/full/10.1111/dom.15167",
+  "date": "2023-06-13",
+  "type": "journal",
+  "usedBy": [
+   "pk-gastric-emptying-which-receptors",
+   "pk-onset-gastric-emptying-first-dose",
+   "pk-gastric-emptying-fades"
+  ]
+ },
+ {
+  "id": "lancet-elsevier-2023-retatrutide-gip-glp-1",
+  "title": "Retatrutide, a GIP, GLP-1 and glucagon receptor agonist, for people with type 2 diabetes: a randomised, double-blind, placebo and active-controlled, parallel-group, phase 2 trial (Rosenstock et al., Lancet 2023;402:529-544)",
+  "publisher": "The Lancet (Elsevier)",
+  "url": "https://pubmed.ncbi.nlm.nih.gov/37385280",
+  "date": "2023-08-12",
+  "type": "journal",
+  "usedBy": [
+   "pk-glucose-hba1c-phase2-t2d",
+   "trials-ph2-t2d-hba1c",
+   "trials-ph2-t2d-weight",
+   "trials-ph2-t2d-gi"
+  ]
+ },
+ {
+  "id": "new-england-2023-triple-hormone-receptor-agonist-2",
+  "title": "Triple-Hormone-Receptor Agonist Retatrutide for Obesity - A Phase 2 Trial (Jastreboff et al., N Engl J Med 2023) - PubMed abstract",
+  "publisher": "New England Journal of Medicine / Massachusetts Medical Society",
+  "url": "https://pubmed.ncbi.nlm.nih.gov/37366315",
+  "date": "2023-08-10",
+  "type": "journal",
+  "usedBy": [
+   "pk-weight-week24-phase2",
+   "pk-weight-week48-phase2",
+   "trials-ph2-obesity-design",
+   "trials-ph2-weight-24wk",
+   "trials-ph2-weight-48wk",
+   "trials-ph2-15pct",
+   "trials-ph2-gi-dose-related",
+   "trials-ph2-heart-rate-peak",
+   "safety-heart-rate-retatrutide",
+   "claims-1-phase2-48wk",
+   "claims-13-heart-rate-rises",
+   "gap-red-flags-us-911-split-retatrutide-hr-peak-24wk"
+  ]
+ },
+ {
+  "id": "new-england-2026-retatrutide-triple-hormone-receptor",
+  "title": "Retatrutide, a Triple Hormone Receptor Agonist, for Treatment of Obesity (Jastreboff et al., N Engl J Med, published online Sept 29, 2026)",
+  "publisher": "New England Journal of Medicine / Massachusetts Medical Society",
+  "url": "https://www.nejm.org/doi/full/10.1056/NEJMoa2604169",
+  "date": "2026-09-29",
+  "type": "journal",
+  "usedBy": [
+   "pk-weight-triumph1-80wk"
+  ]
+ },
+ {
+  "id": "eli-lilly-2026-lilly-s-triple-agonist",
+  "title": "Lilly's triple agonist, retatrutide, delivered powerful weight loss in pivotal Phase 3 obesity trial (press release)",
+  "publisher": "Eli Lilly and Company (via PR Newswire)",
+  "url": "https://www.prnewswire.com/news-releases/lillys-triple-agonist-retatrutide-delivered-powerful-weight-loss-in-pivotal-phase-3-obesity-trial-302778859.html",
+  "date": "2026-05-21",
+  "type": "company",
+  "usedBy": [
+   "pk-weight-triumph1-104wk",
+   "pk-dropout-triumph1",
+   "trials-triumph1-weight-efficacy",
+   "trials-triumph1-30pct",
+   "trials-triumph1-104wk-extension",
+   "trials-triumph1-extension-selected",
+   "trials-triumph1-gi",
+   "trials-triumph1-dysesthesia",
+   "trials-triumph1-dysesthesia-course",
+   "trials-triumph1-uti",
+   "trials-triumph1-ae-discontinuation",
+   "trials-cross-discontinuation-dose-response",
+   "trials-unknown-longest-data",
+   "safety-gi-retatrutide-triumph1-rates",
+   "safety-dropout-retatrutide-triumph1",
+   "safety-dysesthesia-resolves",
+   "claims-1-triumph1-12mg-average",
+   "claims-1-not-everyone-30",
+   "claims-1-104wk-extension-selected",
+   "claims-3-gi-rates-triumph1",
+   "claims-3-dropout-triumph1",
+   "claims-11-lilly-only-trials"
+  ]
+ },
+ {
+  "id": "naunyn-schmiedeberg-2025-contractile-effects-retatrutide-iso",
+  "title": "Contractile effects of retatrutide in isolated mouse atrial preparations (Neumann et al., Naunyn Schmiedebergs Arch Pharmacol 2025)",
+  "publisher": "Naunyn-Schmiedeberg's Archives of Pharmacology (Springer)",
+  "url": "https://pubmed.ncbi.nlm.nih.gov/40464942",
+  "date": "2025-06-04",
+  "type": "journal",
+  "usedBy": [
+   "pk-heart-rate-mechanism-mouse",
+   "safety-heart-rate-mechanism-glucagon"
+  ]
+ },
+ {
+  "id": "eli-lilly-2026-lilly-s-triple-agonist-2",
+  "title": "Lilly's triple agonist, retatrutide, delivered substantial weight loss and A1C reduction, underscoring its potential promise for people with obesity and type 2 diabetes (press release)",
+  "publisher": "Eli Lilly and Company (via PR Newswire)",
+  "url": "https://www.prnewswire.com/news-releases/lillys-triple-agonist-retatrutide-delivered-substantial-weight-loss-and-a1c-reduction-underscoring-its-potential-promise-for-people-with-obesity-and-type-2-diabetes-302891798.html",
+  "date": "2026-09-29",
+  "type": "company",
+  "usedBy": [
+   "pk-dropout-triumph2",
+   "pk-regulatory-submission-timing",
+   "trials-triumph2-weight-efficacy",
+   "trials-triumph2-a1c",
+   "trials-triumph2-dysesthesia-lilly",
+   "trials-triumph2-discontinuation-lilly",
+   "trials-status-bla-plan"
+  ]
+ },
+ {
+  "id": "eli-lilly-2026-lilly-s-triple-agonist-3",
+  "title": "Lilly's triple agonist, retatrutide, successful in two additional Phase 3 obesity trials, delivering significant improvements in weight and A1C (press release)",
+  "publisher": "Eli Lilly and Company (via PR Newswire)",
+  "url": "https://www.prnewswire.com/news-releases/lillys-triple-agonist-retatrutide-successful-in-two-additional-phase-3-obesity-trials-delivering-significant-improvements-in-weight-and-a1c-302832674.html",
+  "date": "2026-07-23",
+  "type": "company",
+  "usedBy": [
+   "pk-dropout-triumph3",
+   "trials-triumph3-design",
+   "trials-triumph3-weight",
+   "trials-triumph3-mace3",
+   "trials-triumph3-mace5",
+   "trials-triumph3-dysesthesia",
+   "trials-triumph3-ae-discontinuation",
+   "trials-triumph3-gi",
+   "trials-status-investigational",
+   "claims-4-application-2027",
+   "claims-13-heart-events-unclear"
+  ]
+ },
+ {
+  "id": "clinicaltrials-gov-2023-clinicaltrials-gov-nct05757531-dispo",
+  "title": "ClinicalTrials.gov NCT05757531: Disposition of [14C]-LY3437943 Following Subcutaneous Administration in Healthy Male Participants",
+  "publisher": "ClinicalTrials.gov (U.S. National Library of Medicine)",
+  "url": "https://clinicaltrials.gov/study/NCT05757531",
+  "date": "2023-07-05",
+  "type": "trial-registry",
+  "usedBy": [
+   "pk-clearance-adme-study-unpublished"
+  ]
+ },
+ {
+  "id": "clinicaltrials-gov-2026-clinicaltrials-gov-nct06859268-phase",
+  "title": "ClinicalTrials.gov NCT06859268: Phase 3b study of retatrutide in the maintenance of weight reduction in individuals with obesity",
+  "publisher": "ClinicalTrials.gov (U.S. National Library of Medicine)",
+  "url": "https://clinicaltrials.gov/study/NCT06859268",
+  "date": "2026-03-03",
+  "type": "trial-registry",
+  "usedBy": [
+   "pk-stopping-retatrutide-trial-ongoing",
+   "claims-9-retatrutide-stop-trial-running"
+  ]
+ },
+ {
+  "id": "jama-american-2024-continued-treatment-tirzepatide-maintenan",
+  "title": "Continued Treatment With Tirzepatide for Maintenance of Weight Reduction in Adults With Obesity: The SURMOUNT-4 Randomized Clinical Trial (Aronne et al., JAMA 2024;331:38-48)",
+  "publisher": "JAMA (American Medical Association)",
+  "url": "https://pubmed.ncbi.nlm.nih.gov/38078870",
+  "date": "2024-01-02",
+  "type": "journal",
+  "usedBy": [
+   "pk-stopping-class-tirzepatide",
+   "claims-9-tirzepatide-regain",
+   "claims-9-few-kept-it-off"
+  ]
+ },
+ {
+  "id": "diabetes-obesity-2022-weight-regain-cardiometabolic-effects",
+  "title": "Weight regain and cardiometabolic effects after withdrawal of semaglutide: The STEP 1 trial extension (Wilding et al., Diabetes Obes Metab 2022;24:1553-1564)",
+  "publisher": "Diabetes, Obesity and Metabolism (Wiley)",
+  "url": "https://pubmed.ncbi.nlm.nih.gov/35441470",
+  "date": "2022-05-19",
+  "type": "journal",
+  "usedBy": [
+   "pk-stopping-class-semaglutide"
+  ]
+ },
+ {
+  "id": "therapeutic-goods-2026-tga-tests-counterfeit-retatrutide",
+  "title": "TGA tests counterfeit retatrutide product following serious adverse event report (safety advisory)",
+  "publisher": "Therapeutic Goods Administration (Australia)",
+  "url": "https://www.tga.gov.au/safety/safety-monitoring-and-information/safety-alerts/tga-tests-counterfeit-retatrutide-product-following-serious-adverse-event-report",
+  "date": "2026-09-14",
+  "type": "regulator",
+  "usedBy": [
+   "pk-regulatory-not-approved-tga",
+   "claims-4-tga-torn-oesophagus",
+   "claims-5-tga-no-retatrutide",
+   "claims-11-tga-trial-only",
+   "gap-gray-contaminant-sterility-data-tga-semaglutide-instead",
+   "gap-gray-contaminant-sterility-data-tga-semaglutide-8x",
+   "gap-gray-contaminant-sterility-data-tga-torn-oesophagus",
+   "gap-gray-contaminant-sterility-data-tga-nonsterile-infection-anaphylaxis"
+  ]
+ },
+ {
+  "id": "eli-lilly-2026-eli-lilly-company-form",
+  "title": "Eli Lilly and Company Form 8-K, Exhibit: Q2 2026 sales and earnings press release (Aug 5, 2026)",
+  "publisher": "Eli Lilly and Company via U.S. SEC EDGAR",
+  "url": "https://www.sec.gov/Archives/edgar/data/0000059478/000005947826000077/q226lillysalesandearningsp.htm",
+  "date": "2026-08-05",
+  "type": "company",
+  "usedBy": [
+   "pk-regulatory-sec-filing-wording"
+  ]
+ },
+ {
+  "id": "u-s-2026-fda-s-concerns-unapproved",
+  "title": "FDA's Concerns with Unapproved GLP-1 Drugs Used for Weight Loss",
+  "publisher": "U.S. Food and Drug Administration",
+  "url": "https://www.fda.gov/drugs/drug-alerts-and-statements/fdas-concerns-unapproved-glp-1-drugs-used-weight-loss",
+  "date": "2026-10-01",
+  "type": "regulator",
+  "usedBy": [
+   "pk-regulatory-fda-no-compounding",
+   "pk-regulatory-fda-research-label",
+   "gray-fda-cannot-compound",
+   "gray-fda-ruo-falsely-labeled",
+   "gray-core-fda-unknown-quality",
+   "gray-core-fda-online-contents"
+  ]
+ },
+ {
+  "id": "u-s-2025-warning-letter-glp-1",
+  "title": "Warning Letter: GLP-1 Solution (MARCS-CMS 715883)",
+  "publisher": "U.S. Food and Drug Administration",
+  "url": "https://www.fda.gov/inspections-compliance-enforcement-and-criminal-investigations/warning-letters/glp-1-solution-715883-09092025",
+  "date": "2025-09-09",
+  "type": "regulator",
+  "usedBy": [
+   "pk-regulatory-fda-warning-letter-503a"
+  ]
+ },
+ {
+  "id": "clinicaltrials-gov-2026-clinicaltrials-gov-nct07629401-pre",
+  "title": "ClinicalTrials.gov NCT07629401: Pre-approval Expanded Access of Retatrutide (LY3437943)",
+  "publisher": "ClinicalTrials.gov (U.S. National Library of Medicine)",
+  "url": "https://clinicaltrials.gov/study/NCT07629401",
+  "date": "2026-08-06",
+  "type": "trial-registry",
+  "usedBy": [
+   "pk-regulatory-expanded-access",
+   "claims-4-expanded-access-narrow"
+  ]
+ },
+ {
+  "id": "eli-lilly-2023-lilly-s-phase-2",
+  "title": "Lilly's phase 2 retatrutide results published in The New England Journal of Medicine...",
+  "publisher": "Eli Lilly and Company (press release via PR Newswire)",
+  "url": "https://www.prnewswire.com/news-releases/lillys-phase-2-retatrutide-results-published-in-the-new-england-journal-of-medicine-show-the-investigational-molecule-achieved-up-to-17-5-mean-weight-reduction-at-24-weeks-in-adults-with-obesity-and-overweight-301863690.html",
+  "date": "2023-06-26",
+  "type": "company",
+  "usedBy": [
+   "trials-ph2-no-plateau"
+  ]
+ },
+ {
+  "id": "new-england-2023-supplementary-appendix-table-s8",
+  "title": "Supplementary Appendix, Table S8 - Jastreboff et al., Retatrutide Phase 2 Obesity Trial",
+  "publisher": "New England Journal of Medicine",
+  "url": "https://www.nejm.org/doi/suppl/10.1056/NEJMoa2301972/suppl_file/nejmoa2301972_appendix.pdf",
+  "date": "2023-06-26",
+  "type": "journal",
+  "usedBy": [
+   "trials-ph2-heart-rate-24wk",
+   "trials-ph2-heart-rate-36wk",
+   "trials-ph2-skin-sensation-by-arm",
+   "trials-ph2-arrhythmia"
+  ]
+ },
+ {
+  "id": "lancet-2023-retatrutide-gip-glp-1",
+  "title": "Retatrutide, a GIP, GLP-1 and glucagon receptor agonist, for people with type 2 diabetes: phase 2 trial, Table 3 (Rosenstock et al.)",
+  "publisher": "The Lancet",
+  "url": "https://doi.org/10.1016/S0140-6736(23)01053-X",
+  "date": "2023-06-26",
+  "type": "journal",
+  "usedBy": [
+   "trials-ph2-t2d-discontinuation",
+   "trials-ph2-t2d-pulse"
+  ]
+ },
+ {
+  "id": "eli-lilly-2025-lilly-s-triple-agonist",
+  "title": "Lilly's triple agonist, retatrutide, delivered weight loss of up to an average of 71.2 lbs along with substantial relief from osteoarthritis pain in first successful Phase 3 trial",
+  "publisher": "Eli Lilly and Company (press release via PR Newswire)",
+  "url": "https://www.prnewswire.com/news-releases/lillys-triple-agonist-retatrutide-delivered-weight-loss-of-up-to-an-average-of-71-2-lbs-along-with-substantial-relief-from-osteoarthritis-pain-in-first-successful-phase-3-trial-302638804.html",
+  "date": "2025-12-11",
+  "type": "company",
+  "usedBy": [
+   "trials-triumph4-design",
+   "trials-triumph4-weight-efficacy",
+   "trials-triumph4-weight-treatment-regimen",
+   "trials-triumph4-knee-pain",
+   "trials-triumph4-dysesthesia",
+   "trials-triumph4-dysesthesia-mild",
+   "trials-triumph4-ae-discontinuation",
+   "trials-triumph4-discontinuation-weightloss",
+   "trials-triumph4-gi",
+   "trials-cross-dysesthesia-top-dose",
+   "safety-dropout-retatrutide-triumph4",
+   "safety-appetite-mechanism-and-rate",
+   "safety-dysesthesia-retatrutide-rates",
+   "claims-3-dysesthesia-triumph4",
+   "claims-3-dropout-triumph4",
+   "claims-10-knee-pain-drop",
+   "claims-10-placebo-improved-too",
+   "claims-10-pain-free",
+   "claims-10-who-was-studied"
+  ]
+ },
+ {
+  "id": "new-england-2026-retatrutide-triple-hormone-receptor-2",
+  "title": "Retatrutide, a Triple Hormone Receptor Agonist, for Treatment of Obesity (Jastreboff et al., TRIUMPH-1)",
+  "publisher": "New England Journal of Medicine (via PubMed abstract)",
+  "url": "https://pubmed.ncbi.nlm.nih.gov/42814954",
+  "date": "2026-09-29",
+  "type": "journal",
+  "usedBy": [
+   "trials-triumph1-enrolled",
+   "trials-triumph1-weight-itt",
+   "trials-triumph1-knee-pain",
+   "trials-triumph1-sleep-apnea",
+   "trials-unknown-adults-only",
+   "claims-1-nejm-everyone-counted",
+   "claims-6-trials-tested-weight-not-aging",
+   "claims-10-nejm-difference"
+  ]
+ },
+ {
+  "id": "lancet-via-2026-retatrutide-adults-obesity-type",
+  "title": "Retatrutide in adults with obesity and type 2 diabetes (TRIUMPH-2): a double-blind, parallel-group, randomised, placebo-controlled, phase 3 trial (Bellido et al.)",
+  "publisher": "The Lancet (via PubMed abstract)",
+  "url": "https://pubmed.ncbi.nlm.nih.gov/42810372",
+  "date": "2026-09-29",
+  "type": "journal",
+  "usedBy": [
+   "trials-triumph2-design",
+   "trials-triumph2-weight-lancet",
+   "trials-triumph2-diarrhea",
+   "trials-triumph2-nausea",
+   "trials-triumph2-dysesthesia-lancet",
+   "trials-triumph2-hypotension",
+   "trials-triumph2-discontinuation-lancet",
+   "trials-triumph2-deaths",
+   "safety-gi-retatrutide-triumph2-peer-reviewed",
+   "safety-hypotension-retatrutide",
+   "claims-1-type2-diabetes-less",
+   "claims-13-low-blood-pressure",
+   "gap-phase3-serious-ae-rates-and-heart-rate-t2-deaths",
+   "gap-phase3-serious-ae-rates-and-heart-rate-t2-discontinuation",
+   "gap-side-effect-mechanism-and-mitigation-dys-reta-triumph2-peer-reviewed",
+   "gap-side-effect-mechanism-and-mitigation-hypo-reta-triumph2-rates",
+   "gap-personal-history-trial-exclusions-triumph2-diabetes-range"
+  ]
+ },
+ {
+  "id": "lancet-via-2026-efficacy-safety-retatrutide-people",
+  "title": "Efficacy and safety of retatrutide ... in people with type 2 diabetes and inadequate glycaemic control with diet and exercise (TRANSCEND-T2D-1) (Bajaj et al.)",
+  "publisher": "The Lancet (via PubMed abstract)",
+  "url": "https://pubmed.ncbi.nlm.nih.gov/42250575",
+  "date": "2026-06-06",
+  "type": "journal",
+  "usedBy": [
+   "trials-transcend1-a1c",
+   "trials-transcend1-weight",
+   "trials-transcend1-deaths"
+  ]
+ },
+ {
+  "id": "eli-lilly-2026-lilly-s-triple-agonist-4",
+  "title": "Lilly's triple agonist, retatrutide, demonstrated significant reductions in A1C and weight in first Phase 3 trial for treatment of type 2 diabetes",
+  "publisher": "Eli Lilly and Company (press release via PR Newswire)",
+  "url": "https://www.prnewswire.com/news-releases/lillys-triple-agonist-retatrutide-demonstrated-significant-reductions-in-a1c-and-weight-in-first-phase-3-trial-for-treatment-of-type-2-diabetes-302718589.html",
+  "date": "2026-03-19",
+  "type": "company",
+  "usedBy": [
+   "trials-transcend1-discontinuation",
+   "trials-transcend1-dysesthesia",
+   "trials-transcend1-gi"
+  ]
+ },
+ {
+  "id": "clinicaltrials-gov-2026-effect-retatrutide-once-weekly",
+  "title": "The Effect of Retatrutide Once Weekly on Cardiovascular Outcomes and Kidney Outcomes in Adults Living With Obesity (TRIUMPH-Outcomes)",
+  "publisher": "ClinicalTrials.gov (U.S. National Library of Medicine)",
+  "url": "https://clinicaltrials.gov/study/NCT06383390",
+  "date": "2026-09-24",
+  "type": "trial-registry",
+  "usedBy": [
+   "trials-unknown-cvot",
+   "claims-4-outcomes-trial-2029"
+  ]
+ },
+ {
+  "id": "clinicaltrials-gov-2026-study-retatrutide-ly3437943-particip",
+  "title": "A Study of Retatrutide (LY3437943) in Participants Who Have Obesity or Overweight (TRIUMPH-1), NCT05929066 eligibility criteria",
+  "publisher": "ClinicalTrials.gov (U.S. National Library of Medicine)",
+  "url": "https://clinicaltrials.gov/study/NCT05929066",
+  "date": "2026-08-21",
+  "type": "trial-registry",
+  "usedBy": [
+   "trials-unknown-excluded-mtc-pancreatitis",
+   "safety-history-mtc-men2",
+   "gap-personal-history-trial-exclusions-osa-basket-sedating-meds",
+   "gap-personal-history-trial-exclusions-triumph1-no-diabetes"
+  ]
+ },
+ {
+  "id": "clinicaltrials-gov-2023-study-ly3437943-participants-who",
+  "title": "A Study of LY3437943 in Participants Who Have Obesity or Are Overweight, NCT04881760 eligibility criteria",
+  "publisher": "ClinicalTrials.gov (U.S. National Library of Medicine)",
+  "url": "https://clinicaltrials.gov/study/NCT04881760",
+  "date": "2023-06-26",
+  "type": "trial-registry",
+  "usedBy": [
+   "trials-unknown-pregnancy-excluded",
+   "safety-history-phase2-exclusions",
+   "gap-side-effect-mechanism-and-mitigation-dizzy-reta-phase2",
+   "gap-side-effect-mechanism-and-mitigation-headache-reta-phase2",
+   "gap-side-effect-mechanism-and-mitigation-fatigue-reta-phase2"
+  ]
+ },
+ {
+  "id": "clinicaltrials-gov-2026-study-retatrutide-ly3437943-compared",
+  "title": "A Study of Retatrutide (LY3437943) Compared to Tirzepatide (LY3298176) in Adults Who Have Obesity (TRIUMPH-5)",
+  "publisher": "ClinicalTrials.gov (U.S. National Library of Medicine)",
+  "url": "https://clinicaltrials.gov/study/NCT06662383",
+  "date": "2026-07-20",
+  "type": "trial-registry",
+  "usedBy": [
+   "trials-unknown-vs-tirzepatide",
+   "claims-3-triumph5-pending"
+  ]
+ },
+ {
+  "id": "dove-medical-2026-adverse-events-associated-incretin",
+  "title": "Adverse Events Associated with Incretin-Based Therapies: A Narrative Review on Mechanisms, Clinical Management, and Risk Mitigation (Tobaiqy & Alqutub, Drug Des Devel Ther 2026)",
+  "publisher": "Dove Medical Press (Drug Design, Development and Therapy)",
+  "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC13429114",
+  "date": "2026-07-29",
+  "type": "journal",
+  "usedBy": [
+   "safety-gi-mechanism",
+   "safety-gallbladder-mechanism",
+   "safety-lean-mass",
+   "safety-history-gallbladder"
+  ]
+ },
+ {
+  "id": "wiley-nutrition-2026-gastrointestinal-adverse-effects-glp",
+  "title": "Gastrointestinal adverse effects of GLP-1 receptor agonists and dual GIP/GLP-1 receptor agonists: A narrative expert review (Nutr Clin Pract 2026)",
+  "publisher": "Wiley (Nutrition in Clinical Practice)",
+  "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC13622393",
+  "date": "2026-10",
+  "type": "journal",
+  "usedBy": [
+   "safety-gi-reduce-diet",
+   "safety-constipation-reduce"
+  ]
+ },
+ {
+  "id": "nhs-nhs-2026-tirzepatide-medicine-manage-type",
+  "title": "Tirzepatide: a medicine to manage type 2 diabetes and treat obesity",
+  "publisher": "NHS (nhs.uk)",
+  "url": "https://www.nhs.uk/medicines/tirzepatide",
+  "date": "2026-05-15",
+  "type": "health-service",
+  "usedBy": [
+   "safety-gi-alcohol",
+   "safety-redflag-urgent-111",
+   "safety-overdose-nhs-111",
+   "safety-history-pancreatitis",
+   "gap-side-effect-mechanism-and-mitigation-dizzy-nhs-do-not-drive"
+  ]
+ },
+ {
+  "id": "springer-european-2026-dysesthesia-associated-glp-1",
+  "title": "Dysesthesia associated with GLP-1 agonist therapies: data-mining analysis and literature review (Laroche et al., Eur J Clin Pharmacol 2026)",
+  "publisher": "Springer (European Journal of Clinical Pharmacology)",
+  "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC13194321",
+  "date": "2026-05-22",
+  "type": "journal",
+  "usedBy": [
+   "safety-dysesthesia-mechanism-unknown",
+   "gap-side-effect-mechanism-and-mitigation-dys-reta-phase2-skin-sensitivity",
+   "gap-side-effect-mechanism-and-mitigation-dys-onset-3-to-93-days-resolves-after-stopping",
+   "gap-side-effect-mechanism-and-mitigation-dys-recurs-on-rechallenge",
+   "gap-side-effect-mechanism-and-mitigation-dys-mechanism-hypothesis-sensory-nerves",
+   "gap-side-effect-mechanism-and-mitigation-dys-not-from-weight-or-fat-loss",
+   "gap-side-effect-mechanism-and-mitigation-dys-stepup-dose-reduction-1-in-5",
+   "gap-side-effect-mechanism-and-mitigation-dys-management-depends-on-impact"
+  ]
+ },
+ {
+  "id": "biomed-central-2026-effect-glucagon-like-peptide",
+  "title": "Effect of glucagon-like peptide-1 receptor agonists on heart rate in non-diabetic individuals with overweight or obesity: systematic review and network meta-analysis (Zhang et al., Eur J Med Res 2026)",
+  "publisher": "BioMed Central (European Journal of Medical Research)",
+  "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC12918571",
+  "date": "2026-01-26",
+  "type": "journal",
+  "usedBy": [
+   "safety-heart-rate-meta-analysis"
+  ]
+ },
+ {
+  "id": "new-england-2023-triple-hormone-receptor-agonist-3",
+  "title": "Triple-Hormone-Receptor Agonist Retatrutide for Obesity - A Phase 2 Trial (Jastreboff et al., N Engl J Med 2023;389:514-526)",
+  "publisher": "New England Journal of Medicine",
+  "url": "https://doi.org/10.1056/NEJMoa2301972",
+  "date": "2023-06-26",
+  "type": "journal",
+  "usedBy": [
+   "safety-arrhythmia-retatrutide-phase2"
+  ]
+ },
+ {
+  "id": "u-s-2026-fda-requests-removal-suicidal",
+  "title": "FDA Requests Removal of Suicidal Behavior and Ideation Warning from GLP-1 RA Medications (Drug Safety Communication)",
+  "publisher": "U.S. Food and Drug Administration",
+  "url": "https://www.fda.gov/drugs/drug-safety-and-availability/fda-requests-removal-suicidal-behavior-and-ideation-warning-glucagon-peptide-1-receptor-agonist-glp",
+  "date": "2026-01-13",
+  "type": "regulator",
+  "usedBy": [
+   "safety-mood-fda-removed-warning"
+  ]
+ },
+ {
+  "id": "medicines-healthcare-2026-glp-1-medicines-weight",
+  "title": "GLP-1 medicines for weight loss and diabetes: what you need to know (MHRA guidance)",
+  "publisher": "Medicines and Healthcare products Regulatory Agency (GOV.UK)",
+  "url": "https://www.gov.uk/government/publications/glp-1-medicines-for-weight-loss-and-diabetes-what-you-need-to-know/glp-1-medicines-for-weight-loss-and-diabetes-what-you-need-to-know",
+  "date": "2026-02-05",
+  "type": "regulator",
+  "usedBy": [
+   "safety-pregnancy-washout-mhra",
+   "safety-history-insulin-type1-dka",
+   "safety-history-surgery",
+   "gap-side-effect-mechanism-and-mitigation-hypo-mhra-dehydration-hospital",
+   "gap-surgery-pregnancy-practical-guidance-mhra-public-tell-team",
+   "gap-surgery-pregnancy-practical-guidance-mhra-washout-table",
+   "gap-surgery-pregnancy-practical-guidance-mhra-oc-barrier-tirzepatide",
+   "gap-surgery-pregnancy-practical-guidance-inference-pregnancy-timeline"
+  ]
+ },
+ {
+  "id": "cureus-springer-2026-online-sourced-retatrutide-complicating",
+  "title": "Online-Sourced Retatrutide Complicating Impending Diabetic Ketoacidosis in a Patient With Type 1 Diabetes and Concurrent Shigella Gastroenteritis (Cureus 2026)",
+  "publisher": "Cureus (Springer Nature); PubMed abstract",
+  "url": "https://pubmed.ncbi.nlm.nih.gov/42669023",
+  "date": "2026-08-26",
+  "type": "journal",
+  "usedBy": [
+   "safety-dka-type1-retatrutide-case",
+   "gray-case-cureus-t1d",
+   "claims-4-case-report-dka"
+  ]
+ },
+ {
+  "id": "u-s-2026-anaphylaxis-medlineplus-medical-encyclopedia",
+  "title": "Anaphylaxis (MedlinePlus Medical Encyclopedia)",
+  "publisher": "U.S. National Library of Medicine (MedlinePlus)",
+  "url": "https://medlineplus.gov/ency/article/000844.htm",
+  "date": "2026-01-20",
+  "type": "health-service",
+  "usedBy": [
+   "safety-redflag-911-anaphylaxis",
+   "gap-red-flags-us-911-split-anaphylaxis-911",
+   "gap-red-flags-us-911-split-anaphylaxis-fast-onset"
+  ]
+ },
+ {
+  "id": "nhs-nhs-2026-acute-pancreatitis",
+  "title": "Acute pancreatitis",
+  "publisher": "NHS (nhs.uk)",
+  "url": "https://www.nhs.uk/conditions/acute-pancreatitis",
+  "date": "2026-03-11",
+  "type": "health-service",
+  "usedBy": [
+   "safety-redflag-emergency-pancreatitis"
+  ]
+ },
+ {
+  "id": "nhs-nhs-2025-gallstones",
+  "title": "Gallstones",
+  "publisher": "NHS (nhs.uk)",
+  "url": "https://www.nhs.uk/conditions/gallstones",
+  "date": "2025-08-11",
+  "type": "health-service",
+  "usedBy": [
+   "safety-redflag-emergency-gallbladder"
+  ]
+ },
+ {
+  "id": "nhs-nhs-2026-dehydration",
+  "title": "Dehydration",
+  "publisher": "NHS (nhs.uk)",
+  "url": "https://www.nhs.uk/conditions/dehydration",
+  "date": "2026-05-01",
+  "type": "health-service",
+  "usedBy": [
+   "safety-redflag-emergency-dehydration"
+  ]
+ },
+ {
+  "id": "nhs-nhs-2023-low-blood-sugar-hypoglycaemia",
+  "title": "Low blood sugar (hypoglycaemia)",
+  "publisher": "NHS (nhs.uk)",
+  "url": "https://www.nhs.uk/conditions/low-blood-sugar-hypoglycaemia",
+  "date": "2023-08-03",
+  "type": "health-service",
+  "usedBy": [
+   "safety-redflag-911-severe-low-sugar"
+  ]
+ },
+ {
+  "id": "988-lifeline-2026-988-suicide-crisis-lifeline",
+  "title": "988 Suicide & Crisis Lifeline",
+  "publisher": "988 Lifeline (Vibrant Emotional Health / SAMHSA)",
+  "url": "https://988lifeline.org",
+  "date": "accessed 2026-10-07",
+  "type": "nonprofit",
+  "usedBy": [
+   "safety-988-lifeline"
+  ]
+ },
+ {
+  "id": "america-s-2026-glucagon-like-peptide-1",
+  "title": "Glucagon-like Peptide-1 (GLP-1) Agonists - Track Emerging Hazards",
+  "publisher": "America's Poison Centers",
+  "url": "https://poisoncenters.org/track/glp-1",
+  "date": "accessed 2026-10-07 (data as of 2025-04-30)",
+  "type": "nonprofit",
+  "usedBy": [
+   "safety-poison-help-line",
+   "safety-poison-centers-glp1-counts"
+  ]
+ },
+ {
+  "id": "u-s-2024-fda-alerts-health-care",
+  "title": "FDA alerts health care providers, compounders and patients of dosing errors associated with compounded injectable semaglutide products",
+  "publisher": "U.S. Food and Drug Administration",
+  "url": "https://www.fda.gov/drugs/human-drug-compounding/fda-alerts-health-care-providers-compounders-and-patients-dosing-errors-associated-compounded",
+  "date": "2024-07-26",
+  "type": "regulator",
+  "usedBy": [
+   "safety-overdose-fda-compounded-errors",
+   "safety-overdose-fda-symptoms",
+   "gap-red-flags-us-911-split-fda-vial-dosing-error-harms"
+  ]
+ },
+ {
+  "id": "springer-journal-2026-national-poison-center-trends",
+  "title": "National Poison Center Trends in GLP-1 Receptor Agonist Exposures Following FDA Approval for Weight Loss (Miller et al., J Med Toxicol 2026)",
+  "publisher": "Springer (Journal of Medical Toxicology); PubMed abstract",
+  "url": "https://pubmed.ncbi.nlm.nih.gov/41634285",
+  "date": "2026-02-03",
+  "type": "journal",
+  "usedBy": [
+   "safety-poison-centers-peer-reviewed-trend"
+  ]
+ },
+ {
+  "id": "wiley-drug-2026-composition-labelling-accuracy-products",
+  "title": "Composition and Labelling Accuracy of Products Sold as Retatrutide in Australia (Piatkowski et al., Drug Alcohol Rev 2026)",
+  "publisher": "Wiley (Drug and Alcohol Review)",
+  "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC13445994",
+  "date": "2026-09",
+  "type": "journal",
+  "usedBy": [
+   "safety-unknown-strength-retatrutide-test",
+   "gray-dar-per-vial",
+   "gray-dar-unknowing-dose",
+   "gray-dar-not-sterility-tested",
+   "claims-5-australia-dose-range",
+   "gap-gray-contaminant-sterility-data-no-published-case-series",
+   "gap-gray-contaminant-sterility-data-dar-dose-content",
+   "gap-gray-contaminant-sterility-data-dar-identity-confirmed",
+   "gap-gray-contaminant-sterility-data-dar-heavy-metals-not-detected",
+   "gap-gray-contaminant-sterility-data-dar-lead-trace",
+   "gap-gray-contaminant-sterility-data-dar-copper-zinc",
+   "gap-gray-contaminant-sterility-data-dar-sterility-endotoxin-not-tested",
+   "gap-gray-contaminant-sterility-data-dar-limits"
+  ]
+ },
+ {
+  "id": "elsevier-psychiatric-2025-use-potential-abuse-glucagon",
+  "title": "Use (and Potential for Abuse) of Glucagon-Like Peptide-1 Medications Among Individuals with Eating Disorders: Empirical Review and Clinical Guidance (Schaefer et al., Psychiatr Clin North Am 2026)",
+  "publisher": "Elsevier (Psychiatric Clinics of North America); PubMed abstract",
+  "url": "https://pubmed.ncbi.nlm.nih.gov/41708263",
+  "date": "2025-11-13",
+  "type": "journal",
+  "usedBy": [
+   "safety-history-eating-disorder"
+  ]
+ },
+ {
+  "id": "therapeutic-goods-2025-don-t-risk-using",
+  "title": "Don't risk using tanning products containing melanotan",
+  "publisher": "Therapeutic Goods Administration (Australia)",
+  "url": "https://www.tga.gov.au/news/blog/dont-risk-using-tanning-products-containing-melanotan",
+  "date": "2025-01-24",
+  "type": "regulator",
+  "usedBy": [
+   "safety-history-melanotan-moles"
+  ]
+ },
+ {
+  "id": "wiley-international-2017-risks-unregulated-use-alpha",
+  "title": "Risks of unregulated use of alpha-melanocyte-stimulating hormone analogues: a review (Habbema et al., Int J Dermatol 2017)",
+  "publisher": "Wiley (International Journal of Dermatology); PubMed abstract",
+  "url": "https://pubmed.ncbi.nlm.nih.gov/28266027",
+  "date": "2017-03-07",
+  "type": "journal",
+  "usedBy": [
+   "safety-history-melanotan-case-review",
+   "catalog-melanotan2-melanoma-reports",
+   "catalog-melanotan1-online-unregulated"
+  ]
+ },
+ {
+  "id": "u-s-2026-fda-warning-letters-index",
+  "title": "FDA Warning Letters index, full-text search for 'retatrutide' (warning_letter_solr_index)",
+  "publisher": "U.S. Food and Drug Administration",
+  "url": "https://www.fda.gov/datatables/views/ajax?search_api_fulltext=retatrutide&view_name=warning_letter_solr_index&view_display_id=warning_letter_solr_block&start=0&length=100&draw=1",
+  "date": "2026-10-08 (accessed)",
+  "type": "regulator",
+  "usedBy": [
+   "gray-fda-letters-21-total"
+  ]
+ },
+ {
+  "id": "public-citizen-2026-miracle-drug-peptide-craze",
+  "title": "The 'Miracle Drug' and the Peptide Craze Breaking the FDA",
+  "publisher": "Public Citizen",
+  "url": "https://www.citizen.org/article/the-miracle-drug-and-the-peptide-craze-breaking-the-fda",
+  "date": "2026-06-16",
+  "type": "nonprofit",
+  "usedBy": [
+   "gray-fda-letters-14-public-citizen",
+   "gray-fda-letters-ignored-pc",
+   "gray-pc-hospitalizations-14",
+   "gray-pc-ae-2025",
+   "gray-pc-ae-2026",
+   "gray-pc-finnrick-vendors",
+   "gray-pc-100-companies",
+   "gray-pc-ruo-disclaimer",
+   "gray-pc-legitscript",
+   "claims-3-claim-identified",
+   "claims-4-full-safety-unknown",
+   "claims-4-faers-reports",
+   "claims-11-fda-letters-count"
+  ]
+ },
+ {
+  "id": "u-s-2024-warning-letter-summit-research",
+  "title": "Warning Letter: Summit Research Peptides (MARCS-CMS 695607)",
+  "publisher": "U.S. Food and Drug Administration",
+  "url": "https://www.fda.gov/inspections-compliance-enforcement-and-criminal-investigations/warning-letters/summit-research-peptides-695607-12102024",
+  "date": "2024-12-10",
+  "type": "regulator",
+  "usedBy": [
+   "gray-fda-letters-dec2024"
+  ]
+ },
+ {
+  "id": "u-s-2025-warning-letter-genlabmeds-marcs",
+  "title": "Warning Letter: GenLabMeds (MARCS-CMS 713650)",
+  "publisher": "U.S. Food and Drug Administration",
+  "url": "https://www.fda.gov/inspections-compliance-enforcement-and-criminal-investigations/warning-letters/genlabmeds-713650-09092025",
+  "date": "2025-09-09",
+  "type": "regulator",
+  "usedBy": [
+   "gray-fda-letters-sep2025-telehealth",
+   "gray-fda-not-self-treatable"
+  ]
+ },
+ {
+  "id": "u-s-2025-warning-letter-darmerica-llc",
+  "title": "Warning Letter: Darmerica, LLC (MARCS-CMS 716152)",
+  "publisher": "U.S. Food and Drug Administration",
+  "url": "https://www.fda.gov/inspections-compliance-enforcement-and-criminal-investigations/warning-letters/darmerica-llc-716152-12082025",
+  "date": "2025-12-08",
+  "type": "regulator",
+  "usedBy": [
+   "gray-fda-letter-api-distributor"
+  ]
+ },
+ {
+  "id": "u-s-2026-warning-letter-genogenix-llc",
+  "title": "Warning Letter: GenoGenix LLC (MARCS-CMS 718739)",
+  "publisher": "U.S. Food and Drug Administration",
+  "url": "https://www.fda.gov/inspections-compliance-enforcement-and-criminal-investigations/warning-letters/genogenix-llc-718739-01202026",
+  "date": "2026-01-20",
+  "type": "regulator",
+  "usedBy": [
+   "gray-fda-letter-repackager"
+  ]
+ },
+ {
+  "id": "u-s-2026-warning-letter-lovega-llc",
+  "title": "Warning Letter: Lovega LLC dba Pink Pony Peptides (MARCS-CMS 721088)",
+  "publisher": "U.S. Food and Drug Administration",
+  "url": "https://www.fda.gov/inspections-compliance-enforcement-and-criminal-investigations/warning-letters/lovega-llc-dba-pink-pony-peptides-721088-03312026",
+  "date": "2026-03-31",
+  "type": "regulator",
+  "usedBy": [
+   "gray-fda-letters-mar2026",
+   "gray-fda-injectable-danger",
+   "claims-11-warning-letter-research-label",
+   "claims-12-injection-bypasses-defenses"
+  ]
+ },
+ {
+  "id": "u-s-2026-warning-letter-peptide-partners",
+  "title": "Warning Letter: Peptide Partners LLC (Reference 735063)",
+  "publisher": "U.S. Food and Drug Administration",
+  "url": "https://www.fda.gov/inspections-compliance-enforcement-and-criminal-investigations/warning-letters/peptide-partners-llc-735063-08242026",
+  "date": "2026-08-24",
+  "type": "regulator",
+  "usedBy": [
+   "gray-fda-letters-aug2026"
+  ]
+ },
+ {
+  "id": "u-s-2025-fda-letter-re-compounded",
+  "title": "FDA letter re: compounded drug products containing retatrutide (shared by NABP to state boards of pharmacy)",
+  "publisher": "U.S. Food and Drug Administration (hosted by Ohio Board of Pharmacy)",
+  "url": "https://www.pharmacy.ohio.gov/documents/pubs/special/compounding/fda%20letter%20-%20retatrutide%20in%20compounded%20drug%20products.pdf",
+  "date": "2025-03-31",
+  "type": "regulator",
+  "usedBy": [
+   "gray-fda-2025-board-letter"
+  ]
+ },
+ {
+  "id": "u-s-2026-openfda-drug-adverse-event",
+  "title": "openFDA Drug Adverse Event API (FAERS): search patient.drug.medicinalproduct:retatrutide",
+  "publisher": "U.S. Food and Drug Administration (openFDA)",
+  "url": "https://api.fda.gov/drug/event.json?search=patient.drug.medicinalproduct:retatrutide&limit=100",
+  "date": "2026-07-30 (data last updated; accessed 2026-10-08)",
+  "type": "regulator",
+  "usedBy": [
+   "gray-openfda-tally"
+  ]
+ },
+ {
+  "id": "u-s-2026-openfda-drug-adverse-event-2",
+  "title": "openFDA Drug Adverse Event API (meta disclaimer)",
+  "publisher": "U.S. Food and Drug Administration (openFDA)",
+  "url": "https://api.fda.gov/drug/event.json?search=patient.drug.medicinalproduct:retatrutide&limit=1",
+  "date": "2026-07-30",
+  "type": "regulator",
+  "usedBy": [
+   "gray-faers-unverified"
+  ]
+ },
+ {
+  "id": "department-health-2026-toxicity-linked-unapproved-peptide",
+  "title": "Toxicity linked to unapproved peptide product labelled Retatrutide (health alert)",
+  "publisher": "Department of Health, Victoria (Australia)",
+  "url": "https://www.health.vic.gov.au/health-alerts/toxicity-linked-to-unapproved-peptide-product-labelled-retatrutide",
+  "date": "2026-06-19",
+  "type": "health-service",
+  "usedBy": [
+   "gray-vic-liver-cases",
+   "gray-vic-contaminant"
+  ]
+ },
+ {
+  "id": "bmj-case-2026-emerging-risks-health-optimisation",
+  "title": "Emerging risks of health optimisation: refractory nausea associated with peptide injections reported to contain retatrutide",
+  "publisher": "BMJ Case Reports (PMID 42843917)",
+  "url": "https://pubmed.ncbi.nlm.nih.gov/42843917",
+  "date": "2026-10-07",
+  "type": "journal",
+  "usedBy": [
+   "gray-case-bmj-nausea"
+  ]
+ },
+ {
+  "id": "eli-lilly-2026-lilly-calls-online-platforms",
+  "title": "Lilly calls on online platforms, payment companies and regulators to shut down the illegal retatrutide black market",
+  "publisher": "Eli Lilly and Company (via PR Newswire)",
+  "url": "https://www.prnewswire.com/news-releases/lilly-calls-on-online-platforms-payment-companies-and-regulators-to-shut-down-the-illegal-retatrutide-black-market-302849551.html",
+  "date": "2026-08-12",
+  "type": "company",
+  "usedBy": [
+   "gray-lilly-six-lawsuits",
+   "gray-lilly-ruo-allegation",
+   "gray-lilly-referrals-200",
+   "gray-lilly-14000-listings",
+   "claims-4-not-approved-anywhere",
+   "claims-5-lilly-not-medicine",
+   "claims-11-lilly-lawsuits"
+  ]
+ },
+ {
+  "id": "finnrick-2026-retatrutide-safety-testing-results",
+  "title": "Retatrutide Safety Testing Results & Vendor Ratings",
+  "publisher": "Finnrick",
+  "url": "https://www.finnrick.com/products/retatrutide",
+  "date": "2026-10-08 (accessed; latest test 2026-09-25)",
+  "type": "testing-lab",
+  "usedBy": [
+   "gray-finnrick-scale",
+   "gray-finnrick-recent-200",
+   "claims-5-finnrick-fail-rate",
+   "gap-gray-contaminant-sterility-data-finnrick-public-table-columns"
+  ]
+ },
+ {
+  "id": "finnrick-2026-retatrutide-lab-test-certificate",
+  "title": "Retatrutide lab test certificate (record 9784gt5)",
+  "publisher": "Finnrick",
+  "url": "https://www.finnrick.com/testing-certificate/retatrutide/biolongevity-labs/20260923-e-9784gt5",
+  "date": "2026-09-23",
+  "type": "testing-lab",
+  "usedBy": [
+   "gray-finnrick-vial-underfill"
+  ]
+ },
+ {
+  "id": "finnrick-2026-retatrutide-lab-test-certificate-2",
+  "title": "Retatrutide lab test certificate (record xq3m8dr)",
+  "publisher": "Finnrick",
+  "url": "https://www.finnrick.com/testing-certificate/retatrutide/wanshun-peptide/20260923-e-xq3m8dr",
+  "date": "2026-09-23",
+  "type": "testing-lab",
+  "usedBy": [
+   "gray-finnrick-vial-overfill"
+  ]
+ },
+ {
+  "id": "finnrick-2026-retatrutide-lab-test-certificate-3",
+  "title": "Retatrutide lab test certificate (record 6qme3gc)",
+  "publisher": "Finnrick",
+  "url": "https://www.finnrick.com/testing-certificate/retatrutide/peptide-boost-labs/20260925-l-6qme3gc",
+  "date": "2026-09-25",
+  "type": "testing-lab",
+  "usedBy": [
+   "gray-finnrick-vial-wrong-substance"
+  ]
+ },
+ {
+  "id": "finnrick-2026-methodology",
+  "title": "Methodology",
+  "publisher": "Finnrick",
+  "url": "https://www.finnrick.com/methodology",
+  "date": "2026-09-29 (test data last updated)",
+  "type": "testing-lab",
+  "usedBy": [
+   "gray-finnrick-endotoxin-not-required",
+   "claims-5-coa-skips-endotoxin",
+   "gap-gray-contaminant-sterility-data-finnrick-endotoxin-not-graded"
+  ]
+ },
+ {
+  "id": "journal-medical-2024-multifactor-quality-safety-analysis",
+  "title": "Multifactor Quality and Safety Analysis of Semaglutide Products Sold by Online Sellers Without a Prescription",
+  "publisher": "Journal of Medical Internet Research (Ashraf AR et al.), PMID 39509151",
+  "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC11582493",
+  "date": "2024-11-07",
+  "type": "journal",
+  "usedBy": [
+   "gray-jmir-sema-quantity",
+   "gray-jmir-sema-purity",
+   "gray-jmir-sema-endotoxin"
+  ]
+ },
+ {
+  "id": "medicines-healthcare-2025-mhra-smashes-major-illicit",
+  "title": "MHRA smashes major illicit weight loss medicine production facility in record seizure",
+  "publisher": "Medicines and Healthcare products Regulatory Agency (GOV.UK)",
+  "url": "https://www.gov.uk/government/news/mhra-smashes-majorillicitweight-loss-medicine-production-facility-in-record-seizure",
+  "date": "2025-10-24",
+  "type": "regulator",
+  "usedBy": [
+   "gray-mhra-factory-raid"
+  ]
+ },
+ {
+  "id": "medicines-healthcare-2026-no-summer-shortcut-safe",
+  "title": "No summer shortcut for safe weight loss",
+  "publisher": "Medicines and Healthcare products Regulatory Agency (GOV.UK)",
+  "url": "https://www.gov.uk/government/news/no-summer-shortcut-for-safe-weight-loss",
+  "date": "2026-07-24",
+  "type": "regulator",
+  "usedBy": [
+   "gray-core-mhra-no-guarantee",
+   "claims-11-mhra-uk-illegal"
+  ]
+ },
+ {
+  "id": "lancet-diabetes-2025-effects-retatrutide-body-composition",
+  "title": "Effects of retatrutide on body composition in people with type 2 diabetes: a substudy of a phase 2 trial. Lancet Diabetes Endocrinol 2025;13:674-684. PMID 40609566",
+  "publisher": "The Lancet Diabetes & Endocrinology (PubMed abstract)",
+  "url": "https://pubmed.ncbi.nlm.nih.gov/40609566",
+  "date": "2025-06-30",
+  "type": "journal",
+  "usedBy": [
+   "claims-2-fat-mass-drop",
+   "claims-2-lean-mass-also-lost",
+   "claims-2-small-diabetes-only-sample"
+  ]
+ },
+ {
+  "id": "journal-clinical-2026-anti-obesity-medications-longevity",
+  "title": "Anti-Obesity Medications in Longevity and Aesthetic Medicine. J Clin Med 2026;15:6026. PMID 42590128",
+  "publisher": "Journal of Clinical Medicine (full text, PMC13467233)",
+  "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC13467233",
+  "date": "2026-08-03",
+  "type": "journal",
+  "usedBy": [
+   "claims-2-about-one-third-lean",
+   "claims-6-ageing-not-established",
+   "claims-6-muscle-paradox"
+  ]
+ },
+ {
+  "id": "eli-lilly-2026-how-does-retatrutide-compare",
+  "title": "How does retatrutide compare with other incretin-based therapies?",
+  "publisher": "Eli Lilly and Company - Lilly Medical Information",
+  "url": "https://medical.lilly.com/us/products/answers/how-does-retatrutide-compare-with-other-incretin-based-therapies-386043",
+  "date": "2026-04-21",
+  "type": "company",
+  "usedBy": [
+   "claims-3-no-head-to-head"
+  ]
+ },
+ {
+  "id": "bmj-medicine-2026-comparative-efficacy-safety-glucagon",
+  "title": "Comparative efficacy and safety of glucagon-like peptide 1 based drugs for weight loss in adults with overweight or obesity without diabetes: network meta-analysis. BMJ Med 2026;5:e003026. PMID 42688617",
+  "publisher": "BMJ Medicine (PubMed abstract)",
+  "url": "https://pubmed.ncbi.nlm.nih.gov/42688617",
+  "date": "2026-08-27",
+  "type": "journal",
+  "usedBy": [
+   "claims-3-nma-more-dropouts",
+   "claims-3-nma-more-weight-loss"
+  ]
+ },
+ {
+  "id": "u-s-2026-fda-s-concerns-unapproved-2",
+  "title": "FDA's Concerns with Unapproved GLP-1 Drugs Used for Weight Loss",
+  "publisher": "U.S. Food and Drug Administration",
+  "url": "https://www.fda.gov/drugs/postmarket-drug-safety-information-patients-and-providers/fdas-concerns-unapproved-glp-1-drugs-used-weight-loss",
+  "date": "2026-10-01",
+  "type": "regulator",
+  "usedBy": [
+   "claims-4-fda-not-found-safe",
+   "claims-5-fda-unknown-quality",
+   "claims-11-fda-falsely-labeled",
+   "claims-11-cannot-compound",
+   "catalog-semaglutide-research-label-warning",
+   "catalog-cagrilintide-compounding-banned",
+   "gap-red-flags-us-911-split-retatrutide-no-label",
+   "gap-gray-contaminant-sterility-data-fda-research-label-warning"
+  ]
+ },
+ {
+  "id": "department-health-2026-toxicity-linked-unapproved-peptide-2",
+  "title": "Toxicity linked to unapproved peptide product labelled Retatrutide (health alert)",
+  "publisher": "Department of Health, Victoria (Australia)",
+  "url": "https://www.health.vic.gov.au/health-alerts/toxicity-linked-to-unapproved-peptide-retatrutide",
+  "date": "2026-06-19",
+  "type": "health-service",
+  "usedBy": [
+   "claims-5-victoria-liver-injury",
+   "claims-6-marketed-anti-ageing",
+   "gap-gray-contaminant-sterility-data-vic-six-liver-cases",
+   "gap-gray-contaminant-sterility-data-vic-contaminant-suspected",
+   "gap-gray-contaminant-sterility-data-vic-clinical-pattern-contaminants",
+   "gap-gray-contaminant-sterility-data-vic-alert-not-updated",
+   "gap-gray-contaminant-sterility-data-vic-product-names",
+   "gap-gray-contaminant-sterility-data-vic-blood-test-findings",
+   "gap-gray-contaminant-sterility-data-vic-other-jurisdictions"
+  ]
+ },
+ {
+  "id": "expert-opinion-2026-considerations-challenges-microdosing-gl",
+  "title": "Considerations and challenges in microdosing of GLP-1-based receptor agonists. Expert Opin Pharmacother 2026. PMID 42788826",
+  "publisher": "Expert Opinion on Pharmacotherapy (PubMed abstract)",
+  "url": "https://pubmed.ncbi.nlm.nih.gov/42788826",
+  "date": "2026-10-05",
+  "type": "journal",
+  "usedBy": [
+   "claims-6-microdosing-evidence-absent"
+  ]
+ },
+ {
+  "id": "clinicaltrials-gov-2026-master-protocol-multiple-agents",
+  "title": "A Master Protocol of Multiple Agents in Adults With MASLD (SYNERGY-Outcomes), NCT07165028",
+  "publisher": "ClinicalTrials.gov",
+  "url": "https://clinicaltrials.gov/study/NCT07165028",
+  "date": "2026-09-22",
+  "type": "trial-registry",
+  "usedBy": [
+   "claims-7-outcomes-trial-to-2030"
+  ]
+ },
+ {
+  "id": "clinicaltrials-gov-2025-effect-ly3437943-placebo-calorie",
+  "title": "Effect of LY3437943 Versus Placebo on Calorie Intake and Energy Expenditure in Participants With Obesity Under Calorie Restriction, NCT06313528",
+  "publisher": "ClinicalTrials.gov",
+  "url": "https://clinicaltrials.gov/study/NCT06313528",
+  "date": "2025-09-23",
+  "type": "trial-registry",
+  "usedBy": [
+   "claims-8-human-burn-study-unreported"
+  ]
+ },
+ {
+  "id": "diabetes-obesity-2025-appetite-eating-attitudes-eating",
+  "title": "Appetite, eating attitudes, and eating behaviours during treatment with retatrutide in adults with type 2 diabetes: Results of a phase 2 study. Diabetes Obes Metab 2025;27:6988-6998. PMID 40916752",
+  "publisher": "Diabetes, Obesity and Metabolism (PubMed abstract)",
+  "url": "https://pubmed.ncbi.nlm.nih.gov/40916752",
+  "date": "2025-09-08",
+  "type": "journal",
+  "usedBy": [
+   "claims-8-eat-less"
+  ]
+ },
+ {
+  "id": "diabetes-obesity-2025-retatrutide-treatment-obesity-obstruct-2",
+  "title": "Retatrutide for the treatment of obesity, obstructive sleep apnea and knee osteoarthritis: Rationale and design of the TRIUMPH registrational clinical trials. Diabetes Obes Metab 2026;28:83-93. PMID 41090431",
+  "publisher": "Diabetes, Obesity and Metabolism (PubMed abstract)",
+  "url": "https://pubmed.ncbi.nlm.nih.gov/41090431",
+  "date": "2025-10-15",
+  "type": "journal",
+  "usedBy": [
+   "claims-8-trials-with-diet",
+   "claims-12-synthetic"
+  ]
+ },
+ {
+  "id": "naunyn-schmiedeberg-2025-inotropic-effects-retatrutide-isola",
+  "title": "Inotropic effects of retatrutide in isolated human atrial preparations. Naunyn Schmiedebergs Arch Pharmacol 2026;399:317-327. PMID 40613938",
+  "publisher": "Naunyn-Schmiedeberg's Archives of Pharmacology (PubMed abstract)",
+  "url": "https://pubmed.ncbi.nlm.nih.gov/40613938",
+  "date": "2025-07-04",
+  "type": "journal",
+  "usedBy": [
+   "claims-12-not-made-by-body",
+   "claims-13-heart-tissue-lab"
+  ]
+ },
+ {
+  "id": "european-journal-2026-effect-glucagon-like-peptide",
+  "title": "Effect of glucagon-like peptide-1 receptor agonists on heart rate in non-diabetic individuals with overweight or obesity: a systematic review and network meta-analysis. Eur J Med Res 2026;31:318. PMID 41582189",
+  "publisher": "European Journal of Medical Research (PubMed abstract)",
+  "url": "https://pubmed.ncbi.nlm.nih.gov/41582189",
+  "date": "2026-01-26",
+  "type": "journal",
+  "usedBy": [
+   "claims-13-heart-rate-meta"
+  ]
+ },
+ {
+  "id": "eli-lilly-2026-lilly-s-triple-agonist-5",
+  "title": "Lilly's triple agonist, retatrutide, drove substantial improvements in weight, A1C, knee osteoarthritis pain, and obstructive sleep apnea, demonstrating its remarkable potential to treat obesity and its complications",
+  "publisher": "Eli Lilly and Company (press release via PR Newswire)",
+  "url": "https://www.prnewswire.com/news-releases/lillys-triple-agonist-retatrutide-drove-substantial-improvements-in-weight-a1c-knee-osteoarthritis-pain-and-obstructive-sleep-apnea-demonstrating-its-remarkable-potential-to-treat-obesity-and-its-complications-302793169.html",
+  "date": "2026-06-06",
+  "type": "company",
+  "usedBy": [
+   "claims-13-risk-factors-improve"
+  ]
+ },
+ {
+  "id": "u-s-2026-bulk-drug-substances-used",
+  "title": "Bulk Drug Substances Used in Compounding Under Section 503A of the FD&C Act",
+  "publisher": "U.S. Food and Drug Administration",
+  "url": "https://www.fda.gov/drugs/human-drug-compounding/bulk-drug-substances-used-compounding-under-section-503a-fdc-act",
+  "date": "2026-05-14",
+  "type": "regulator",
+  "usedBy": [
+   "catalog-fda-category2-meaning",
+   "catalog-fda-503a-list-rule"
+  ]
+ },
+ {
+  "id": "u-s-2026-certain-bulk-drug-substances",
+  "title": "Certain Bulk Drug Substances for Use in Compounding that May Present Significant Safety Risks",
+  "publisher": "U.S. Food and Drug Administration",
+  "url": "https://www.fda.gov/drugs/human-drug-compounding/certain-bulk-drug-substances-use-compounding-may-present-significant-safety-risks",
+  "date": "2026-04-22",
+  "type": "regulator",
+  "usedBy": [
+   "catalog-fda-2026-withdrawn-list",
+   "catalog-cjc1295-fda-safety",
+   "catalog-ipamorelin-category2-503b",
+   "catalog-bpc157-fda-safety-unknown",
+   "catalog-ghkcu-injectable-safety",
+   "catalog-melanotan2-fda-safety",
+   "catalog-motsc-no-human-data",
+   "catalog-epitalon-fda-safety",
+   "catalog-selank-fda-safety",
+   "catalog-kpv-no-human-data"
+  ]
+ },
+ {
+  "id": "u-s-2026-fda-briefing-document-pharmacy",
+  "title": "FDA Briefing Document, Pharmacy Compounding Advisory Committee (PCAC) Meeting July 23-24, 2026 (Introduction)",
+  "publisher": "U.S. Food and Drug Administration",
+  "url": "https://www.fda.gov/media/193342/download",
+  "date": "2026-07-23",
+  "type": "regulator",
+  "usedBy": [
+   "catalog-fda-pcac-july2026-fda-position"
+  ]
+ },
+ {
+  "id": "u-s-2026-meeting-pharmacy-compounding-advisory",
+  "title": "Meeting of the Pharmacy Compounding Advisory Committee (Early Announcement)",
+  "publisher": "U.S. Food and Drug Administration",
+  "url": "https://www.fda.gov/advisory-committees/pharmacy-compounding-advisory-committee/meeting-pharmacy-compounding-advisory-committee",
+  "date": "2026-04-15",
+  "type": "regulator",
+  "usedBy": [
+   "catalog-fda-pcac-feb2027",
+   "catalog-melanotan2-pcac-2027"
+  ]
+ },
+ {
+  "id": "world-anti-2025-world-anti-doping-code",
+  "title": "World Anti-Doping Code International Standard: Prohibited List 2026",
+  "publisher": "World Anti-Doping Agency (WADA)",
+  "url": "https://www.wada-ama.org/sites/default/files/2025-09/2026list_en_final_clean_september_2025.pdf",
+  "date": "2025-09",
+  "type": "regulator",
+  "usedBy": [
+   "catalog-wada-s0-catchall",
+   "catalog-tesamorelin-wada",
+   "catalog-cjc1295-wada",
+   "catalog-ipamorelin-wada",
+   "catalog-sermorelin-wada",
+   "catalog-bpc157-wada",
+   "catalog-tb500-wada",
+   "catalog-motsc-wada"
+  ]
+ },
+ {
+  "id": "world-anti-2025-2026-monitoring-program",
+  "title": "The 2026 Monitoring Program",
+  "publisher": "World Anti-Doping Agency (WADA)",
+  "url": "https://www.wada-ama.org/sites/default/files/2025-09/2026_list_monitoring_program_en_final_clean_september_2025.pdf",
+  "date": "2025-09",
+  "type": "regulator",
+  "usedBy": [
+   "catalog-wada-glp1-monitoring"
+  ]
+ },
+ {
+  "id": "u-s-2022-clinical-review-nda-215256",
+  "title": "Clinical Review, NDA 215256 S-005 Wegovy (semaglutide)",
+  "publisher": "U.S. Food and Drug Administration",
+  "url": "https://www.fda.gov/media/166019/download",
+  "date": "2022-12-22",
+  "type": "regulator",
+  "usedBy": [
+   "catalog-semaglutide-wegovy-2021"
+  ]
+ },
+ {
+  "id": "u-s-2026-fda-approves-fourth-product",
+  "title": "FDA Approves Fourth Product Under National Priority Voucher Program, Higher Dose Semaglutide",
+  "publisher": "U.S. Food and Drug Administration",
+  "url": "https://www.fda.gov/news-events/press-announcements/fda-approves-fourth-product-under-national-priority-voucher-program-higher-dose-semaglutide",
+  "date": "2026-03-19",
+  "type": "regulator",
+  "usedBy": [
+   "catalog-semaglutide-wegovy-hd-2026"
+  ]
+ },
+ {
+  "id": "u-s-2025-fda-clarifies-policies-compounders",
+  "title": "FDA clarifies policies for compounders as national GLP-1 supply begins to stabilize",
+  "publisher": "U.S. Food and Drug Administration",
+  "url": "https://www.fda.gov/drugs/drug-alerts-and-statements/fda-clarifies-policies-compounders-national-glp-1-supply-begins-stabilize",
+  "date": "2025-02-21",
+  "type": "regulator",
+  "usedBy": [
+   "catalog-semaglutide-shortage-ended-2025",
+   "catalog-tirzepatide-shortage-ended"
+  ]
+ },
+ {
+  "id": "u-s-2026-fda-proposes-exclude-semaglutide",
+  "title": "FDA Proposes to Exclude Semaglutide, Tirzepatide, and Liraglutide on 503B Bulks List",
+  "publisher": "U.S. Food and Drug Administration",
+  "url": "https://www.fda.gov/news-events/press-announcements/fda-proposes-exclude-semaglutide-tirzepatide-and-liraglutide-503b-bulks-list",
+  "date": "2026-04-30",
+  "type": "regulator",
+  "usedBy": [
+   "catalog-semaglutide-503b-proposal-2026"
+  ]
+ },
+ {
+  "id": "u-s-2022-novel-drug-approvals-2022",
+  "title": "Novel Drug Approvals for 2022",
+  "publisher": "U.S. Food and Drug Administration",
+  "url": "https://www.fda.gov/drugs/new-drugs-fda-cders-new-molecular-entities-and-new-therapeutic-biological-products/novel-drug-approvals-2022",
+  "date": "2022-05-13",
+  "type": "regulator",
+  "usedBy": [
+   "catalog-tirzepatide-mounjaro-approved"
+  ]
+ },
+ {
+  "id": "u-s-2023-fda-approves-new-medication",
+  "title": "FDA Approves New Medication for Chronic Weight Management",
+  "publisher": "U.S. Food and Drug Administration",
+  "url": "https://www.fda.gov/news-events/press-announcements/fda-approves-new-medication-chronic-weight-management",
+  "date": "2023-11-08",
+  "type": "regulator",
+  "usedBy": [
+   "catalog-tirzepatide-zepbound-approved"
+  ]
+ },
+ {
+  "id": "clinicaltrials-gov-2025-weight-loss-people-living",
+  "title": "Weight Loss in People Living With Overweight or Obesity Following Treatment With Cagrilintide (NCT07220642)",
+  "publisher": "ClinicalTrials.gov",
+  "url": "https://clinicaltrials.gov/study/NCT07220642",
+  "date": "2025-11-05",
+  "type": "trial-registry",
+  "usedBy": [
+   "catalog-cagrilintide-status-investigational"
+  ]
+ },
+ {
+  "id": "novo-nordisk-2026-novo-s-investigational-obesity",
+  "title": "Novo’s investigational obesity and diabetes drug CagriSema reduces ‘food noise’ and shows benefits in organ and bone health – EASD 2026",
+  "publisher": "Novo Nordisk (GlobeNewswire)",
+  "url": "https://www.globenewswire.com/news-release/2026/09/30/3371858/0/en/novo-s-investigational-obesity-and-diabetes-drug-cagrisema-reduces-food-noise-and-shows-benefits-in-organ-and-bone-health-easd-2026.html",
+  "date": "2026-09-30",
+  "type": "company",
+  "usedBy": [
+   "catalog-cagrilintide-what",
+   "catalog-cagrilintide-decision-expected"
+  ]
+ },
+ {
+  "id": "novo-nordisk-2025-novo-nordisk-files-fda",
+  "title": "Novo Nordisk files for FDA approval of CagriSema, the first once-weekly combination of GLP‑1 and amylin analogues for weight management",
+  "publisher": "Novo Nordisk",
+  "url": "https://www.novonordisk.com/content/nncorp/global/en/news-and-media/news-and-ir-materials/news-details.html?id=916470",
+  "date": "2025-12-18",
+  "type": "company",
+  "usedBy": [
+   "catalog-cagrilintide-cagrisema-nda"
+  ]
+ },
+ {
+  "id": "theratechnologies-u-2026-egrifta-wr-tesamorelin-prescribing",
+  "title": "EGRIFTA WR (tesamorelin) prescribing information (DailyMed)",
+  "publisher": "Theratechnologies / U.S. National Library of Medicine DailyMed",
+  "url": "https://dailymed.nlm.nih.gov/dailymed/lookup.cfm?setid=839334d3-8c1d-4c26-9036-2ab524a6ea75",
+  "date": "2026-08-03",
+  "type": "label",
+  "usedBy": [
+   "catalog-tesamorelin-status-approved",
+   "catalog-tesamorelin-not-weight-loss"
+  ]
+ },
+ {
+  "id": "u-s-2024-fda-briefing-document-cjc",
+  "title": "FDA Briefing Document: CJC-1295-Related Bulk Drug Substances (PCAC, December 4, 2024)",
+  "publisher": "U.S. Food and Drug Administration",
+  "url": "https://www.fda.gov/media/183819/download",
+  "date": "2024-12-04",
+  "type": "regulator",
+  "usedBy": [
+   "catalog-cjc1295-what",
+   "catalog-cjc1295-status-research-only",
+   "catalog-cjc1295-trial-stopped"
+  ]
+ },
+ {
+  "id": "u-s-2024-december-4-2024-meeting",
+  "title": "December 4, 2024 Meeting of the Pharmacy Compounding Advisory Committee - Minutes",
+  "publisher": "U.S. Food and Drug Administration",
+  "url": "https://www.fda.gov/media/185642/download",
+  "date": "2024-12-04",
+  "type": "regulator",
+  "usedBy": [
+   "catalog-cjc1295-pcac-2024",
+   "catalog-ta1-pcac-2024"
+  ]
+ },
+ {
+  "id": "u-s-2024-fda-briefing-document-ipamorelin",
+  "title": "FDA Briefing Document: Ipamorelin (PCAC, October 29, 2024)",
+  "publisher": "U.S. Food and Drug Administration",
+  "url": "https://www.fda.gov/media/182088/download",
+  "date": "2024-10-29",
+  "type": "regulator",
+  "usedBy": [
+   "catalog-ipamorelin-what",
+   "catalog-ipamorelin-status-research-only",
+   "catalog-ipamorelin-trial-failed"
+  ]
+ },
+ {
+  "id": "u-s-2024-october-29-2024-meeting",
+  "title": "October 29, 2024 Meeting of the Pharmacy Compounding Advisory Committee - Minutes",
+  "publisher": "U.S. Food and Drug Administration",
+  "url": "https://www.fda.gov/media/185412/download",
+  "date": "2024-10-29",
+  "type": "regulator",
+  "usedBy": [
+   "catalog-ipamorelin-pcac-2024"
+  ]
+ },
+ {
+  "id": "u-s-2013-determination-that-geref-sermorelin",
+  "title": "Determination That GEREF (Sermorelin Acetate) Injection ... Were Not Withdrawn From Sale for Reasons of Safety or Effectiveness (78 FR 14095-14096)",
+  "publisher": "U.S. Food and Drug Administration, Federal Register",
+  "url": "https://www.govinfo.gov/content/pkg/FR-2013-03-04/pdf/2013-04827.pdf",
+  "date": "2013-03-04",
+  "type": "regulator",
+  "usedBy": [
+   "catalog-sermorelin-was-approved",
+   "catalog-sermorelin-discontinued",
+   "catalog-sermorelin-not-safety-withdrawal"
+  ]
+ },
+ {
+  "id": "u-s-2026-fda-briefing-document-bpc",
+  "title": "FDA Briefing Document: BPC-157-Related Bulk Drug Substances (PCAC, July 23, 2026)",
+  "publisher": "U.S. Food and Drug Administration",
+  "url": "https://www.fda.gov/media/193343/download",
+  "date": "2026-07-23",
+  "type": "regulator",
+  "usedBy": [
+   "catalog-bpc157-what",
+   "catalog-bpc157-status-no-approval",
+   "catalog-bpc157-human-trial",
+   "catalog-bpc157-fda-effectiveness"
+  ]
+ },
+ {
+  "id": "u-s-2026-fda-briefing-document-tb",
+  "title": "FDA Briefing Document: TB-500-Related Bulk Drug Substances (PCAC, July 23, 2026)",
+  "publisher": "U.S. Food and Drug Administration",
+  "url": "https://www.fda.gov/media/193349/download",
+  "date": "2026-07-23",
+  "type": "regulator",
+  "usedBy": [
+   "catalog-tb500-what",
+   "catalog-tb500-promoted",
+   "catalog-tb500-no-human-data",
+   "catalog-tb500-status-research-only"
+  ]
+ },
+ {
+  "id": "molecules-mdpi-2025-are-we-ready-measure",
+  "title": "Are We Ready to Measure Skin Permeation of Modern Antiaging GHK-Cu Tripeptide Encapsulated in Liposomes? (Molecules 2025;30(1):136)",
+  "publisher": "Molecules (MDPI), PubMed PMID 39795193",
+  "url": "https://pubmed.ncbi.nlm.nih.gov/39795193",
+  "date": "2025-01-01",
+  "type": "journal",
+  "usedBy": [
+   "catalog-ghkcu-what"
+  ]
+ },
+ {
+  "id": "u-s-2026-bulk-drug-substances-nominated",
+  "title": "Bulk Drug Substances Nominated for Use in Compounding Under Section 503A of the Federal Food, Drug, and Cosmetic Act (Updated May 14, 2026)",
+  "publisher": "U.S. Food and Drug Administration",
+  "url": "https://www.fda.gov/media/94155/download",
+  "date": "2026-05-14",
+  "type": "regulator",
+  "usedBy": [
+   "catalog-ghkcu-category1-topical",
+   "catalog-ghkcu-pcac-2027"
+  ]
+ },
+ {
+  "id": "life-basel-2026-changes-oral-mucosa-associated",
+  "title": "Changes in Oral Mucosa Associated with Melanotan II Injections: A Case Report (Life 2026;16(2):265)",
+  "publisher": "Life (Basel) (MDPI), PubMed PMID 41752902",
+  "url": "https://pubmed.ncbi.nlm.nih.gov/41752902",
+  "date": "2026-02-03",
+  "type": "journal",
+  "usedBy": [
+   "catalog-melanotan2-what"
+  ]
+ },
+ {
+  "id": "international-journal-2025-melanotan-ii-nasal-spray",
+  "title": "Melanotan II nasal spray: a possible risk factor for oral mucosal malignant melanoma? (Int J Oral Maxillofac Surg 2025;54(9):806-808)",
+  "publisher": "International Journal of Oral and Maxillofacial Surgery (Elsevier), PubMed PMID 40210573",
+  "url": "https://pubmed.ncbi.nlm.nih.gov/40210573",
+  "date": "2025-09",
+  "type": "journal",
+  "usedBy": [
+   "catalog-melanotan2-status-unlicensed"
+  ]
+ },
+ {
+  "id": "journal-pharmaceutical-2026-investigation-stability-profile",
+  "title": "Investigation of the stability profile of therapeutic α-MSH analogue: Insights from LC-HRMS analysis of afamelanotide (J Pharm Biomed Anal 2026;272:117362)",
+  "publisher": "Journal of Pharmaceutical and Biomedical Analysis (Elsevier), PubMed PMID 41547183",
+  "url": "https://pubmed.ncbi.nlm.nih.gov/41547183",
+  "date": "2026-05-15",
+  "type": "journal",
+  "usedBy": [
+   "catalog-melanotan1-is-afamelanotide"
+  ]
+ },
+ {
+  "id": "clinuvel-u-2026-scenesse-afamelanotide-implant-prescribing",
+  "title": "SCENESSE (afamelanotide) implant prescribing information (DailyMed)",
+  "publisher": "Clinuvel / U.S. National Library of Medicine DailyMed",
+  "url": "https://dailymed.nlm.nih.gov/dailymed/lookup.cfm?setid=94f53286-11dd-7fbb-e053-2a95a90a7c48",
+  "date": "2026-05-13",
+  "type": "label",
+  "usedBy": [
+   "catalog-melanotan1-fda-approved"
+  ]
+ },
+ {
+  "id": "european-medicines-2014-scenesse-afamelanotide-epar",
+  "title": "Scenesse (afamelanotide) EPAR",
+  "publisher": "European Medicines Agency",
+  "url": "https://www.ema.europa.eu/en/medicines/human/EPAR/scenesse",
+  "date": "2014-12-22",
+  "type": "regulator",
+  "usedBy": [
+   "catalog-melanotan1-ema-2014"
+  ]
+ },
+ {
+  "id": "journal-sexual-2006-effect-subjective-sexual-response",
+  "title": "An effect on the subjective sexual response in premenopausal women with sexual arousal disorder by bremelanotide (PT-141), a melanocortin receptor agonist (J Sex Med 2006;3(4):628-638)",
+  "publisher": "Journal of Sexual Medicine, PubMed PMID 16839319",
+  "url": "https://pubmed.ncbi.nlm.nih.gov/16839319",
+  "date": "2006-07",
+  "type": "journal",
+  "usedBy": [
+   "catalog-pt141-is-bremelanotide"
+  ]
+ },
+ {
+  "id": "cosette-pharmaceuticals-2025-vyleesi-bremelanotide-injection",
+  "title": "VYLEESI (bremelanotide) injection prescribing information (DailyMed)",
+  "publisher": "Cosette Pharmaceuticals / U.S. National Library of Medicine DailyMed",
+  "url": "https://dailymed.nlm.nih.gov/dailymed/lookup.cfm?setid=f1d0c1b5-2f39-4bad-a6a4-0066e3ad5dcf",
+  "date": "2025-11-18",
+  "type": "label",
+  "usedBy": [
+   "catalog-pt141-fda-approved",
+   "catalog-pt141-not-for-men"
+  ]
+ },
+ {
+  "id": "u-s-2026-fda-briefing-document-mots",
+  "title": "FDA Briefing Document: MOTS-c-Related Bulk Drug Substances (PCAC, July 23, 2026)",
+  "publisher": "U.S. Food and Drug Administration",
+  "url": "https://www.fda.gov/media/193347/download",
+  "date": "2026-07-23",
+  "type": "regulator",
+  "usedBy": [
+   "catalog-motsc-what",
+   "catalog-motsc-promoted",
+   "catalog-motsc-status-research-only"
+  ]
+ },
+ {
+  "id": "international-journal-2025-elamipretide-review-its-structure",
+  "title": "Elamipretide: A Review of Its Structure, Mechanism of Action, and Therapeutic Potential (Int J Mol Sci 2025;26(3):944)",
+  "publisher": "International Journal of Molecular Sciences (MDPI), PubMed PMID 39940712",
+  "url": "https://pubmed.ncbi.nlm.nih.gov/39940712",
+  "date": "2025-01-23",
+  "type": "journal",
+  "usedBy": [
+   "catalog-ss31-is-elamipretide"
+  ]
+ },
+ {
+  "id": "u-s-2025-novel-drug-approvals-2025",
+  "title": "Novel Drug Approvals for 2025",
+  "publisher": "U.S. Food and Drug Administration",
+  "url": "https://www.fda.gov/drugs/novel-drug-approvals-fda/novel-drug-approvals-2025",
+  "date": "2025-09-19",
+  "type": "regulator",
+  "usedBy": [
+   "catalog-ss31-fda-approved"
+  ]
+ },
+ {
+  "id": "stealth-biotherapeutics-2025-forzinity-elamipretide-hydrochl",
+  "title": "FORZINITY (elamipretide hydrochloride) injection prescribing information (DailyMed)",
+  "publisher": "Stealth BioTherapeutics / U.S. National Library of Medicine DailyMed",
+  "url": "https://dailymed.nlm.nih.gov/dailymed/lookup.cfm?setid=146bf34c-76f2-48db-ac07-fb29cce2cd75",
+  "date": "2025-12-12",
+  "type": "label",
+  "usedBy": [
+   "catalog-ss31-accelerated"
+  ]
+ },
+ {
+  "id": "u-s-2026-fda-briefing-document-epitalon",
+  "title": "FDA Briefing Document: Epitalon-Related Bulk Drug Substances (PCAC, July 24, 2026)",
+  "publisher": "U.S. Food and Drug Administration",
+  "url": "https://www.fda.gov/media/193345/download",
+  "date": "2026-07-24",
+  "type": "regulator",
+  "usedBy": [
+   "catalog-epitalon-promoted",
+   "catalog-epitalon-status-research-only",
+   "catalog-epitalon-orphan-revoked"
+  ]
+ },
+ {
+  "id": "pharmaceutics-mdpi-2022-development-peptide-biopharmaceutica",
+  "title": "Development of Peptide Biopharmaceuticals in Russia (Pharmaceutics 2022;14(4):716)",
+  "publisher": "Pharmaceutics (MDPI), PubMed PMID 35456550",
+  "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC9030433",
+  "date": "2022-03",
+  "type": "journal",
+  "usedBy": [
+   "catalog-semax-what",
+   "catalog-selank-russia-registered"
+  ]
+ },
+ {
+  "id": "u-s-2026-fda-briefing-document-semax",
+  "title": "FDA Briefing Document: Semax-Related Bulk Drug Substances (PCAC, July 24, 2026)",
+  "publisher": "U.S. Food and Drug Administration",
+  "url": "https://www.fda.gov/media/193348/download",
+  "date": "2026-07-24",
+  "type": "regulator",
+  "usedBy": [
+   "catalog-semax-russia-registered"
+  ]
+ },
+ {
+  "id": "u-s-2024-fda-briefing-document-thymosin",
+  "title": "FDA Briefing Document: Thymosin Alpha-1-Related Bulk Drug Substances (PCAC, December 4, 2024)",
+  "publisher": "U.S. Food and Drug Administration",
+  "url": "https://www.fda.gov/media/183820/download",
+  "date": "2024-12-04",
+  "type": "regulator",
+  "usedBy": [
+   "catalog-ta1-what",
+   "catalog-ta1-approved-abroad",
+   "catalog-ta1-italy-india"
+  ]
+ },
+ {
+  "id": "u-s-2026-fda-briefing-document-kpv",
+  "title": "FDA Briefing Document: KPV-Related Bulk Drug Substances (PCAC, July 23, 2026)",
+  "publisher": "U.S. Food and Drug Administration",
+  "url": "https://www.fda.gov/media/193346/download",
+  "date": "2026-07-23",
+  "type": "regulator",
+  "usedBy": [
+   "catalog-kpv-what",
+   "catalog-kpv-status-research-only"
+  ]
+ },
+ {
+  "id": "new-england-2026-retatrutide-triple-hormone-receptor-3",
+  "title": "Retatrutide, a Triple Hormone Receptor Agonist, for Treatment of Obesity (TRIUMPH-1), Jastreboff AM et al.",
+  "publisher": "New England Journal of Medicine (Massachusetts Medical Society)",
+  "url": "https://mediacenteratypon.nejmgroup-production.org/NEJMoa2604169.pdf",
+  "date": "2026-09-29",
+  "type": "journal",
+  "usedBy": [
+   "gap-phase3-serious-ae-rates-and-heart-rate-t1-pulse-peaked-week20",
+   "gap-phase3-serious-ae-rates-and-heart-rate-t1-pancreatitis",
+   "gap-phase3-serious-ae-rates-and-heart-rate-t1-pancreatitis-too-few",
+   "gap-phase3-serious-ae-rates-and-heart-rate-t1-gallbladder-serious",
+   "gap-phase3-serious-ae-rates-and-heart-rate-t1-arrhythmia-serious",
+   "gap-phase3-serious-ae-rates-and-heart-rate-t1-injection-site",
+   "gap-phase3-serious-ae-rates-and-heart-rate-t1-hypersensitivity",
+   "gap-phase3-serious-ae-rates-and-heart-rate-t1-acute-renal",
+   "gap-phase3-serious-ae-rates-and-heart-rate-t1-serious-ae",
+   "gap-phase3-serious-ae-rates-and-heart-rate-t1-deaths-count",
+   "gap-phase3-serious-ae-rates-and-heart-rate-t1-deaths-causes",
+   "gap-phase3-serious-ae-rates-and-heart-rate-t1-mace",
+   "gap-phase3-serious-ae-rates-and-heart-rate-t1-discontinuation-nejm-table",
+   "gap-phase3-serious-ae-rates-and-heart-rate-t1-discontinuation-nejm-text",
+   "gap-phase3-serious-ae-rates-and-heart-rate-t1-discontinuation-why-differ"
+  ]
+ },
+ {
+  "id": "new-england-2026-supplementary-appendix-retatrutide-triple",
+  "title": "Supplementary Appendix to: Retatrutide, a Triple Hormone Receptor Agonist, for Treatment of Obesity (TRIUMPH-1), Table S12",
+  "publisher": "New England Journal of Medicine (Massachusetts Medical Society)",
+  "url": "https://mediacenteratypon.nejmgroup-production.org/NEJMoa2604169_appendix.pdf",
+  "date": "2026-09-29",
+  "type": "journal",
+  "usedBy": [
+   "gap-phase3-serious-ae-rates-and-heart-rate-t1-pulse-week80",
+   "gap-phase3-serious-ae-rates-and-heart-rate-t1-lipase-rise"
+  ]
+ },
+ {
+  "id": "lancet-elsevier-2026-supplementary-appendix-bellido-v",
+  "title": "Supplementary appendix to: Bellido V et al. Retatrutide in adults with obesity and type 2 diabetes (TRIUMPH-2), Table S11",
+  "publisher": "The Lancet (Elsevier)",
+  "url": "https://ars.els-cdn.com/content/image/1-s2.0-S0140673626018611-mmc1.pdf",
+  "date": "2026-09-29",
+  "type": "journal",
+  "usedBy": [
+   "gap-phase3-serious-ae-rates-and-heart-rate-t2-pulse-week80",
+   "gap-phase3-serious-ae-rates-and-heart-rate-t2-lipase-rise",
+   "gap-phase3-serious-ae-rates-and-heart-rate-t2-immune-sae",
+   "gap-phase3-serious-ae-rates-and-heart-rate-t2-renal-sae",
+   "gap-phase3-serious-ae-rates-and-heart-rate-t2-cv-deaths"
+  ]
+ },
+ {
+  "id": "eli-lilly-2026-triumph-2-easd-2026",
+  "title": "TRIUMPH-2 EASD 2026 presentation slides (slide 'Change in Pulse Rate From Baseline')",
+  "publisher": "Eli Lilly and Company",
+  "url": "https://www.lrlscience.com/download/7BkglfDxB9grlbbgYfJmlN",
+  "date": "2026-09-30",
+  "type": "company",
+  "usedBy": [
+   "gap-phase3-serious-ae-rates-and-heart-rate-t2-pulse-after-stopping",
+   "gap-phase3-serious-ae-rates-and-heart-rate-t2-lipase-discontinuation",
+   "gap-phase3-serious-ae-rates-and-heart-rate-t2-gallbladder-serious",
+   "gap-phase3-serious-ae-rates-and-heart-rate-t2-hypoglycemia",
+   "gap-phase3-serious-ae-rates-and-heart-rate-t2-hypoglycemia-sulfonylurea",
+   "gap-phase3-serious-ae-rates-and-heart-rate-t2-arrhythmia-serious",
+   "gap-phase3-serious-ae-rates-and-heart-rate-t2-afib-discontinuation",
+   "gap-phase3-serious-ae-rates-and-heart-rate-t2-serious-ae",
+   "gap-phase3-serious-ae-rates-and-heart-rate-t2-mace"
+  ]
+ },
+ {
+  "id": "lancet-elsevier-2026-supplementary-appendix-bajaj-hs",
+  "title": "Supplementary appendix to: Bajaj HS et al. TRANSCEND-T2D-1, Tables S14 and S7",
+  "publisher": "The Lancet (Elsevier)",
+  "url": "https://ars.els-cdn.com/content/image/1-s2.0-S0140673626009670-mmc1.pdf",
+  "date": "2026-06-06",
+  "type": "journal",
+  "usedBy": [
+   "gap-phase3-serious-ae-rates-and-heart-rate-transcend-cholelithiasis",
+   "gap-phase3-serious-ae-rates-and-heart-rate-transcend-hypoglycemia",
+   "gap-phase3-serious-ae-rates-and-heart-rate-transcend-arrhythmia",
+   "gap-phase3-serious-ae-rates-and-heart-rate-transcend-injection-site"
+  ]
+ },
+ {
+  "id": "eli-lilly-2026-first-phase-3-obesity",
+  "title": "The First Phase 3 Obesity Study of Retatrutide... (TRIUMPH-1), ADA 2026 presentation slides (Jastreboff), slide 'Adverse Events Occurring in ≥5% of Participants'",
+  "publisher": "Eli Lilly and Company",
+  "url": "https://lillyscience.lilly.com/download/11aeYIVRAwYF86ARof9VE4",
+  "date": "2026-06-06",
+  "type": "company",
+  "usedBy": [
+   "gap-phase3-serious-ae-rates-and-heart-rate-t1-alopecia-not-common",
+   "gap-phase3-serious-ae-rates-and-heart-rate-t1-discontinuation-lilly"
+  ]
+ },
+ {
+  "id": "cell-metabolism-2022-ly3437943-novel-triple-glucagon-2",
+  "title": "LY3437943, a novel triple glucagon, GIP, and GLP-1 receptor agonist for glycemic control and weight loss: From discovery to clinical proof of concept (Coskun et al., Cell Metab 34(9):1234-1247)",
+  "publisher": "Cell Metabolism (Cell Press/Elsevier)",
+  "url": "https://www.cell.com/cell-metabolism/fulltext/S1550-4131(22)00312-6",
+  "date": "2022-09-06",
+  "type": "journal",
+  "usedBy": [
+   "gap-pk-peak-and-steady-state-primary-sad-peak-window",
+   "gap-pk-peak-and-steady-state-primary-sad-tmax-by-dose",
+   "gap-pk-peak-and-steady-state-primary-sad-half-life",
+   "gap-pk-peak-and-steady-state-primary-sad-half-life-hours",
+   "gap-pk-peak-and-steady-state-primary-sad-dose-proportional",
+   "gap-pk-peak-and-steady-state-primary-sad-population",
+   "gap-pk-peak-and-steady-state-primary-albumin-mechanism",
+   "gap-pk-peak-and-steady-state-primary-sad-weight-day43",
+   "gap-pk-peak-and-steady-state-primary-sad-insulin-peak",
+   "gap-pk-peak-and-steady-state-primary-sad-insulin-return"
+  ]
+ },
+ {
+  "id": "lancet-elsevier-2022-ly3437943-novel-triple-gip-2",
+  "title": "LY3437943, a novel triple GIP, GLP-1, and glucagon receptor agonist in people with type 2 diabetes: a phase 1b multiple-ascending dose trial (Urva et al., Lancet 400:1869-1881)",
+  "publisher": "The Lancet (Elsevier)",
+  "url": "https://www.thelancet.com/journals/lancet/article/PIIS0140-6736(22)02033-5/fulltext",
+  "date": "2022-11-26",
+  "type": "journal",
+  "usedBy": [
+   "gap-pk-peak-and-steady-state-primary-mad-tmax-text",
+   "gap-pk-peak-and-steady-state-primary-mad-steady-state-statement",
+   "gap-pk-peak-and-steady-state-primary-mad-short-exposure-limitation"
+  ]
+ },
+ {
+  "id": "lancet-elsevier-2022-supplementary-appendix-urva-et",
+  "title": "Supplementary appendix to Urva et al., Lancet 2022, Table S3: Summary of the pharmacokinetic parameters for LY3437943 in plasma",
+  "publisher": "The Lancet (Elsevier) – peer-reviewed supplementary appendix",
+  "url": "https://ars.els-cdn.com/content/image/1-s2.0-S0140673622020335-mmc1.pdf",
+  "date": "2022-11-26",
+  "type": "journal",
+  "usedBy": [
+   "gap-pk-peak-and-steady-state-primary-mad-tmax-day1",
+   "gap-pk-peak-and-steady-state-primary-mad-tmax-week12",
+   "gap-pk-peak-and-steady-state-primary-mad-half-life-week12-hours",
+   "gap-pk-peak-and-steady-state-primary-mad-accumulation-3mg",
+   "gap-pk-peak-and-steady-state-primary-protocol-steady-state-4-5-weeks",
+   "gap-pk-peak-and-steady-state-primary-mad-belly-only"
+  ]
+ },
+ {
+  "id": "eli-lilly-2022-protocol-j1i-mc-gzbg",
+  "title": "Protocol J1I-MC-GZBG: A Study of LY3437943 in Participants Who Have Obesity or Are Overweight (NCT04881760), Prot_000",
+  "publisher": "Eli Lilly and Company via ClinicalTrials.gov",
+  "url": "https://cdn.clinicaltrials.gov/large-docs/60/NCT04881760/Prot_000.pdf",
+  "date": "2022-08-29",
+  "type": "trial-registry",
+  "usedBy": [
+   "gap-pk-peak-and-steady-state-primary-protocol-peak-1-3-days",
+   "gap-pk-peak-and-steady-state-primary-sad-gi-timing",
+   "gap-surgery-pregnancy-practical-guidance-reta-half-life-range",
+   "gap-surgery-pregnancy-practical-guidance-reta-protocol-women-2-months",
+   "gap-surgery-pregnancy-practical-guidance-reta-protocol-men-4-months",
+   "gap-surgery-pregnancy-practical-guidance-reta-protocol-pill-allowed"
+  ]
+ },
+ {
+  "id": "eli-lilly-2022-protocol-j1i-mc-gzbf",
+  "title": "Protocol J1I-MC-GZBF: A Study of LY3437943 in Participants With Type 2 Diabetes (NCT04867785), Prot_000",
+  "publisher": "Eli Lilly and Company via ClinicalTrials.gov",
+  "url": "https://cdn.clinicaltrials.gov/large-docs/85/NCT04867785/Prot_000.pdf",
+  "date": "2022-08-29",
+  "type": "trial-registry",
+  "usedBy": [
+   "gap-pk-peak-and-steady-state-primary-phase2-belly-only",
+   "gap-surgery-pregnancy-practical-guidance-reta-protocol-t2d-2-months",
+   "gap-surgery-pregnancy-practical-guidance-reta-protocol-two-forms"
+  ]
+ },
+ {
+  "id": "dailymed-u-2025-label-retatrutide-pen-injection",
+  "title": "Label: RETATRUTIDE PEN injection, solution (setid 42498bee-d406-178b-e063-6394a90a053d)",
+  "publisher": "DailyMed (U.S. National Library of Medicine)",
+  "url": "https://dailymed.nlm.nih.gov/dailymed/drugInfo.cfm?setid=42498bee-d406-178b-e063-6394a90a053d",
+  "date": "2025-10-29",
+  "type": "label",
+  "usedBy": [
+   "gap-pk-peak-and-steady-state-primary-dailymed-export-only"
+  ]
+ },
+ {
+  "id": "clinicaltrials-gov-2023-study-ly3437943-participants-type",
+  "title": "A Study of LY3437943 in Participants With Type 2 Diabetes (NCT04867785) – posted results, outcome 'Population PK: Average Steady-State Plasma Concentration (Cav,ss)'",
+  "publisher": "ClinicalTrials.gov (U.S. National Library of Medicine)",
+  "url": "https://clinicaltrials.gov/study/NCT04867785?tab=results",
+  "date": "2023-07-03",
+  "type": "trial-registry",
+  "usedBy": [
+   "gap-pk-peak-and-steady-state-primary-phase2-cavss"
+  ]
+ },
+ {
+  "id": "eli-lilly-2026-zepbound-tirzepatide-injection-prescribing",
+  "title": "ZEPBOUND (tirzepatide) injection – Prescribing Information, section 12.3",
+  "publisher": "Eli Lilly and Company / FDA label via DailyMed",
+  "url": "https://dailymed.nlm.nih.gov/dailymed/drugInfo.cfm?setid=487cd7e7-434c-4925-99fa-aa80b1cc776b",
+  "date": "2026-09-02",
+  "type": "label",
+  "usedBy": [
+   "gap-pk-peak-and-steady-state-primary-class-tirzepatide-steady-state",
+   "gap-pk-peak-and-steady-state-primary-class-tirzepatide-tmax",
+   "gap-pk-peak-and-steady-state-primary-class-tirzepatide-sites",
+   "gap-pk-peak-and-steady-state-primary-class-tirzepatide-albumin",
+   "gap-red-flags-us-911-split-zepbound-hr-1-3bpm",
+   "gap-red-flags-us-911-split-allergy-signs-include-racing-heart",
+   "gap-red-flags-us-911-split-low-sugar-signs-include-fast-heartbeat",
+   "gap-red-flags-us-911-split-low-sugar-risk-with-insulin",
+   "gap-red-flags-us-911-split-label-dehydration-kidney",
+   "gap-red-flags-us-911-split-label-pancreatitis-stop-call",
+   "gap-red-flags-us-911-split-label-gallbladder-right-away",
+   "gap-red-flags-us-911-split-overdose-poison-help-er"
+  ]
+ },
+ {
+  "id": "novo-nordisk-2026-wegovy-semaglutide-prescribing-information",
+  "title": "WEGOVY (semaglutide) – Prescribing Information, section 12.3",
+  "publisher": "Novo Nordisk / FDA label via DailyMed",
+  "url": "https://dailymed.nlm.nih.gov/dailymed/drugInfo.cfm?setid=ee06186f-2aa3-4990-a760-757579d8f77b",
+  "date": "2026-06-30",
+  "type": "label",
+  "usedBy": [
+   "gap-pk-peak-and-steady-state-primary-class-semaglutide",
+   "gap-red-flags-us-911-split-wegovy-guide-racing-several-minutes",
+   "gap-red-flags-us-911-split-wegovy-pi-sustained-resting-hr-stop",
+   "gap-red-flags-us-911-split-wegovy-hr-jumps-20bpm",
+   "gap-red-flags-us-911-split-overdose-symptoms"
+  ]
+ },
+ {
+  "id": "eli-lilly-2026-was-dysesthesia-reported-as",
+  "title": "Was dysesthesia reported as an adverse event in the retatrutide TRIUMPH trials in patients with overweight or obesity? (Lilly Medical Information, US_cFAQ_RETA512B_DYSESTHESIA_WM)",
+  "publisher": "Eli Lilly and Company (Lilly Medical)",
+  "url": "https://medical.lilly.com/us/products/answers/was-dysesthesia-reported-as-an-adverse-event-in-the-retatrutide-triumph-trials-in-patients-with-overweight-or-obesity-387925",
+  "date": "2026-08-18",
+  "type": "company",
+  "usedBy": [
+   "gap-side-effect-mechanism-and-mitigation-dys-what-it-is-retatrutide-rates"
+  ]
+ },
+ {
+  "id": "european-medicines-2025-wegovy---chmp",
+  "title": "Wegovy - CHMP Type II group of variations assessment report, Procedure EMA/VR/0000284664 (semaglutide 7.2 mg; STEP UP / STEP UP T2D)",
+  "publisher": "European Medicines Agency (CHMP)",
+  "url": "https://www.ema.europa.eu/en/documents/variation-report/wegovy-vr-0000284664-epar-assessment-report-variation_en.pdf",
+  "date": "2025-12-11",
+  "type": "regulator",
+  "usedBy": [
+   "gap-side-effect-mechanism-and-mitigation-dys-ema-median-recovery-no-change",
+   "gap-side-effect-mechanism-and-mitigation-dys-ema-median-recovery-dose-reduced",
+   "gap-side-effect-mechanism-and-mitigation-dys-ema-median-recovery-paused-or-stopped",
+   "gap-side-effect-mechanism-and-mitigation-dys-ema-unrecovered-and-dose-dependent-recovery",
+   "gap-side-effect-mechanism-and-mitigation-dys-ema-mechanism-unknown",
+   "gap-side-effect-mechanism-and-mitigation-dys-ema-not-nerve-damage-pattern",
+   "gap-side-effect-mechanism-and-mitigation-dys-ema-high-exposure-first-26-weeks"
+  ]
+ },
+ {
+  "id": "cureus-2025-allodynia-dysesthesia-associated-semaglutide",
+  "title": "Allodynia and Dysesthesia Associated With Semaglutide and Tirzepatide (Ahern S; Cureus 17(10):e94126, case report)",
+  "publisher": "Cureus",
+  "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC12594042",
+  "date": "2025-10-08",
+  "type": "journal",
+  "usedBy": [
+   "gap-side-effect-mechanism-and-mitigation-dys-case-reports-6-to-16-weeks"
+  ]
+ },
+ {
+  "id": "nhs-nhs-2025-urinary-tract-infections-utis",
+  "title": "Urinary tract infections (UTIs)",
+  "publisher": "NHS (nhs.uk)",
+  "url": "https://www.nhs.uk/conditions/urinary-tract-infections-utis",
+  "date": "2025-07-11",
+  "type": "health-service",
+  "usedBy": [
+   "gap-side-effect-mechanism-and-mitigation-uti-general-prevention-fluids"
+  ]
+ },
+ {
+  "id": "u-s-2026-foundayo-orforglipron-tablets",
+  "title": "FOUNDAYO (orforglipron) tablets - US Prescribing Information (DailyMed SPL)",
+  "publisher": "U.S. FDA-approved labeling (Eli Lilly and Company), via NLM DailyMed",
+  "url": "https://dailymed.nlm.nih.gov/dailymed/lookup.cfm?setid=8ac446c5-feba-474f-a103-23facb9b5c62",
+  "date": "2026-08-13",
+  "type": "label",
+  "usedBy": [
+   "gap-side-effect-mechanism-and-mitigation-hypo-orforglipron-class-pattern"
+  ]
+ },
+ {
+  "id": "nhs-nhs-2023-low-blood-pressure-hypotension",
+  "title": "Low blood pressure (hypotension)",
+  "publisher": "NHS (nhs.uk)",
+  "url": "https://www.nhs.uk/conditions/low-blood-pressure-hypotension",
+  "date": "2023-07-11",
+  "type": "health-service",
+  "usedBy": [
+   "gap-side-effect-mechanism-and-mitigation-hypo-nhs-doctor-may-change-medicines",
+   "gap-side-effect-mechanism-and-mitigation-hypo-nhs-stand-up-slowly"
+  ]
+ },
+ {
+  "id": "nhs-nhs-2023-dizziness",
+  "title": "Dizziness",
+  "publisher": "NHS (nhs.uk)",
+  "url": "https://www.nhs.uk/symptoms/dizziness",
+  "date": "2023-04-21",
+  "type": "health-service",
+  "usedBy": [
+   "gap-side-effect-mechanism-and-mitigation-dizzy-nhs-selfcare"
+  ]
+ },
+ {
+  "id": "nhs-nhs-2024-headaches",
+  "title": "Headaches",
+  "publisher": "NHS (nhs.uk)",
+  "url": "https://www.nhs.uk/symptoms/headaches",
+  "date": "2024-04-17",
+  "type": "health-service",
+  "usedBy": [
+   "gap-side-effect-mechanism-and-mitigation-headache-nhs-causes-and-selfcare"
+  ]
+ },
+ {
+  "id": "nhs-nhs-2026-semaglutide-medicine-manage-type",
+  "title": "Semaglutide: a medicine to manage type 2 diabetes or treat obesity",
+  "publisher": "NHS (nhs.uk)",
+  "url": "https://www.nhs.uk/medicines/semaglutide",
+  "date": "2026-05-15",
+  "type": "health-service",
+  "usedBy": [
+   "gap-side-effect-mechanism-and-mitigation-fatigue-nhs-common-and-when-to-ask"
+  ]
+ },
+ {
+  "id": "obesity-pillars-2026-micronutrient-risk-glp-1",
+  "title": "Micronutrient risk with GLP-1 receptor and dual incretin agonists in obesity: Mechanistic pathways, clinical signals, and management (Obesity Pillars 2026; 100290)",
+  "publisher": "Obesity Pillars (Elsevier; Obesity Medicine Association journal)",
+  "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC13316283",
+  "date": "2026-06-18",
+  "type": "journal",
+  "usedBy": [
+   "gap-side-effect-mechanism-and-mitigation-fatigue-possible-low-iron",
+   "gap-side-effect-mechanism-and-mitigation-hair-mechanism-telogen-effluvium"
+  ]
+ },
+ {
+  "id": "nhs-nhs-2023-tiredness-fatigue",
+  "title": "Tiredness and fatigue",
+  "publisher": "NHS (nhs.uk)",
+  "url": "https://www.nhs.uk/conditions/tiredness-and-fatigue",
+  "date": "2023-06-02",
+  "type": "health-service",
+  "usedBy": [
+   "gap-side-effect-mechanism-and-mitigation-fatigue-nhs-when-to-see-gp"
+  ]
+ },
+ {
+  "id": "american-academy-2026-do-you-have-hair",
+  "title": "Do you have hair loss or hair shedding?",
+  "publisher": "American Academy of Dermatology (AAD)",
+  "url": "https://www.aad.org/public/diseases/hair-loss/insider/shedding",
+  "date": "undated (accessed 2026-10-08)",
+  "type": "nonprofit",
+  "usedBy": [
+   "gap-side-effect-mechanism-and-mitigation-hair-aad-weight-loss-trigger",
+   "gap-side-effect-mechanism-and-mitigation-hair-aad-starts-months-later",
+   "gap-side-effect-mechanism-and-mitigation-hair-aad-recovers-6-to-9-months"
+  ]
+ },
+ {
+  "id": "dermatology-therapy-2026-hair-loss-patients-glucagon",
+  "title": "Hair Loss in Patients on Glucagon-Like Peptide 1 Receptor Agonists: Understanding Risks and Managing Outcomes (Piraccini BM et al., Dermatol Ther (Heidelb) 16(7):3345-3360)",
+  "publisher": "Dermatology and Therapy (Springer/Adis)",
+  "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC13280097",
+  "date": "2026-06-05",
+  "type": "journal",
+  "usedBy": [
+   "gap-side-effect-mechanism-and-mitigation-hair-review-3-months-after-start",
+   "gap-side-effect-mechanism-and-mitigation-hair-review-stops-when-weight-loss-stops",
+   "gap-side-effect-mechanism-and-mitigation-hair-review-protein-micronutrients"
+  ]
+ },
+ {
+  "id": "diabetes-research-2026-glucagon-like-peptide-1",
+  "title": "Glucagon-like peptide-1 receptor agonists and hair loss: A systematic review and meta-analysis (Cheng PL, Chang HC; Diabetes Res Clin Pract 237:113333; PubMed abstract)",
+  "publisher": "Diabetes Research and Clinical Practice (Elsevier)",
+  "url": "https://pubmed.ncbi.nlm.nih.gov/42155605",
+  "date": "2026-05-18",
+  "type": "journal",
+  "usedBy": [
+   "gap-side-effect-mechanism-and-mitigation-hair-meta-analysis-risk"
+  ]
+ },
+ {
+  "id": "bmj-open-2026-pharmacologic-treatment-obesity-adults",
+  "title": "Pharmacologic treatment of obesity in adults: Standards of care in overweight and obesity (ADA Professional Practice Committee for Obesity)",
+  "publisher": "BMJ Open Diabetes Research & Care / American Diabetes Association",
+  "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC12815056",
+  "date": "2026-01-13",
+  "type": "journal",
+  "usedBy": [
+   "gap-side-effect-mechanism-and-mitigation-isr-ada-rotate-reduce-pain"
+  ]
+ },
+ {
+  "id": "u-s-2026-heart-palpitations-medlineplus-medical",
+  "title": "Heart palpitations (MedlinePlus Medical Encyclopedia)",
+  "publisher": "U.S. National Library of Medicine (MedlinePlus)",
+  "url": "https://medlineplus.gov/ency/article/003081.htm",
+  "date": "2026-06-04",
+  "type": "health-service",
+  "usedBy": [
+   "gap-red-flags-us-911-split-palpitations-plus-symptoms-911",
+   "gap-red-flags-us-911-split-resting-pulse-over-100-doctor-today",
+   "gap-red-flags-us-911-split-frequent-extra-beats-doctor-today",
+   "gap-red-flags-us-911-split-new-palpitations-doctor-today",
+   "gap-red-flags-us-911-split-palpitations-usually-not-er"
+  ]
+ },
+ {
+  "id": "u-s-2026-paroxysmal-supraventricular-tachycardia-psvt",
+  "title": "Paroxysmal supraventricular tachycardia (PSVT) (MedlinePlus Medical Encyclopedia)",
+  "publisher": "U.S. National Library of Medicine (MedlinePlus)",
+  "url": "https://medlineplus.gov/ency/article/000183.htm",
+  "date": "2026-01-27",
+  "type": "health-service",
+  "usedBy": [
+   "gap-red-flags-us-911-split-racing-heart-not-stopping-minutes"
+  ]
+ },
+ {
+  "id": "american-heart-2024-tachycardia-fast-heart-rate",
+  "title": "Tachycardia: Fast Heart Rate",
+  "publisher": "American Heart Association",
+  "url": "https://www.heart.org/en/health-topics/arrhythmia/about-arrhythmia/tachycardia--fast-heart-rate",
+  "date": "2024-09-24",
+  "type": "nonprofit",
+  "usedBy": [
+   "gap-red-flags-us-911-split-tachycardia-definition"
+  ]
+ },
+ {
+  "id": "u-s-2025-fainting-medlineplus-medical-encyclopedia",
+  "title": "Fainting (MedlinePlus Medical Encyclopedia)",
+  "publisher": "U.S. National Library of Medicine (MedlinePlus)",
+  "url": "https://medlineplus.gov/ency/article/003092.htm",
+  "date": "2025-05-19",
+  "type": "health-service",
+  "usedBy": [
+   "gap-red-flags-us-911-split-fainting-911-list",
+   "gap-red-flags-us-911-split-fainting-with-heart-symptoms-911",
+   "gap-red-flags-us-911-split-first-faint-see-provider"
+  ]
+ },
+ {
+  "id": "u-s-2026-chest-pain-medlineplus-medical",
+  "title": "Chest pain (MedlinePlus Medical Encyclopedia)",
+  "publisher": "U.S. National Library of Medicine (MedlinePlus)",
+  "url": "https://medlineplus.gov/ency/article/003079.htm",
+  "date": "2026-04-28",
+  "type": "health-service",
+  "usedBy": [
+   "gap-red-flags-us-911-split-chest-pressure-911",
+   "gap-red-flags-us-911-split-chest-pain-with-racing-heart-911"
+  ]
+ },
+ {
+  "id": "american-heart-2024-warning-signs-heart-attack",
+  "title": "Warning Signs of a Heart Attack",
+  "publisher": "American Heart Association",
+  "url": "https://www.heart.org/en/health-topics/heart-attack/warning-signs-of-a-heart-attack",
+  "date": "2024-12-12",
+  "type": "nonprofit",
+  "usedBy": [
+   "gap-red-flags-us-911-split-aha-heart-attack-call-911",
+   "gap-red-flags-us-911-split-aha-rapid-irregular-heartbeat-heart-attack-sign",
+   "gap-red-flags-us-911-split-aha-ambulance-not-drive"
+  ]
+ },
+ {
+  "id": "american-heart-2024-symptoms-diagnosis-monitoring-arrhythmia",
+  "title": "Symptoms, Diagnosis and Monitoring of Arrhythmia",
+  "publisher": "American Heart Association",
+  "url": "https://www.heart.org/en/health-topics/arrhythmia/symptoms-diagnosis--monitoring-of-arrhythmia",
+  "date": "2024-10-10",
+  "type": "nonprofit",
+  "usedBy": [
+   "gap-red-flags-us-911-split-aha-arrhythmia-chest-pain-911",
+   "gap-red-flags-us-911-split-aha-arrhythmia-serious-symptoms",
+   "gap-red-flags-us-911-split-aha-suspected-arrhythmia-see-professional",
+   "gap-red-flags-us-911-split-afib-stroke-signs-911"
+  ]
+ },
+ {
+  "id": "national-heart-2022-arrhythmias---symptoms",
+  "title": "Arrhythmias - Symptoms",
+  "publisher": "National Heart, Lung, and Blood Institute (NIH)",
+  "url": "https://www.nhlbi.nih.gov/health/arrhythmias/symptoms",
+  "date": "2022-03-24",
+  "type": "health-service",
+  "usedBy": [
+   "gap-red-flags-us-911-split-nhlbi-arrhythmia-emergency-care"
+  ]
+ },
+ {
+  "id": "american-heart-2025-about-cardiac-arrest",
+  "title": "About Cardiac Arrest",
+  "publisher": "American Heart Association",
+  "url": "https://www.heart.org/en/health-topics/cardiac-arrest/about-cardiac-arrest",
+  "date": "2025-12-29",
+  "type": "nonprofit",
+  "usedBy": [
+   "gap-red-flags-us-911-split-collapse-cardiac-arrest-911"
+  ]
+ },
+ {
+  "id": "u-s-2024-about-heart-attack-symptoms",
+  "title": "About Heart Attack and Symptoms",
+  "publisher": "U.S. Centers for Disease Control and Prevention",
+  "url": "https://www.cdc.gov/heart-disease/about/heart-attack.html",
+  "date": "2024-10-24",
+  "type": "health-service",
+  "usedBy": [
+   "gap-red-flags-us-911-split-cdc-heart-attack-911"
+  ]
+ },
+ {
+  "id": "u-s-2025-breathing-difficulty-medlineplus-medical",
+  "title": "Breathing difficulty (MedlinePlus Medical Encyclopedia)",
+  "publisher": "U.S. National Library of Medicine (MedlinePlus)",
+  "url": "https://medlineplus.gov/ency/article/003075.htm",
+  "date": "2025-04-01",
+  "type": "health-service",
+  "usedBy": [
+   "gap-red-flags-us-911-split-sudden-breathing-trouble-911"
+  ]
+ },
+ {
+  "id": "u-s-2026-low-blood-sugar-medlineplus",
+  "title": "Low blood sugar (MedlinePlus Medical Encyclopedia)",
+  "publisher": "U.S. National Library of Medicine (MedlinePlus)",
+  "url": "https://medlineplus.gov/ency/article/000386.htm",
+  "date": "2026-01-25",
+  "type": "health-service",
+  "usedBy": [
+   "gap-red-flags-us-911-split-low-sugar-not-improving-er",
+   "gap-red-flags-us-911-split-low-sugar-less-alert-911"
+  ]
+ },
+ {
+  "id": "american-diabetes-2026-low-blood-glucose-hypoglycemia",
+  "title": "Low Blood Glucose (Hypoglycemia)",
+  "publisher": "American Diabetes Association",
+  "url": "https://diabetes.org/living-with-diabetes/treatment-care/hypoglycemia",
+  "date": "undated (accessed 2026-10-08)",
+  "type": "nonprofit",
+  "usedBy": [
+   "gap-red-flags-us-911-split-ada-unconscious-911"
+  ]
+ },
+ {
+  "id": "national-institute-2021-low-blood-glucose-hypoglycemia",
+  "title": "Low Blood Glucose (Hypoglycemia)",
+  "publisher": "National Institute of Diabetes and Digestive and Kidney Diseases (NIH)",
+  "url": "https://www.niddk.nih.gov/health-information/diabetes/overview/preventing-problems/low-blood-glucose-hypoglycemia",
+  "date": "2021-07",
+  "type": "health-service",
+  "usedBy": [
+   "gap-red-flags-us-911-split-niddk-severe-low-sugar"
+  ]
+ },
+ {
+  "id": "u-s-2025-dehydration-medlineplus-medical-encyclopedia",
+  "title": "Dehydration (MedlinePlus Medical Encyclopedia)",
+  "publisher": "U.S. National Library of Medicine (MedlinePlus)",
+  "url": "https://medlineplus.gov/ency/article/000982.htm",
+  "date": "2025-07-01",
+  "type": "health-service",
+  "usedBy": [
+   "gap-red-flags-us-911-split-severe-dehydration-signs",
+   "gap-red-flags-us-911-split-dehydration-911"
+  ]
+ },
+ {
+  "id": "u-s-2025-nausea-vomiting",
+  "title": "Nausea and vomiting - adults (MedlinePlus Medical Encyclopedia)",
+  "publisher": "U.S. National Library of Medicine (MedlinePlus)",
+  "url": "https://medlineplus.gov/ency/article/003117.htm",
+  "date": "2025-07-22",
+  "type": "health-service",
+  "usedBy": [
+   "gap-red-flags-us-911-split-vomiting-doctor-today",
+   "gap-red-flags-us-911-split-no-urine-8h-doctor-today",
+   "gap-red-flags-us-911-split-vomiting-blood-911"
+  ]
+ },
+ {
+  "id": "u-s-2026-acute-kidney-failure-medlineplus",
+  "title": "Acute kidney failure (MedlinePlus Medical Encyclopedia)",
+  "publisher": "U.S. National Library of Medicine (MedlinePlus)",
+  "url": "https://medlineplus.gov/ency/article/000501.htm",
+  "date": "2026-04-30",
+  "type": "health-service",
+  "usedBy": [
+   "gap-red-flags-us-911-split-urine-slows-stops-provider"
+  ]
+ },
+ {
+  "id": "national-institute-2017-symptoms-causes-pancreatitis",
+  "title": "Symptoms & Causes of Pancreatitis",
+  "publisher": "National Institute of Diabetes and Digestive and Kidney Diseases (NIH)",
+  "url": "https://www.niddk.nih.gov/health-information/digestive-diseases/pancreatitis/symptoms-causes",
+  "date": "2017-11",
+  "type": "health-service",
+  "usedBy": [
+   "gap-red-flags-us-911-split-niddk-severe-pancreatitis-seek-care"
+  ]
+ },
+ {
+  "id": "u-s-2026-abdominal-pain-medlineplus-medical",
+  "title": "Abdominal pain (MedlinePlus Medical Encyclopedia)",
+  "publisher": "U.S. National Library of Medicine (MedlinePlus)",
+  "url": "https://medlineplus.gov/ency/article/003120.htm",
+  "date": "2026-01-13",
+  "type": "health-service",
+  "usedBy": [
+   "gap-red-flags-us-911-split-sudden-sharp-belly-pain-911"
+  ]
+ },
+ {
+  "id": "national-institute-2017-symptoms-causes-gallstones",
+  "title": "Symptoms & Causes of Gallstones",
+  "publisher": "National Institute of Diabetes and Digestive and Kidney Diseases (NIH)",
+  "url": "https://www.niddk.nih.gov/health-information/digestive-diseases/gallstones/symptoms-causes",
+  "date": "2017-11",
+  "type": "health-service",
+  "usedBy": [
+   "gap-red-flags-us-911-split-niddk-gallbladder-attack-doctor"
+  ]
+ },
+ {
+  "id": "u-s-2025-suicide-suicidal-behavior-medlineplus",
+  "title": "Suicide and suicidal behavior (MedlinePlus Medical Encyclopedia)",
+  "publisher": "U.S. National Library of Medicine (MedlinePlus)",
+  "url": "https://medlineplus.gov/ency/article/001554.htm",
+  "date": "2025-04-19",
+  "type": "health-service",
+  "usedBy": [
+   "gap-red-flags-us-911-split-suicidal-thoughts-988",
+   "gap-red-flags-us-911-split-suicide-attempt-911"
+  ]
+ },
+ {
+  "id": "national-institute-2026-suicide-prevention",
+  "title": "Suicide Prevention",
+  "publisher": "National Institute of Mental Health (NIH)",
+  "url": "https://www.nimh.nih.gov/health/topics/suicide-prevention",
+  "date": "2026-08",
+  "type": "health-service",
+  "usedBy": [
+   "gap-red-flags-us-911-split-nimh-988-vs-911"
+  ]
+ },
+ {
+  "id": "u-s-2026-fda-requests-removal-suicidal-2",
+  "title": "FDA Requests Removal of Suicidal Behavior and Ideation Warning from Glucagon-Like Peptide-1 Receptor Agonist (GLP-1 RA) Medications (Drug Safety Communication)",
+  "publisher": "U.S. Food and Drug Administration",
+  "url": "https://www.fda.gov/drugs/drug-safety-communications/fda-requests-removal-suicidal-behavior-and-ideation-warning-glucagon-peptide-1-receptor-agonist-glp",
+  "date": "2026-01-13",
+  "type": "regulator",
+  "usedBy": [
+   "gap-red-flags-us-911-split-fda-suicide-warning-removed",
+   "gap-red-flags-us-911-split-fda-still-report-mood-988"
+  ]
+ },
+ {
+  "id": "u-s-2026-tirzepatide-injection-medlineplus-drug",
+  "title": "Tirzepatide injection (MedlinePlus Drug Information)",
+  "publisher": "U.S. National Library of Medicine (MedlinePlus) / ASHP",
+  "url": "https://medlineplus.gov/druginfo/meds/a622044.html",
+  "date": "2026-02-15",
+  "type": "health-service",
+  "usedBy": [
+   "gap-red-flags-us-911-split-overdose-collapse-911"
+  ]
+ },
+ {
+  "id": "diabetes-obesity-2025-retatrutide-treatment-obesity-obstruct-3",
+  "title": "Retatrutide for the treatment of obesity, obstructive sleep apnea and knee osteoarthritis: Rationale and design of the TRIUMPH registrational clinical trials – Supplementary Table 1 (Key eligibility criteria)",
+  "publisher": "Diabetes, Obesity and Metabolism (Wiley), via Europe PMC",
+  "url": "https://www.ebi.ac.uk/europepmc/webservices/rest/PMC12673447/supplementaryFiles",
+  "date": "2025-10-15",
+  "type": "journal",
+  "usedBy": [
+   "gap-personal-history-trial-exclusions-adults-only",
+   "gap-personal-history-trial-exclusions-kidney-egfr-under-30",
+   "gap-personal-history-trial-exclusions-kidney-moderate-allowed",
+   "gap-personal-history-trial-exclusions-recent-heart-attack-stroke-90d",
+   "gap-personal-history-trial-exclusions-nyha-class-iv",
+   "gap-personal-history-trial-exclusions-unstable-depression-2y-all",
+   "gap-personal-history-trial-exclusions-suicide-attempt-ever",
+   "gap-personal-history-trial-exclusions-weight-gain-meds-12mo",
+   "gap-personal-history-trial-exclusions-triumph3-t2d-and-insulin-allowed",
+   "gap-personal-history-trial-exclusions-recent-glp1-users",
+   "gap-personal-history-trial-exclusions-liver-disease",
+   "gap-personal-history-trial-exclusions-cancer-5y"
+  ]
+ },
+ {
+  "id": "clinicaltrials-gov-2026-study-retatrutide-ly3437943-particip-2",
+  "title": "A Study of Retatrutide (LY3437943) in Participants With Obesity and Cardiovascular Disease (TRIUMPH-3), NCT05882045",
+  "publisher": "ClinicalTrials.gov (U.S. National Library of Medicine)",
+  "url": "https://clinicaltrials.gov/study/NCT05882045",
+  "date": "2026-07-30",
+  "type": "trial-registry",
+  "usedBy": [
+   "gap-personal-history-trial-exclusions-triumph3-requires-past-cvd"
+  ]
+ },
+ {
+  "id": "eli-lilly-2025-protocol-j1i-mc-gzbk",
+  "title": "Protocol J1I-MC-GZBK(b) (TRIUMPH-2), redacted version published in the EU Clinical Trials Information System, EU CT 2023-503658-11-00",
+  "publisher": "Eli Lilly and Company, published via EMA Clinical Trials Information System (CTIS)",
+  "url": "https://euclinicaltrials.eu/ctis-public/view/2023-503658-11-00",
+  "date": "2025-01-24",
+  "type": "trial-registry",
+  "usedBy": [
+   "gap-personal-history-trial-exclusions-heart-rhythm-qt-not-listed",
+   "gap-personal-history-trial-exclusions-psych-detail-protocol",
+   "gap-personal-history-trial-exclusions-phq9-15",
+   "gap-personal-history-trial-exclusions-cssrs-past-month",
+   "gap-personal-history-trial-exclusions-gastroparesis",
+   "gap-personal-history-trial-exclusions-gallbladder-not-excluded",
+   "gap-personal-history-trial-exclusions-pregnancy-breastfeeding",
+   "gap-personal-history-trial-exclusions-pregnancy-testing",
+   "gap-personal-history-trial-exclusions-contraception-two-methods",
+   "gap-personal-history-trial-exclusions-oral-contraceptive-not-alone",
+   "gap-personal-history-trial-exclusions-patch-weight-limit",
+   "gap-personal-history-trial-exclusions-recent-injectable-implant-contraceptive",
+   "gap-personal-history-trial-exclusions-men-contraception-sperm",
+   "gap-personal-history-trial-exclusions-triumph2-no-insulin-hypos",
+   "gap-personal-history-trial-exclusions-thyroid-tsh",
+   "gap-personal-history-trial-exclusions-blood-disorders-hba1c",
+   "gap-personal-history-trial-exclusions-organ-transplant",
+   "gap-personal-history-trial-exclusions-autoimmune-steroids",
+   "gap-personal-history-trial-exclusions-eating-disorder-alcohol-drugs",
+   "gap-personal-history-trial-exclusions-planned-surgery"
+  ]
+ },
+ {
+  "id": "diabetes-obesity-2025-retatrutide-treatment-obesity-obstruct-4",
+  "title": "Retatrutide for the treatment of obesity, obstructive sleep apnea and knee osteoarthritis: Rationale and design of the TRIUMPH registrational clinical trials",
+  "publisher": "Diabetes, Obesity and Metabolism (Wiley), via Europe PMC (PMC12673447)",
+  "url": "https://doi.org/10.1111/dom.70209",
+  "date": "2025-10-15",
+  "type": "journal",
+  "usedBy": [
+   "gap-personal-history-trial-exclusions-ecg-monitoring-program",
+   "gap-personal-history-trial-exclusions-mental-health-monitoring",
+   "gap-personal-history-trial-exclusions-pregnancy-stops-drug"
+  ]
+ },
+ {
+  "id": "ema-clinical-2026-eu-ctis-trial-record",
+  "title": "EU CTIS trial record 2023-503659-88-00 (TRIUMPH-3), principal exclusion criteria",
+  "publisher": "EMA Clinical Trials Information System (CTIS)",
+  "url": "https://euclinicaltrials.eu/ctis-public/view/2023-503659-88-00",
+  "date": "2026-06-26",
+  "type": "trial-registry",
+  "usedBy": [
+   "gap-personal-history-trial-exclusions-triumph3-surgery-registry-conflict"
+  ]
+ },
+ {
+  "id": "surgical-endoscopy-2024-multi-society-clinical-practice",
+  "title": "Multi-society clinical practice guidance for the safe use of glucagon-like peptide-1 receptor agonists in the perioperative period (Kindel et al., Surg Endosc 2025;39:180-183)",
+  "publisher": "Surgical Endoscopy (Springer) on behalf of AGA, ASMBS, ASA, ISPCOP, SAGES",
+  "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC11666732",
+  "date": "2024-10-29",
+  "type": "journal",
+  "usedBy": [
+   "gap-surgery-pregnancy-practical-guidance-ms2024-who-wrote-it",
+   "gap-surgery-pregnancy-practical-guidance-ms2024-shared-decision",
+   "gap-surgery-pregnancy-practical-guidance-ms2024-risk-escalation",
+   "gap-surgery-pregnancy-practical-guidance-ms2024-risk-weekly",
+   "gap-surgery-pregnancy-practical-guidance-ms2024-risk-symptoms",
+   "gap-surgery-pregnancy-practical-guidance-ms2024-continue-if-low-risk",
+   "gap-surgery-pregnancy-practical-guidance-ms2024-hold-duration-unknown",
+   "gap-surgery-pregnancy-practical-guidance-ms2024-fallback-one-week",
+   "gap-surgery-pregnancy-practical-guidance-ms2024-24h-liquid-diet",
+   "gap-surgery-pregnancy-practical-guidance-ms2024-day-of-check",
+   "gap-surgery-pregnancy-practical-guidance-ms2024-change-plan-or-cancel",
+   "gap-surgery-pregnancy-practical-guidance-ms2024-not-for-triple-agonists"
+  ]
+ },
+ {
+  "id": "american-society-2023-american-society-anesthesiologists-con",
+  "title": "American Society of Anesthesiologists Consensus-Based Guidance on Preoperative Management of Patients (Adults and Children) on Glucagon-Like Peptide-1 (GLP-1) Receptor Agonists",
+  "publisher": "American Society of Anesthesiologists",
+  "url": "https://www.asahq.org/about-asa/newsroom/news-releases/2023/06/american-society-of-anesthesiologists-consensus-based-guidance-on-preoperative",
+  "date": "2023-06-29",
+  "type": "nonprofit",
+  "usedBy": [
+   "gap-surgery-pregnancy-practical-guidance-asa2023-original-rule",
+   "gap-surgery-pregnancy-practical-guidance-asa2023-superseded"
+  ]
+ },
+ {
+  "id": "british-journal-2025-perioperative-management-patients-takin",
+  "title": "Perioperative management of patients taking glucagon-like peptide 1 receptor agonists: SPAQI multidisciplinary consensus statement (Oprea et al., Br J Anaesth 2025;135:48-78)",
+  "publisher": "British Journal of Anaesthesia (Elsevier)",
+  "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC12597468",
+  "date": "2025-05-16",
+  "type": "journal",
+  "usedBy": [
+   "gap-surgery-pregnancy-practical-guidance-spaqi2025-continue",
+   "gap-surgery-pregnancy-practical-guidance-spaqi2025-24h-solids",
+   "gap-surgery-pregnancy-practical-guidance-spaqi2025-clear-drink-timing",
+   "gap-surgery-pregnancy-practical-guidance-spaqi2025-symptoms-refer",
+   "gap-surgery-pregnancy-practical-guidance-spaqi2025-four-to-five-half-lives",
+   "gap-surgery-pregnancy-practical-guidance-spaqi2025-first-4-weeks",
+   "gap-surgery-pregnancy-practical-guidance-spaqi2025-full-stomach-4-weeks",
+   "gap-surgery-pregnancy-practical-guidance-spaqi2025-semaglutide-pause-data",
+   "gap-surgery-pregnancy-practical-guidance-spaqi2025-liquid-vs-clear",
+   "gap-surgery-pregnancy-practical-guidance-inference-surgery-math"
+  ]
+ },
+ {
+  "id": "anaesthesia-wiley-2025-elective-peri-operative-management",
+  "title": "Elective peri-operative management of adults taking GLP-1 receptor agonists, GIP agonists and SGLT-2 inhibitors: a multidisciplinary consensus statement (Anaesthesia 2025;80:412-424)",
+  "publisher": "Anaesthesia (Wiley), for the Association of Anaesthetists, ABCD, BOMSS, CPOC, JBDS-IP, RCoA, SOBA, UKCPA",
+  "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC11885194",
+  "date": "2025-01-09",
+  "type": "journal",
+  "usedBy": [
+   "gap-surgery-pregnancy-practical-guidance-uk2025-continue",
+   "gap-surgery-pregnancy-practical-guidance-uk2025-one-week-not-enough"
+  ]
+ },
+ {
+  "id": "anaesthesia-intensive-2025-2025-ads-anzca-gesa",
+  "title": "2025 ADS/ANZCA/GESA/NACOS clinical practice recommendations on the peri-procedural use of GLP-1/GIP receptor agonists (Anaesth Intensive Care 2025;53:300-306)",
+  "publisher": "Anaesthesia and Intensive Care (SAGE), for ADS, ANZCA, GESA, NACOS",
+  "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC12420935",
+  "date": "2025-08-14",
+  "type": "journal",
+  "usedBy": [
+   "gap-surgery-pregnancy-practical-guidance-anz2025-24h-clear-fluid",
+   "gap-surgery-pregnancy-practical-guidance-anz2025-1-2-weeks-useless",
+   "gap-surgery-pregnancy-practical-guidance-anz2025-no-safe-stop-period",
+   "gap-surgery-pregnancy-practical-guidance-anz2025-full-stomach"
+  ]
+ },
+ {
+  "id": "american-diabetes-2026-16-diabetes-care-hospital",
+  "title": "16. Diabetes Care in the Hospital: Standards of Care in Diabetes-2026 (Diabetes Care 2026;49 Suppl 1:S339-S355)",
+  "publisher": "American Diabetes Association Professional Practice Committee / Diabetes Care",
+  "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC12690180",
+  "date": "2026-01-01",
+  "type": "journal",
+  "usedBy": [
+   "gap-surgery-pregnancy-practical-guidance-ada2026-one-week-insufficient",
+   "gap-surgery-pregnancy-practical-guidance-ada2026-30-days",
+   "gap-surgery-pregnancy-practical-guidance-ada2026-personalized"
+  ]
+ },
+ {
+  "id": "mhra-uk-2025-glp-1-dual-gip",
+  "title": "GLP-1 and dual GIP/GLP-1 receptor agonists: potential risk of pulmonary aspiration during general anaesthesia or deep sedation (Drug Safety Update)",
+  "publisher": "MHRA (UK Medicines and Healthcare products Regulatory Agency)",
+  "url": "https://www.gov.uk/drug-safety-update/glp-1-and-dual-gip-slash-glp-1-receptor-agonists-potential-risk-of-pulmonary-aspiration-during-general-anaesthesia-or-deep-sedation",
+  "date": "2025-01-28",
+  "type": "regulator",
+  "usedBy": [
+   "gap-surgery-pregnancy-practical-guidance-mhra-dsu-no-pause-time",
+   "gap-surgery-pregnancy-practical-guidance-mhra-smpc-no-withholding",
+   "gap-surgery-pregnancy-practical-guidance-mhra-may-not-disclose"
+  ]
+ },
+ {
+  "id": "rapid-communications-2026-detection-excretion-profile-retatr",
+  "title": "Detection and Excretion Profile of Retatrutide in Human Plasma and Urine by LC-HRMS: Implications for Antidoping Analysis (Rapid Commun Mass Spectrom 2026;40:e70179)",
+  "publisher": "Rapid Communications in Mass Spectrometry (Wiley)",
+  "url": "https://pubmed.ncbi.nlm.nih.gov/42745421",
+  "date": "2026-12-15",
+  "type": "journal",
+  "usedBy": [
+   "gap-surgery-pregnancy-practical-guidance-reta-detectable-56-days"
+  ]
+ },
+ {
+  "id": "therapeutics-clinical-2026-medication-safety-perioperative-r",
+  "title": "Medication Safety and Perioperative Risk Management of GLP-1 Receptor Agonists: A Pharmacist-Led Framework (Shen et al., Ther Clin Risk Manag 2026;22:623743), Table 1, citing Urva et al. Diabetes Obes Metab 2023;25:2784-2788",
+  "publisher": "Therapeutics and Clinical Risk Management (Dove Medical Press)",
+  "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC13523872",
+  "date": "2026-08-24",
+  "type": "journal",
+  "usedBy": [
+   "gap-surgery-pregnancy-practical-guidance-reta-delays-gastric-emptying",
+   "gap-surgery-pregnancy-practical-guidance-reta-no-cessation-interval",
+   "gap-surgery-pregnancy-practical-guidance-pk-cannot-prove-stomach-normal"
+  ]
+ },
+ {
+  "id": "clinicaltrials-gov-2024-phase-1-study-investigate",
+  "title": "A Phase 1 Study to Investigate the Effect of LY3437943 on the Pharmacokinetics of the Combined Oral Contraceptive Ethinyl Estradiol and Drospirenone in Female Participants (NCT06039826)",
+  "publisher": "ClinicalTrials.gov (sponsor: Eli Lilly and Company)",
+  "url": "https://clinicaltrials.gov/study/NCT06039826",
+  "date": "2024-07-26",
+  "type": "trial-registry",
+  "usedBy": [
+   "gap-surgery-pregnancy-practical-guidance-reta-oc-ddi-study-exists",
+   "gap-surgery-pregnancy-practical-guidance-reta-oc-ddi-no-results"
+  ]
+ },
+ {
+  "id": "clinicaltrials-gov-2025-phase-1-open-label",
+  "title": "A Phase 1, Open-label, Single-arm Study to Investigate the Effect of Retatrutide on Metoprolol Pharmacokinetics in Healthy Participants (NCT06808802)",
+  "publisher": "ClinicalTrials.gov (sponsor: Eli Lilly and Company)",
+  "url": "https://clinicaltrials.gov/study/NCT06808802",
+  "date": "2025-06-05",
+  "type": "trial-registry",
+  "usedBy": [
+   "gap-surgery-pregnancy-practical-guidance-reta-metoprolol-ddi"
+  ]
+ },
+ {
+  "id": "european-medicines-2026-mounjaro-tirzepatide",
+  "title": "Mounjaro (tirzepatide) - EPAR Product Information (SmPC section 4.5)",
+  "publisher": "European Medicines Agency",
+  "url": "https://www.ema.europa.eu/en/documents/product-information/mounjaro-epar-product-information_en.pdf",
+  "date": "accessed 2026-10-08",
+  "type": "label",
+  "usedBy": [
+   "gap-surgery-pregnancy-practical-guidance-ema-oc-not-clinically-relevant",
+   "gap-surgery-pregnancy-practical-guidance-ema-tirzepatide-1-month"
+  ]
+ },
+ {
+  "id": "therapeutic-goods-2026-concerns-regarding-public-health",
+  "title": "Concerns regarding the public health risks associated with unapproved peptide products (joint TGA/CMO statement)",
+  "publisher": "Therapeutic Goods Administration and Australia's Chief Medical Officer",
+  "url": "https://www.tga.gov.au/news/media-releases/concerns-regarding-public-health-risks-associated-unapproved-peptide-products",
+  "date": "2026-06-19",
+  "type": "regulator",
+  "usedBy": [
+   "gap-gray-contaminant-sterility-data-tga-harms-reported",
+   "gap-gray-contaminant-sterility-data-tga-sterility-unknown"
+  ]
+ },
+ {
+  "id": "therapeutic-goods-2026-peptide-products-topic-page",
+  "title": "Peptide products (topic page) / Risks of buying peptide products online",
+  "publisher": "Therapeutic Goods Administration (Australia)",
+  "url": "https://www.tga.gov.au/resources/explore-topic/peptide-products",
+  "date": "2026-09-23",
+  "type": "regulator",
+  "usedBy": [
+   "gap-gray-contaminant-sterility-data-tga-no-assurance-sterile",
+   "gap-gray-contaminant-sterility-data-tga-no-cluster-test-published"
+  ]
+ },
+ {
+  "id": "america-s-2025-glucagon-like-peptide-1",
+  "title": "Glucagon-like Peptide-1 (GLP-1) Agonists - Track Emerging Hazards",
+  "publisher": "America's Poison Centers",
+  "url": "https://poisoncenters.org/track/GLP-1",
+  "date": "2025-04-30",
+  "type": "nonprofit",
+  "usedBy": [
+   "gap-gray-contaminant-sterility-data-apc-glp1-page-no-retatrutide"
+  ]
+ },
+ {
+  "id": "america-s-2026-news-alerts",
+  "title": "News & Alerts",
+  "publisher": "America's Poison Centers",
+  "url": "https://poisoncenters.org/news-alerts",
+  "date": "2026-07-08",
+  "type": "nonprofit",
+  "usedBy": [
+   "gap-gray-contaminant-sterility-data-apc-no-peptide-advisory"
+  ]
+ }
+]

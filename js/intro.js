@@ -2,6 +2,9 @@
 //
 // export function mountIntro(host /* #intro */, { reducedMotion, onEnter, onFacts }) → { dispose() }
 //
+// dispose() stops the loop, frees every GPU resource, calls renderer.dispose() + forceContextLoss() and
+// removes the canvas, so the 3D body never shares the GPU with a second live WebGL context.
+//
 // The DOM (title, sub, buttons, note, skip) is written by index.html. This module:
 //   - renders a WebGL scene into #intro-canvas-host (procedural glowing vasculature with flowing blood
 //     cells, the realistic syringe from ./scene/syringe.js, a drop at the needle tip, bloom, grade),
@@ -20,7 +23,13 @@
 //           focus racks from the vessels to the syringe
 //   7.6–11  kicker, title (tracking in), sub, buttons, note
 //   12+     idle loop: slow drift, flow continues
-// Reduced motion: one composed still, everything visible at once, no camera moves.
+// Reduced motion: one composed still, everything visible at once, no camera moves. It follows
+// opts.reducedMotion at mount and then the bus event motion:change { reducedMotion } (main.js), so the
+// header toggle or an OS setting change switches between the still and the idle loop without a reload.
+// Performance: no allocations in the frame loop; the loop pauses while the tab is hidden and stops for good
+// ~1.2 s after leaving (or at once on dispose).
+
+import { bus } from './bus.js';
 
 const STAGES = [
   ['hud', 0.45], ['kicker', 7.7], ['title', 8.0], ['sub', 9.3], ['actions', 10.2], ['note', 10.8], ['idle', 12.0],
@@ -29,6 +38,10 @@ const STILL_T = 12.6;          // composed frame used for reduced motion
 const LATE_START_T = 9.4;      // where the 3D starts if it arrives after the text was already shown
 const TEXT_DEADLINE_MS = 4500; // show the text anyway if the 3D sequence has not started by then
 const HEART_PERIOD = 60 / 62;  // resting heart rhythm, ~62 per minute
+const KEY_INTENSITY = 0.95;    // front key on the syringe: white plastic reads white, stays under the bloom threshold
+const FILL_INTENSITY = 0.52;   // ambient fill (only lit materials: the syringe and the drop)
+const BLOOM_THRESHOLD = 0.8;   // only light sources (vessels, cells, glints, the bevel flash) bloom; lit plastic does not
+const BEVEL_INTENSITY = 0.3;   // bevel light, as illuminance at the tip (a polished facet needs very little)
 
 const PARTS = [
   ['kicker', '.intro-kicker'],
@@ -43,7 +56,7 @@ export function mountIntro(host, opts = {}) {
   if (!host || typeof host.querySelector !== 'function') return noop;
 
   const { onEnter, onFacts } = opts;
-  const reducedMotion = !!opts.reducedMotion;
+  let reducedMotion = typeof opts.reducedMotion === 'boolean' ? opts.reducedMotion : prefersReducedMotion();
   const debug = opts.debug || null; // dev only: { t: seconds, freeze: bool }
 
   const $ = (sel) => host.querySelector(sel);
@@ -87,7 +100,8 @@ export function mountIntro(host, opts = {}) {
     stageDone.add(name);
     host.classList.add(`intro--s-${name}`);
   }
-  function revealAll() { for (const [name] of STAGES) setStage(name); }
+  function revealAll() { for (let i = 0; i < STAGES.length; i++) setStage(STAGES[i][0]); nextStage = STAGES.length; }
+  let nextStage = 0; // index of the next stage the 3D clock has to reach (no per-frame iteration)
   if (reducedMotion) revealAll();
 
   // ---------------------------------------------------------------- buttons + keys
@@ -120,6 +134,18 @@ export function mountIntro(host, opts = {}) {
   });
   // Keyboard users get everything at once (no waiting for the reveal to reach the buttons).
   on(host, 'focusin', (e) => { if (e.target && e.target !== skipBtn) revealAll(); });
+
+  // Live motion preference (header toggle, OS setting): still frame ⇄ idle loop, never a restart.
+  function setReducedMotion(rm) {
+    rm = !!rm;
+    if (rm === reducedMotion || leaving || disposed) return;
+    reducedMotion = rm;
+    host.classList.toggle('intro--still', rm);
+    host.classList.remove('intro--seq');
+    revealAll();
+    gl?.setReducedMotion(rm);
+  }
+  cleanups.push(bus.on('motion:change', (d) => setReducedMotion(d && d.reducedMotion)));
 
   // Show the text even if WebGL is slow or missing.
   if (!reducedMotion) {
@@ -161,7 +187,7 @@ export function mountIntro(host, opts = {}) {
         host.classList.add('intro--playing');
       },
       onTime(t) {
-        for (const [name, at] of STAGES) if (t >= at) setStage(name);
+        while (nextStage < STAGES.length && t >= STAGES[nextStage][1]) setStage(STAGES[nextStage++][0]);
       },
       lateStart: () => (lateText ? LATE_START_T : 0),
     });
@@ -220,7 +246,8 @@ function buildHud() {
 function createRuntime(mods, cfg) {
   const t0 = performance.now();
   const { THREE, EffectComposer, RenderPass, UnrealBloomPass, Pass, FullScreenQuad, createSyringe } = mods;
-  const { canvasHost, reducedMotion, debug } = cfg;
+  const { canvasHost, debug } = cfg;
+  let reducedMotion = cfg.reducedMotion;
   const V3 = THREE.Vector3;
 
   // ---------------------------------------------------------------- renderer
@@ -304,7 +331,13 @@ function createRuntime(mods, cfg) {
 
   const rim = new THREE.DirectionalLight(0xffffff, 0);
   const rim2 = new THREE.DirectionalLight(0xbfe9ff, 0);
-  scene.add(rim, rim.target, rim2, rim2.target);
+  // soft key from the camera's upper left: white plastic reads as white plastic, the ink reads
+  const key = new THREE.DirectionalLight(0xf7f8fa, 0);
+  // a small light placed on the bevel's mirror direction, so the ground facet flashes like real steel
+  const bevelLight = new THREE.PointLight(0xffffff, 0, 1, 2);
+  // the studio environment is black between its strips: a little ambient keeps the plastic's shadow side white
+  const fill = new THREE.AmbientLight(0xffffff, 0);
+  scene.add(rim, rim.target, rim2, rim2.target, key, key.target, bevelLight, fill);
 
   const dropMat = new THREE.MeshPhysicalMaterial({
     color: 0xffffff, roughness: 0.02, metalness: 0, transmission: 1, ior: 1.333, thickness: 1.6,
@@ -339,14 +372,15 @@ function createRuntime(mods, cfg) {
   composer.setPixelRatio(pixelRatio);
   composer.setSize(W, H);
   composer.addPass(new RenderPass(scene, camera));
-  const bloom = new UnrealBloomPass(new THREE.Vector2(W * pixelRatio, H * pixelRatio), 0.9, 0.55, 0.5);
+  const bloom = new UnrealBloomPass(new THREE.Vector2(W * pixelRatio, H * pixelRatio), 0.9, 0.55, BLOOM_THRESHOLD);
   composer.addPass(bloom); // UnrealBloomPass already works at half resolution internally
   const finalPass = makeFinalPass(THREE, Pass, FullScreenQuad);
   composer.addPass(finalPass);
 
   // ---------------------------------------------------------------- choreography
+  const tmp = { v: new V3(), v2: new V3(), v3: new V3(), q: new THREE.Quaternion(), m: new THREE.Matrix4() };
+  const BEVEL_N = new V3(0, -1, 1 / Math.tan(THREE.MathUtils.degToRad(12))).normalize(); // syringe.js lancet facet
   let layout = computeLayout();
-  const tmp = { v: new V3(), v2: new V3(), q: new THREE.Quaternion(), m: new THREE.Matrix4() };
 
   function computeLayout() {
     const aspect = W / H;
@@ -401,16 +435,28 @@ function createRuntime(mods, cfg) {
     const enterQuat = new THREE.Quaternion().setFromAxisAngle(fwd, -0.42).multiply(finalQuat.clone());
     const blur = tall ? 0.6 : 1;
     const light = tall ? 0.6 : 1;
-    return { aspect, tall, blur, light, fov, fov0, P0, dist0, Pf, Tf, path, M, C, anchor, scale, finalQuat, enterOffset, enterQuat, right, up, fwd, D };
+    const keyK = tall ? 0.8 : 1; // phones: the same bloom covers relatively more of a small frame
+    return { aspect, tall, blur, light, keyK, fov, fov0, P0, dist0, Pf, Tf, path, M, C, anchor, scale, finalQuat, enterOffset, enterQuat, right, up, fwd, D };
   }
 
-  // rim lights sit behind the syringe relative to the final camera
+  // rim lights sit behind the syringe relative to the final camera; the key sits in front
   function placeLights() {
     const L = layout;
     rim.position.copy(L.anchor).addScaledVector(L.right, 3.2).addScaledVector(L.up, 0.6).addScaledVector(L.fwd, 4.5);
     rim.target.position.copy(L.anchor);
     rim2.position.copy(L.anchor).addScaledVector(L.right, -3).addScaledVector(L.up, -0.5).addScaledVector(L.fwd, 3.5);
     rim2.target.position.copy(L.anchor);
+    key.position.copy(L.anchor).addScaledVector(L.right, -2.6).addScaledVector(L.up, 3.2).addScaledVector(L.fwd, -4.5);
+    key.target.position.copy(L.anchor);
+    // bevel: tip and facet normal in the final pose, light along the mirror of the view direction
+    const tipW = tmp.v.copy(syr.tip).add(tmp.v2.set(0, syr.group.position.y, 0)).multiplyScalar(L.scale).applyQuaternion(L.finalQuat).add(L.anchor);
+    const n = tmp.v2.copy(BEVEL_N).applyQuaternion(L.finalQuat);
+    const view = tmp.v3.copy(L.Pf).sub(tipW).normalize();
+    const mirror = view.multiplyScalar(-1).reflect(n).normalize(); // reflect(-V, N)
+    const reach = 0.004 * L.scale;                                  // 4 mm from the tip, in world units
+    bevelLight.position.copy(tipW).addScaledVector(mirror, reach);
+    bevelLight.distance = reach * 2.2;                              // never reaches the hub (12.7 mm up)
+    bevelLight.userData.reach = reach;
   }
   placeLights();
 
@@ -515,6 +561,10 @@ function createRuntime(mods, cfg) {
     scene.environmentIntensity = 0.14 * kRim + 0.9 * kLight;
     rim.intensity = (1.0 * kRim + 0.6 * kLight) * L.light;
     rim2.intensity = (0.5 * kRim + 0.4 * kLight) * L.light;
+    key.intensity = KEY_INTENSITY * kLight * L.keyK;
+    fill.intensity = FILL_INTENSITY * kLight;
+    const reach = bevelLight.userData.reach || 1;
+    bevelLight.intensity = BEVEL_INTENSITY * reach * reach * E.smooth(seg(t, 6.0, 8.4));
     syr.setGlow(0.5 * E.smooth(seg(t, 6.2, 9.0)));
     syringeRoot.updateMatrixWorld(true);
 
@@ -616,11 +666,11 @@ function createRuntime(mods, cfg) {
       W = s.w; H = s.h;
       renderer.setSize(W, H, false);
       composer.setSize(W, H);
+      layout = computeLayout();
       camera.aspect = W / H;
-      camera.fov = computeLayout().fov;
+      camera.fov = layout.fov;
       camera.updateProjectionMatrix();
       shared.uRes.value.set(W * pixelRatio, H * pixelRatio);
-      layout = computeLayout();
       placeLights();
       if (reducedMotion || !running) renderStill();
     });
@@ -704,9 +754,28 @@ function createRuntime(mods, cfg) {
       exitAt = clock;
     },
     stop() { pause(); stopped = true; },
+    setReducedMotion(rm) {
+      reducedMotion = !!rm;
+      if (stopped) return;
+      if (reducedMotion) {
+        pause();
+        clock = STILL_T;
+        renderStill();
+      } else {
+        clock = Math.max(clock, STILL_T);
+        if (!document.hidden) play();
+      }
+    },
     dispose,
     state: () => ({ started, ready, firstFrameMs: Math.round(firstFrameMs), setupMs: Math.round(setupMs), envMs: Math.round(tEnv), netMs: Math.round(tNet), readyMs: Math.round(readyMs), clock, running, reveal: shared.uReveal.value, maxReveal: net.maxReveal, vessels: net.vessels.length, focus: shared.uFocus.value }),
   };
+}
+
+function prefersReducedMotion() {
+  const m = document.documentElement.dataset.motion;
+  if (m === 'reduce') return true;
+  if (m === 'full') return false;
+  try { return matchMedia('(prefers-reduced-motion: reduce)').matches; } catch { return false; }
 }
 
 function easeOutBack(x) {

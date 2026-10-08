@@ -519,7 +519,8 @@
 /* ------------------------------------------------------------------ effects */
 .fx { container-type: inline-size; }
 @container (max-width: 340px) {
-  .fx-row { grid-template-columns: minmax(0, 1fr); gap: 0; }
+  /* (.fx .fx-row: the base .fx-row rule comes later in this file and would otherwise win) */
+  .fx .fx-row { grid-template-columns: minmax(0, 1fr); gap: 0; }
 }
 .fx-head { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 10px; }
 .fx-eyebrow { flex: 1 1 auto; }

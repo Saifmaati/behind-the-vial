@@ -10,6 +10,9 @@
 //   anatomy.highlight(organId, { color, intensity, pulse, channel }); anatomy.unhighlight(organId, { channel })
 //   anatomy.clearHighlights(channel?); anatomy.setFocus(organId | null); anatomy.organCenter(organId) → Vector3
 //   anatomy.selectSite(site | null); anatomy.siteFrame(site) → { point, normal, tangent, bitangent }
+//   anatomy.setSkinCut(center | null, radius, amount, planeNormal?) — section window for the injection
+//   close-up (skin and vessel walls on the camera side of the plane fade, with a contour line)
+//   anatomy.setIsolate(bool); anatomy.setHotspotsVisible(bool); anatomy.setHoverSite(site | null)
 //
 // Highlight channels, strongest first: risk > effect > focus > arrival > default; 'drug' is a cyan
 // underlay that the other channels sit on top of.
@@ -43,7 +46,7 @@ const SITE_LABELS = { abdomen: 'Abdomen', thigh: 'Thigh', arm: 'Upper arm' };
 
 const THEME = {
   dark: {
-    skin: { core: 0x14566e, rim: 0x8fe8ff, coreAlpha: 0.03, rimAlpha: 0.78, rimPower: 2.3, intensity: 1.7, scan: 0xa6f3ff, scanAmt: 1, contour: 0.16, additive: true },
+    skin: { core: 0x14566e, rim: 0x8fe8ff, coreAlpha: 0.03, rimAlpha: 0.78, rimPower: 2.3, intensity: 1.7, scan: 0xa6f3ff, scanAmt: 1, contour: 0.16, additive: true, cutLine: 0xd6fbff },
     artery: { core: 0xff5a55, rim: 0xff8c80, coreAlpha: 0.24, rimAlpha: 0.7, rimPower: 1.7, intensity: 1.2, additive: true },
     vein: { core: 0x4d72ff, rim: 0x93acff, coreAlpha: 0.24, rimAlpha: 0.7, rimPower: 1.7, intensity: 1.15, additive: true },
     bone: { core: 0xd9d2c0, rim: 0xf2ecdc, coreAlpha: 0.012, rimAlpha: 0.2, rimPower: 2.2, intensity: 0.9, additive: true },
@@ -54,7 +57,7 @@ const THEME = {
     anchorAdditive: true,
   },
   light: {
-    skin: { core: 0x5d8599, rim: 0x0a3046, coreAlpha: 0.035, rimAlpha: 0.85, rimPower: 2.5, intensity: 1.0, scan: 0x0a6f82, scanAmt: 0.55, contour: 0.14, additive: false },
+    skin: { core: 0x5d8599, rim: 0x0a3046, coreAlpha: 0.035, rimAlpha: 0.85, rimPower: 2.5, intensity: 1.0, scan: 0x0a6f82, scanAmt: 0.55, contour: 0.14, additive: false, cutLine: 0x063a52 },
     artery: { core: 0xc8323e, rim: 0x8e1a26, coreAlpha: 0.55, rimAlpha: 0.55, rimPower: 1.4, intensity: 1.0, additive: false },
     vein: { core: 0x3159d0, rim: 0x1c3a96, coreAlpha: 0.5, rimAlpha: 0.55, rimPower: 1.4, intensity: 1.0, additive: false },
     bone: { core: 0x8d8473, rim: 0x5c5546, coreAlpha: 0.02, rimAlpha: 0.2, rimPower: 2.0, intensity: 1.0, additive: false },
@@ -82,7 +85,7 @@ const FRESNEL_FRAG = /* glsl */`
   uniform vec3 uCore; uniform vec3 uRim; uniform vec3 uScanColor; uniform vec3 uTint;
   uniform float uCoreAlpha; uniform float uRimAlpha; uniform float uRimPower; uniform float uIntensity;
   uniform float uOpacity; uniform float uScanY; uniform float uScanAmt; uniform float uContour; uniform float uTintAmt;
-  uniform vec4 uCut; uniform float uCutAmt;
+  uniform vec4 uCut; uniform float uCutAmt; uniform vec3 uCutN; uniform vec3 uCutLine; uniform float uCutLineAmt;
   varying vec3 vWorld;
   varying vec3 vNormalW;
   void main() {
@@ -111,8 +114,26 @@ const FRESNEL_FRAG = /* glsl */`
       a += uTintAmt * 0.18 * (0.3 + fr);
     }
     if (uCutAmt > 0.0) {
-      float dc = distance(vWorld, uCut.xyz);
-      a *= mix(1.0, smoothstep(uCut.w * 0.5, uCut.w, dc), uCutAmt);
+      // Section cut for the injection close-up: within uCut.w of the site, everything on the camera
+      // side of the section plane (normal uCutN) is removed, and a fine contour marks where the shell
+      // meets the plane. With no plane normal it falls back to a round window.
+      vec3 dp = vWorld - uCut.xyz;
+      float dc = length(dp);
+      if (dot(uCutN, uCutN) > 0.25) {
+        // a window: within uCut.w of the site, measured in the section plane, the shell on the camera
+        // side is removed however far toward the camera it is; outside the window the body stays whole
+        float sd = dot(dp, uCutN);
+        float dpl = length(dp - uCutN * sd);
+        float inR = 1.0 - smoothstep(uCut.w * 0.7, uCut.w, dpl);
+        a *= 1.0 - uCutAmt * inR * smoothstep(-0.0025, 0.0025, sd);
+        float fw = max(fwidth(sd), 1e-5);
+        float near = 1.0 - smoothstep(uCut.w * 0.45, uCut.w * 0.95, dpl); // the contour frames the window
+        float line = (1.0 - smoothstep(0.35 * fw, 1.4 * fw + 0.0003, abs(sd))) * near * uCutLineAmt * uCutAmt;
+        col = mix(col, uCutLine, clamp(line, 0.0, 1.0) * 0.8);
+        a = max(a, line * 0.5);
+      } else {
+        a *= mix(1.0, smoothstep(uCut.w * 0.5, uCut.w, dc), uCutAmt);
+      }
     }
     gl_FragColor = vec4(col * uIntensity, clamp(a, 0.0, 1.0) * uOpacity);
   }`;
@@ -125,6 +146,7 @@ function makeFresnelMaterial() {
       uCoreAlpha: { value: 0.03 }, uRimAlpha: { value: 0.7 }, uRimPower: { value: 2 }, uIntensity: { value: 1 },
       uOpacity: { value: 1 }, uScanY: { value: -1 }, uScanAmt: { value: 0 }, uContour: { value: 0 },
       uCut: { value: new THREE.Vector4(0, -10, 0, 0.05) }, uCutAmt: { value: 0 },
+      uCutN: { value: new THREE.Vector3() }, uCutLine: { value: new THREE.Color() }, uCutLineAmt: { value: 0 },
     },
     vertexShader: FRESNEL_VERT,
     fragmentShader: FRESNEL_FRAG,
@@ -775,9 +797,12 @@ const HOTSPOT_FRAG = /* glsl */`
     float ang = atan(p.y, p.x);
     float tick = step(0.985, abs(cos(ang * 2.0))) * step(0.6, r) * (1.0 - step(0.74, r));
     a += tick * uSel * 0.9;
-    a += exp(-r * r * 9.0) * (0.14 + 0.12 * uSel + 0.18 * uHover);
-    a *= smoothstep(-0.3, 0.2, vFacing) * uOpacity * (1.0 - smoothstep(0.92, 1.0, r));
-    gl_FragColor = vec4(uColor * (1.05 + uSel * 0.35 + uHover * 0.3), clamp(a, 0.0, 1.0));
+    // soft fill: the selected site keeps only a faint one, so the reticle stays crisp instead of
+    // blooming into a white disc over the organs behind it (integration fix)
+    a += exp(-r * r * 9.0) * (0.14 * (1.0 - 0.65 * uSel) + 0.16 * uHover);
+    // seen through the translucent body when it faces away; gone once it is on the far side
+    a *= smoothstep(-0.6, 0.1, vFacing) * uOpacity * (1.0 - smoothstep(0.92, 1.0, r));
+    gl_FragColor = vec4(uColor * (1.0 + uSel * 0.08 + uHover * 0.25), clamp(a, 0.0, 1.0) * (1.0 - 0.25 * uSel));
   }`;
 const HOTSPOT_VERT = /* glsl */`
   varying vec2 vUv; varying float vFacing;
@@ -972,7 +997,7 @@ export async function loadAnatomy(stage, { source = 'auto', base } = {}) {
   for (const id of ORGAN_IDS) organState[id] = mkState(id);
 
   const anchorIds = ['fat', 'injection_site', 'muscle', 'eyes', 'eyes', 'blood', 'skin'];
-  const anchorSizes = [0.07, 0.06, 0.09, 0.045, 0.045, 0.1, 0.08];
+  const anchorSizes = [0.065, 0.05, 0.08, 0.045, 0.045, 0.09, 0.07];
   const anchorGeo = new THREE.BufferGeometry();
   const aPos = new Float32Array(anchorIds.length * 3);
   const aCol = new Float32Array(anchorIds.length * 3);
@@ -1031,7 +1056,8 @@ export async function loadAnatomy(stage, { source = 'auto', base } = {}) {
     });
     const ring = new THREE.Mesh(new THREE.PlaneGeometry(0.1, 0.1), mat);
     ring.renderOrder = 13;
-    const hit = new THREE.Mesh(new THREE.CircleGeometry(0.045, 24), new THREE.MeshBasicMaterial({ visible: false }));
+    // double-sided so the ring can be picked through the see-through body (e.g. the back of the arm)
+    const hit = new THREE.Mesh(new THREE.CircleGeometry(0.045, 24), new THREE.MeshBasicMaterial({ visible: false, side: THREE.DoubleSide }));
     hit.userData.site = s;
     g.add(ring, hit);
     g.userData = { site: s, mat, sel: 0, selTarget: 0, hover: 0, base: 1 };
@@ -1045,10 +1071,14 @@ export async function loadAnatomy(stage, { source = 'auto', base } = {}) {
 
   // ---------------------------------------------------------------- landmarks helpers
   const centerCache = {};
+  const fatRoute = usingGLB ? landmarks.paths?.to_fat : null;
   function organCenter(id) {
+    // 'fat' on the real anatomy is where its artery route ends (subcutaneous fat of the lower belly),
+    // so the arrival glow and the label sit where the drug particles stop.
+    if (id === 'fat' && fatRoute?.length) return V(fatRoute[fatRoute.length - 1]);
     if (id === 'injection_site' || id === 'fat') {
       const f = siteFrames[selectedSite || 'abdomen'] || siteFrames.abdomen;
-      if (f) return f.point.clone().addScaledVector(f.normal, id === 'fat' ? -0.011 : 0);
+      if (f) return f.point.clone().addScaledVector(f.normal, id === 'fat' ? -0.011 : -0.004);
     }
     if (!centerCache[id]) {
       const o = landmarks.organs?.[id];
@@ -1085,6 +1115,7 @@ export async function loadAnatomy(stage, { source = 'auto', base } = {}) {
   function applyTheme(theme) {
     T = THEME[theme] || THEME.dark;
     applyFresnelTheme(skinMat, T.skin, { scan: true, contour: true });
+    skinMat.uniforms.uCutLine.value.setHex(T.skin.cutLine ?? T.skin.rim);
     applyFresnelTheme(arteryMat, T.artery);
     applyFresnelTheme(veinMat, T.vein);
     applyFresnelTheme(boneMat, T.bone);
@@ -1157,12 +1188,22 @@ export async function loadAnatomy(stage, { source = 'auto', base } = {}) {
   function setHoverSite(site) { hoverSite = site || null; }
   function setHotspotsVisible(on) { hotspotsVisible = !!on; }
 
-  // Skin "window" around the injection site (the tissue block shows through).
-  function setSkinCut(center, radius = 0.05, amount = 1) {
-    const u = skinMat.uniforms;
-    if (!center) { u.uCutAmt.value = 0; return; }
-    u.uCut.value.set(center.x, center.y, center.z, radius);
-    u.uCutAmt.value = amount;
+  // Section cut at the injection site (the tissue block is the cut face): skin and vessel walls on the
+  // camera side of the plane through `center` with normal `planeNormal` fade out within `radius`; the
+  // skin gets a fine contour where it meets the plane. Without a normal it is a round window.
+  function setSkinCut(center, radius = 0.05, amount = 1, planeNormal = null) {
+    // While cut open, the skin is drawn double-sided so the far half of the limb or belly still reads
+    // as a shell around the block (seen from inside) instead of vanishing.
+    const side = center && amount > 0 && planeNormal ? THREE.DoubleSide : THREE.FrontSide;
+    if (skinMat.side !== side) { skinMat.side = side; skinMat.needsUpdate = true; }
+    for (const m of [skinMat, arteryMat, veinMat, boneMat]) {
+      const u = m.uniforms;
+      if (!center || amount <= 0) { u.uCutAmt.value = 0; continue; }
+      u.uCut.value.set(center.x, center.y, center.z, radius);
+      if (planeNormal) u.uCutN.value.copy(planeNormal); else u.uCutN.value.set(0, 0, 0);
+      u.uCutAmt.value = amount;
+      u.uCutLineAmt.value = m === skinMat ? 1 : 0;
+    }
   }
 
   // ---------------------------------------------------------------- per-frame
@@ -1229,10 +1270,14 @@ export async function loadAnatomy(stage, { source = 'auto', base } = {}) {
         const base = T.organ.emissiveBase;
         const bc = m.userData.baseColor;
         m.emissive.setRGB(bc.r * base + r, bc.g * base + g, bc.b * base + b);
-        // let warnings read on the surface colour too (matters most in the light theme)
+        // let warnings (and, more gently, the drug arriving) read on the surface colour too; this
+        // matters most in the light theme, where emissive light barely shows
         const warnTop = top && (top === st.slots.risk || top === st.slots.effect);
-        const tint = warnTop ? Math.min(T.tintMax, top.intensity * T.tintGain * pulseK(top, t)) : 0;
-        if (tint > 0) m.color.copy(bc).lerp(top.color, tint); else m.color.copy(bc);
+        let tint = 0, tintColor = null;
+        if (warnTop) { tint = Math.min(T.tintMax, top.intensity * T.tintGain * pulseK(top, t)); tintColor = top.color; }
+        else if (top === st.slots.arrival) { tint = Math.min(0.5, top.intensity * 0.42); tintColor = top.color; }
+        else if (st.drug.on) { tint = Math.min(0.4, st.drug.intensity * 0.5); tintColor = st.drug.color; }
+        if (tint > 0) m.color.copy(bc).lerp(tintColor, tint); else m.color.copy(bc);
       }
     }
     // anchors
@@ -1244,7 +1289,7 @@ export async function loadAnatomy(stage, { source = 'auto', base } = {}) {
       aCol[i * 3] = o.r * inv;
       aCol[i * 3 + 1] = o.g * inv;
       aCol[i * 3 + 2] = o.b * inv;
-      aAlpha[i] = a * (T.anchorAdditive ? 0.32 : 0.55);
+      aAlpha[i] = a * (T.anchorAdditive ? 0.24 : 0.55); // additive glows stay below a white bloom blow-out
     }
     anchorGeo.attributes.aColor.needsUpdate = true;
     anchorGeo.attributes.aAlpha.needsUpdate = true;

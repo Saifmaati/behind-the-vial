@@ -100,22 +100,22 @@ const LINE_FRAG = /* glsl */`
     float core = abs(dot(normalize(vN), v));
     float drug = clamp(uDrug + uActive, 0.0, 1.0);
     vec3 col = mix(uColor, uDrugColor, drug);
-    float a = uAlpha * (0.4 + 0.6 * core) * (0.55 + 0.45 * wave) + uActive * (0.3 + 0.4 * wave) * core + uDrug * 0.22 * core;
-    gl_FragColor = vec4(col * (1.0 + uActive * 0.6 + wave * 0.3), clamp(a, 0.0, 1.0) * uOpacity);
+    float a = uAlpha * (0.4 + 0.6 * core) * (0.55 + 0.45 * wave) + uActive * (0.16 + 0.24 * wave) * core + uDrug * 0.22 * core;
+    gl_FragColor = vec4(col * (1.0 + uActive * 0.25 + wave * 0.3), clamp(a, 0.0, 1.0) * uOpacity);
   }`;
 
 const DRUG_VERT = /* glsl */`
   attribute float aAlpha; attribute float aSize;
-  uniform float uScale;
+  uniform float uScale; uniform float uSizeK;
   varying float vAlpha;
   void main() {
     vAlpha = aAlpha;
     vec4 mv = modelViewMatrix * vec4(position, 1.0);
     gl_Position = projectionMatrix * mv;
-    gl_PointSize = aAlpha > 0.0 ? clamp(aSize * uScale / -mv.z, 1.5, 40.0) : 0.0;
+    gl_PointSize = aAlpha > 0.0 ? clamp(aSize * uSizeK * uScale / -mv.z, 1.5, 18.0 * uSizeK) : 0.0;
   }`;
 const DRUG_FRAG = /* glsl */`
-  uniform vec3 uColor; uniform float uOpacity; uniform float uCore;
+  uniform vec3 uColor; uniform float uOpacity; uniform float uCore; uniform float uAlphaK;
   varying float vAlpha;
   void main() {
     vec2 c = gl_PointCoord * 2.0 - 1.0;
@@ -123,7 +123,7 @@ const DRUG_FRAG = /* glsl */`
     if (r2 > 1.0) discard;
     float glow = exp(-r2 * 3.5);
     vec3 col = uColor * (0.75 + uCore * exp(-r2 * 14.0));
-    gl_FragColor = vec4(col, glow * vAlpha * uOpacity * 0.62);
+    gl_FragColor = vec4(col, min(1.0, glow * vAlpha * uOpacity * uAlphaK));
   }`;
 
 export function createVessels(stage, anatomy) {
@@ -262,12 +262,12 @@ export function createVessels(stage, anatomy) {
   const dPos = new Float32Array(NP * 3);
   const dAlpha = new Float32Array(NP);
   const dSize = new Float32Array(NP);
-  for (let i = 0; i < MAXP; i++) for (let k = 0; k < TRAIL; k++) dSize[i * TRAIL + k] = [0.0085, 0.0066, 0.0052, 0.004][k];
+  for (let i = 0; i < MAXP; i++) for (let k = 0; k < TRAIL; k++) dSize[i * TRAIL + k] = [0.0058, 0.0046, 0.0037, 0.003][k];
   dGeo.setAttribute('position', new THREE.BufferAttribute(dPos, 3).setUsage(THREE.DynamicDrawUsage));
   dGeo.setAttribute('aAlpha', new THREE.BufferAttribute(dAlpha, 1).setUsage(THREE.DynamicDrawUsage));
   dGeo.setAttribute('aSize', new THREE.BufferAttribute(dSize, 1));
   const dMat = new THREE.ShaderMaterial({
-    uniforms: { uColor: { value: new THREE.Color() }, uOpacity: { value: 1 }, uScale, uCore: { value: 1.2 } },
+    uniforms: { uColor: { value: new THREE.Color() }, uOpacity: { value: 1 }, uScale, uCore: { value: 1.2 }, uAlphaK: { value: 0.55 }, uSizeK: { value: 1 } },
     vertexShader: DRUG_VERT, fragmentShader: DRUG_FRAG, transparent: true, depthWrite: false, depthTest: false,
     blending: THREE.AdditiveBlending,
   });
@@ -393,7 +393,7 @@ export function createVessels(stage, anatomy) {
         const sg = jr.segs[p.seg];
         samplePos(sg.r, p.f, _p);
         dPos[base * 3] = _p.x + p.jx; dPos[base * 3 + 1] = _p.y + p.jy; dPos[base * 3 + 2] = _p.z + p.jz;
-        dAlpha[base] = 0.8 * s.opacity;
+        dAlpha[base] = 0.5 * s.opacity;
         for (let k = 1; k < TRAIL; k++) dAlpha[base + k] = 0;
         segActiveCount[sg.r.row] += 1;
         alive++;
@@ -480,6 +480,9 @@ export function createVessels(stage, anatomy) {
     cMat.blending = blending; cMat.needsUpdate = true;
     dMat.uniforms.uColor.value.setHex(C.drug);
     dMat.uniforms.uCore.value = C.additive ? 0.55 : 0.0;
+    // on the pale theme the drug is a dark teal ink: larger and denser so it reads over the vessels
+    dMat.uniforms.uAlphaK.value = C.additive ? 0.55 : 1.6;
+    dMat.uniforms.uSizeK.value = C.additive ? 1 : 1.35;
     dMat.blending = blending; dMat.needsUpdate = true;
     for (const r of routes) {
       r.mat.uniforms.uColor.value.setHex(r.oxy ? C.lineArt : C.lineVein);

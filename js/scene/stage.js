@@ -7,6 +7,15 @@
 //   stage.pick(clientX, clientY, objects) → intersection | null
 //   stage.project([x,y,z] | Vector3, out?) → { x, y, visible }   (CSS px relative to host)
 //   stage.setTheme('dark'|'light'); stage.resize(); stage.dispose()
+// Extras (additive): stage.onTheme(fn) → off; stage.setReducedMotion(bool); stage.homeView(opts);
+//   stage.zoom(factor); stage.getView(); stage.fitDistance(halfH, halfW); stage.homeDistance;
+//   stage.onContextChange(fn(lost)) → off; stage.contextLost;
+//   stage.advance(seconds, step) — dev/test hook: deterministic time steps + one frame
+//   (with stage.timeScale = 0 the real-time loop keeps drawing but scene time stands still).
+//
+// Budget: pixel ratio capped at 1.75 and stepped down when frames are slow; bloom runs at half
+// resolution (UnrealBloomPass); the loop stops when the stage is off-screen, the tab is hidden or the
+// WebGL context is lost (a status note shows, and the prefiltered environment is rebuilt on restore).
 //
 // Conventions (docs/ARCHITECTURE.md, "3D world contract"): meters, Y up, feet at y = 0, the body
 // faces +Z, the person's left is +X. flyTo angles are DEGREES: azimuth 0 = camera in front of the
@@ -149,12 +158,17 @@ export async function createStage(host, { reducedMotion = false, theme = 'dark' 
   const tanHalf = Math.tan((FOV * DEG) / 2);
 
   // ---- environment + lights
-  const pmrem = new THREE.PMREMGenerator(renderer);
-  const room = new RoomEnvironment();
-  const envRT = pmrem.fromScene(room, 0.04);
-  room.dispose?.();
-  room.traverse?.((o) => { o.geometry?.dispose?.(); o.material?.dispose?.(); });
-  pmrem.dispose();
+  // The prefiltered environment lives only on the GPU, so it is rebuilt after a context restore.
+  function buildEnv() {
+    const pmrem = new THREE.PMREMGenerator(renderer);
+    const room = new RoomEnvironment();
+    const rt = pmrem.fromScene(room, 0.04);
+    room.traverse?.((o) => { o.geometry?.dispose?.(); o.material?.dispose?.(); });
+    room.dispose?.();
+    pmrem.dispose();
+    return rt;
+  }
+  let envRT = buildEnv();
   scene.environment = envRT.texture;
 
   const hemi = new THREE.HemisphereLight(0xffffff, 0x101820, 0.4);
@@ -189,7 +203,8 @@ export async function createStage(host, { reducedMotion = false, theme = 'dark' 
   const prMax = Math.min(window.devicePixelRatio || 1, 1.75);
   const prMin = Math.min(1, prMax);
   let pr = prMax;
-  const rt = new THREE.WebGLRenderTarget(2, 2, { type: THREE.HalfFloatType, samples: 4 });
+  // MSAA on the HDR target; high-density screens need fewer samples for the same smoothness
+  const rt = new THREE.WebGLRenderTarget(2, 2, { type: THREE.HalfFloatType, samples: (window.devicePixelRatio || 1) > 1.5 ? 2 : 4 });
   const composer = new EffectComposer(renderer, rt);
   const renderPass = new RenderPass(scene, camera);
   // UnrealBloomPass already extracts and blurs at half resolution internally.
@@ -218,6 +233,7 @@ export async function createStage(host, { reducedMotion = false, theme = 'dark' 
   const themeFns = [];
   let disposed = false;
   let running = false;
+  let contextLost = false;
   let inView = true;
   let last = 0;
   let time = 0;
@@ -486,11 +502,7 @@ export async function createStage(host, { reducedMotion = false, theme = 'dark' 
   };
 
   // ---------------------------------------------------------------- loop
-  function loop(now) {
-    if (disposed) return;
-    const rdt = last ? Math.min(0.1, Math.max(0, (now - last) / 1000)) : 1 / 60;
-    const dt = rdt * stage.timeScale; // timeScale is a dev/test hook (default 1)
-    last = now;
+  function tick(dt) {
     time += dt;
     if (flight.active) stepFlight(dt);
     else controls.update(dt);
@@ -498,11 +510,25 @@ export async function createStage(host, { reducedMotion = false, theme = 'dark' 
     for (let i = 0; i < frameFns.length; i++) {
       try { frameFns[i](dt, time); } catch (e) { console.error('[stage] frame callback failed', e); frameFns.splice(i--, 1); }
     }
-    composer.render(dt);
-    adapt(rdt);
   }
+  function loop(now) {
+    if (disposed || contextLost) return;
+    const rdt = last ? Math.min(0.1, Math.max(0, (now - last) / 1000)) : 1 / 60;
+    const dt = rdt * stage.timeScale; // timeScale is a dev/test hook (default 1)
+    last = now;
+    tick(dt);
+    composer.render(dt);
+    if (stage.timeScale > 0) adapt(rdt);
+  }
+  // Dev/test hook: advance scene time deterministically in fixed steps, then draw one frame.
+  // Pair with `stage.timeScale = 0` to freeze real time (headless SwiftShader renders at a few fps).
+  stage.advance = (seconds = 0, step = 1 / 30) => {
+    let s = Math.max(0, seconds);
+    while (s > 1e-6) { const d = Math.min(step, s); s -= d; tick(d); }
+    if (!disposed && !contextLost) { camera.updateMatrixWorld(); composer.render(0); }
+  };
   function updateRunning() {
-    const should = !disposed && inView && !document.hidden;
+    const should = !disposed && !contextLost && inView && !document.hidden;
     if (should === running) return;
     running = should;
     last = 0;
@@ -517,6 +543,64 @@ export async function createStage(host, { reducedMotion = false, theme = 'dark' 
   document.addEventListener('visibilitychange', onVis);
   stage.renderOnce = () => { camera.updateMatrixWorld(); composer.render(0); };
 
+  // ---------------------------------------------------------------- WebGL context loss
+  // three.js re-creates its GL state on restore and re-uploads buffers and textures lazily; only the
+  // GPU-only prefiltered environment has to be rebuilt here. While the context is gone the loop stops
+  // and a small status note replaces the picture (the rest of the page keeps working).
+  let lostEl = null, lostTimer = 0;
+  const lostFns = [];
+  function showLost(on, text) {
+    if (on && !lostEl) {
+      lostEl = document.createElement('div');
+      lostEl.className = 'stage-context-note';
+      lostEl.setAttribute('role', 'status');
+      host.appendChild(lostEl);
+    }
+    if (lostEl) {
+      lostEl.textContent = text || '';
+      lostEl.hidden = !on;
+    }
+  }
+  const onContextLost = (e) => {
+    e.preventDefault(); // allow the browser to restore it
+    if (disposed) return;
+    contextLost = true;
+    endFlight();
+    updateRunning();
+    host.classList.add('is-context-lost');
+    showLost(true, 'The 3D view paused because the graphics processor reset. Restoring…');
+    clearTimeout(lostTimer);
+    lostTimer = setTimeout(() => {
+      if (contextLost && !disposed) showLost(true, 'The 3D view could not be restored. Reload the page to try again; everything else still works.');
+    }, 6000);
+    for (const fn of lostFns.slice()) { try { fn(true); } catch (err) { console.error(err); } }
+  };
+  const onContextRestored = () => {
+    if (disposed) return;
+    clearTimeout(lostTimer);
+    const old = envRT;
+    try {
+      envRT = buildEnv();
+      scene.environment = envRT.texture;
+      scene.traverse((o) => {
+        const mats = Array.isArray(o.material) ? o.material : o.material ? [o.material] : [];
+        for (const m of mats) if (m.envMap === old.texture) { m.envMap = envRT.texture; m.needsUpdate = true; }
+      });
+      stage.envMap = envRT.texture;
+      old.dispose();
+    } catch (err) { console.warn('[stage] environment rebuild failed', err); }
+    contextLost = false;
+    host.classList.remove('is-context-lost');
+    showLost(false);
+    applySize();
+    updateRunning();
+    for (const fn of lostFns.slice()) { try { fn(false); } catch (err) { console.error(err); } }
+  };
+  canvas.addEventListener('webglcontextlost', onContextLost, false);
+  canvas.addEventListener('webglcontextrestored', onContextRestored, false);
+  stage.onContextChange = (fn) => { lostFns.push(fn); return () => { const i = lostFns.indexOf(fn); if (i >= 0) lostFns.splice(i, 1); }; };
+  Object.defineProperty(stage, 'contextLost', { get: () => contextLost });
+
   // ---------------------------------------------------------------- dispose
   stage.dispose = () => {
     if (disposed) return;
@@ -525,12 +609,15 @@ export async function createStage(host, { reducedMotion = false, theme = 'dark' 
     ro.disconnect(); io.disconnect();
     cancelAnimationFrame(resizeRaf);
     clearTimeout(hintTimer);
+    clearTimeout(lostTimer);
     document.removeEventListener('visibilitychange', onVis);
     host.removeEventListener('wheel', onWheelCapture, { capture: true });
     host.removeEventListener('pointerdown', onPointerDown, { capture: true });
     host.removeEventListener('pointerleave', onPointerLeave);
     canvas.removeEventListener('keydown', onKey);
     hintEl?.remove();
+    lostEl?.remove();
+    lostFns.length = 0;
     controls.dispose();
     frameFns.length = 0; themeFns.length = 0;
     scene.traverse((o) => {
@@ -548,6 +635,8 @@ export async function createStage(host, { reducedMotion = false, theme = 'dark' 
     bloom.dispose?.();
     outputPass.dispose?.();
     renderer.dispose();
+    canvas.removeEventListener('webglcontextlost', onContextLost, false);
+    canvas.removeEventListener('webglcontextrestored', onContextRestored, false);
     renderer.forceContextLoss?.();
     canvas.remove();
   };

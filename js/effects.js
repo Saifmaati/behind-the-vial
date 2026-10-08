@@ -80,7 +80,10 @@ export function mountEffects(host, entry) {
   let announced = new Set();
   let announceTimer = 0;
   let disposed = false;
-  const rm = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  // html[data-motion] (main.js) wins over the OS setting; `motion:change` switches it live.
+  const motionAttr = typeof document !== 'undefined' ? document.documentElement.dataset.motion : undefined;
+  let rm = motionAttr === 'reduce' ? true : motionAttr === 'full' ? false
+    : (typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches);
 
   // The host may carry aria-live="polite" (DOM contract). We announce a short,
   // debounced summary ourselves instead, so card markup is not read out on every change.
@@ -260,6 +263,7 @@ export function mountEffects(host, entry) {
   const safeOn = (type, fn) => { try { const off = bus.on(type, fn); if (typeof off === 'function') offs.push(off); } catch (e) { console.warn('[effects] bus.on failed', e); } };
   safeOn('time:change', (d) => { if (d && num(d.tDays)) update(d); });
   safeOn('peptide:loaded', (d) => setEntry(d?.entry ?? null));
+  safeOn('motion:change', (d) => { rm = !!d?.reducedMotion; root.classList.toggle('fx-rm', rm); });
 
   setEntry(entry ?? null);
 

@@ -28,7 +28,11 @@ export function html(strings, ...vals) {
 let uidN = 0;
 export const uid = (prefix = 'c') => `${prefix}-${(++uidN).toString(36)}`;
 
+// html[data-motion] (set by main.js from the header toggle) wins over the OS setting.
 export const prefersReducedMotion = () => {
+  const attr = typeof document !== 'undefined' ? document.documentElement.dataset.motion : undefined;
+  if (attr === 'reduce') return true;
+  if (attr === 'full') return false;
   try { return matchMedia('(prefers-reduced-motion: reduce)').matches; } catch { return false; }
 };
 

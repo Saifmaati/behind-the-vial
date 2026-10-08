@@ -158,7 +158,21 @@ hash skip the intro. `?peptide=<id>&site=<abdomen|thigh|arm>` preselects.
 | `organ:focus` | `{ organ }` | any (cards, callouts) → stage flies camera / highlights |
 | `risk:change` | `{ items: [...checked ids], warnings: [...] }` | risk check → anatomy highlights |
 | `theme:change` | `{ theme: 'dark'|'light' }` | main |
-| `stage:ready` | `{}` | stage |
+| `motion:change` | `{ reducedMotion }` (header toggle or OS setting changed) | main |
+| `stage:ready` | `{}` (after the scene's bus listeners are attached) | stage |
+
+Bus extras (additive): `bus.off(type, fn)`, `bus.once(type, fn) → off`, `bus.last(type) → most
+recent detail`. main.js replays the last `peptide:loaded`, `site:select`, `time:change`,
+`effects:active` and `risk:change` once the late-mounting 3D scene is ready.
+
+Additive detail fields:
+- `time:change` also carries `levelNorm` (0..1, level ÷ the highest level in the current view; use
+  it for glows, since `level` exceeds 1 in weekly mode), `estimate`, `shot`, `shots`,
+  `sinceShotDays`, `intervalDays`, `tEnd`, `peptideId`.
+- `effects:active.items[]` are `{ id, organ, severity, name, alsoOrgans }`.
+- `risk:change.warnings[]` are `{ organ, title, item }` (`item` = the risk item id).
+- Every module that animates listens to `motion:change` and switches live (intro, stage, timeline,
+  effects); without the event they read `html[data-motion]` (`reduce` | `full`), then the media query.
 
 Organ ids (shared vocabulary): `brain, thyroid, heart, lungs, liver,
 gallbladder, stomach, pancreas, spleen, small_intestine, large_intestine,
@@ -260,6 +274,9 @@ stage.flyTo({ target:[x,y,z], distance, azimuth, elevation, duration })
 stage.setTheme('dark'|'light'); stage.resize(); stage.dispose()
 stage.pick(clientX, clientY, objects) → intersection | null
 stage.project([x,y,z]) → { x, y, visible }   // CSS px relative to host
+// additive: stage.onTheme(fn) → off; stage.setReducedMotion(bool); stage.homeView(); stage.zoom(f);
+//   stage.getView(); stage.fitDistance(w, h); stage.homeDistance; stage.onContextChange(fn(lost)) → off;
+//   stage.contextLost; stage.advance(seconds, step)  (dev/test: deterministic steps + one frame)
 
 // js/scene/anatomy.js
 export async function loadAnatomy(stage) → anatomy
@@ -267,6 +284,8 @@ anatomy.landmarks; anatomy.meshes[organId]; anatomy.siteHotspots
 anatomy.highlight(organId, { color, intensity, pulse }) ; anatomy.unhighlight(organId); anatomy.clearHighlights()
 anatomy.setFocus(organId|null)   // dims everything else
 anatomy.organCenter(organId) → THREE.Vector3
+// additive: anatomy.setSkinCut(center, radius, amount, planeNormal); anatomy.setIsolate(bool);
+//   anatomy.setHotspotsVisible(bool); anatomy.setHoverSite(site|null); anatomy.siteFrame(site)
 
 // js/scene/vessels.js
 export function createVessels(stage, anatomy) → vessels
@@ -281,6 +300,12 @@ export function createSyringe(THREE, { envMap, scale }) → { group, setPlunger(
 export function createInjection(stage, anatomy, vessels) → injection
 injection.play({ site, peptide }) → Promise   // emits sequence:* events
 injection.skip(); injection.reset(); injection.playing
+// additive: injection.fadeArrivals(); injection.phase
+
+// js/scene/callouts.js (used by index.js)
+export function createCallouts(stage, layerEl, { onSelect }) → callouts
+callouts.set(id, { anchor, title, text, tone, organ, group, interactive, side, normal, facing, onClick, ariaLabel, priority })
+callouts.remove(id); callouts.clear(group?); callouts.setGroupVisible(group, bool); callouts.setInsets({ top, right, bottom, left })
 
 // js/pk.js (pure, no DOM)
 export function kaFromTmax(tmaxDays, halfLifeDays) → ka
@@ -292,13 +317,17 @@ export function curve(params, { tEnd, n, mode }) → [{ t, level }]
 // js/timeline.js
 export function mountTimeline(host, entry, { reducedMotion }) → timeline
 timeline.set(tDays); timeline.play(); timeline.pause(); timeline.setMode('single'|'weekly')
+timeline.tDays; timeline.mode; timeline.playing; timeline.dispose()   // additive
 
 // js/effects.js
 export function mountEffects(host, entry) → effects   // listens to time:change, emits effects:active
+effects.dispose(); export function activeEffectIds(sideEffects, state)   // additive
 
 // js/scene/index.js — the only 3D entry point main.js uses
-export async function mountBody(host /* #stage-host */, { reducedMotion, theme }) → { dispose() }
-//   listens: site:select, sequence:start, time:change, effects:active, organ:focus, risk:change, theme:change, peptide:loaded
+export async function mountBody(host /* #stage-host */, { reducedMotion, theme, creditHref }) → { dispose() }
+//   creditHref: where the in-stage CC BY anatomy credit links (main.js: ASSETS.md on GitHub, #anatomy)
+//   dev/test handle: host.__btvBody (stage, anatomy, vessels, injection, callouts, state)
+//   listens: site:select, sequence:start, time:change, effects:active, organ:focus, risk:change, theme:change, peptide:loaded, motion:change
 //   emits:   site:select (hotspot click), sequence:phase, sequence:done, stage:ready
 
 // js/ui/index.js — the only content entry point main.js uses
@@ -308,9 +337,14 @@ export function renderEntry(entry, { root = document })        // fills every [d
 export function renderComingSoon(peptide, { root = document }) // stub content for not-ready peptides
 export function mountRiskCheck(host /* #risk-check .section-body */, entry)        // emits risk:change (warnings only)
 // renderers use ctx.cite(sourceIds) → '<sup class="cite"><a href="#src-ID">n</a></sup>' (numbered by first use)
+// return values (additive): mountPicker / mountSitePicker → { select(), selected, destroy() };
+//   renderEntry / renderComingSoon → { ctx }; mountRiskCheck → { items, destroy() }. renderEntry already
+//   mounts the risk check; a later mountRiskCheck call replaces it and keeps the citation numbers.
 
 // js/intro.js
 export function mountIntro(host /* #intro */, { reducedMotion, onEnter, onFacts }) → { dispose() }
+//   dispose() frees every GPU resource, calls forceContextLoss() and removes the canvas, so the
+//   intro's WebGL context is gone before the 3D body mounts (main.js mounts the body after closing).
 ```
 
 Section markup (foundation writes it; content fills `.section-body`):
@@ -336,6 +370,10 @@ Section markup (foundation writes it; content fills `.section-body`):
   parallax; state changes are instant cross-fades.
 - Contrast ≥ 4.5:1 for text in both themes. Focus rings always visible.
 - Mobile first: works at 360 px width, 16 px gutters, no horizontal scroll.
+- Desktop (≥ 1100 px): the explorer fits the viewport. `--stage-h` is the viewport minus the header,
+  the disclaimer bar and `--tl-peek` (the timeline's head: play, time and level readout), clamped to
+  420–820 px; on screens ≥ 1180 px tall `--tl-peek` grows so the whole level chart fits as well. The
+  right column (narration + side effects) is sticky, so it stays in view while the chart is scrubbed.
 
 ## Performance budget
 
@@ -343,3 +381,115 @@ Section markup (foundation writes it; content fills `.section-body`):
 - three.js core + addons ≈ 200 KB gzipped, loaded as modules after first paint.
 - `body.glb` ≤ 3.5 MB; prefetched during the intro.
 - Render loop pauses when the stage is offscreen or the tab is hidden.
+
+---
+
+# v2 additions (2026-10-08, owner feedback)
+
+Owner asked for: a scroll-driven "video" introduction with lifelike peptide
+vials and syringe → the injection site on a lifelike body → inside the body
+into the bloodstream; a luxury, very professional colour theme and feel; an
+editable body (male/female, height, weight, age); and only incredibly accurate
+sources.
+
+## Luxury palette (replaces the cyan clinical palette everywhere: CSS, 3D, intro)
+
+Obsidian, ivory and champagne gold, with oxblood and sapphire for blood. No
+neon cyan. No green anywhere.
+
+| token | dark (default) | light |
+|---|---|---|
+| `--bg` | `#0A0A0B` | `#F6F2EA` |
+| `--bg-2` | `#111012` | `#EFE9DE` |
+| `--surface` | `#151417` | `#FFFDF8` |
+| `--surface-2` | `#1C1A1E` | `#F3EEE4` |
+| `--line` | `rgba(232,220,196,.12)` | `rgba(40,32,20,.12)` |
+| `--line-strong` | `rgba(232,220,196,.24)` | `rgba(40,32,20,.24)` |
+| `--text` | `#F3EEE6` | `#17140F` |
+| `--text-2` | `#D9D2C5` | `#2E2920` |
+| `--muted` | `#A39C8F` | `#6B6355` |
+| `--accent` (champagne gold) | `#C8A96A` | `#7A5C28` |
+| `--accent-2` (pale champagne) | `#E6D3A3` | `#A88645` |
+| `--accent-ink` (text on gold) | `#1A1408` | `#FFFDF8` |
+| `--artery` (oxblood) | `#C4524A` | `#9C2F2A` |
+| `--vein` (sapphire) | `#5B7DB8` | `#2F4F86` |
+| `--drug` (luminous champagne) | `#F1DDA8` | `#A88645` |
+| `--warn` (bronze amber) | `#D9A05B` | `#8F5410` |
+| `--danger` | `#E06A5F` | `#B3261E` |
+| `--focus` | `#E6D3A3` | `#7A5C28` |
+
+3D: obsidian background with a faint warm vignette (light theme: ivory with
+ink linework); skin is glass with a champagne fresnel rim; organs in muted,
+desaturated natural tones; arteries oxblood, veins sapphire; drug particles
+luminous champagne; bloom restrained. HUD lines are thin champagne hairlines.
+
+Type: display serif **Newsreader** (variable, OFL, self-hosted) for headlines
+and large figures; **Inter** for UI and body. HUD/eyebrow labels in Inter
+small caps with wide tracking (no monospace look). Numbers tabular.
+
+Feel: unhurried, precise, quiet. Preloader with a fine champagne progress
+line; section reveals (opacity + 12 px rise, staggered, once); buttons with
+soft light sweep on hover; magnetic focus states; no bouncy easing. All of it
+off under reduced motion.
+
+## Scroll-driven film intro (replaces the timed intro)
+
+`#intro` becomes a tall scroll track (about 600–700 vh) with a sticky
+full-screen canvas. Scroll position (smoothed with a lerp) scrubs one
+continuous camera move like a video:
+
+1. Lifelike peptide vial (clear glass, rubber stopper, crimped aluminium
+   seal, flip-off cap, white freeze-dried powder cake, minimal label that
+   reads like a gray-market product: no brand, NO mg amount) on obsidian.
+2. The syringe (insulin-type, from `js/scene/syringe.js`), its needle
+   catching light beside the vial. Never shows mixing, drawing up, measuring
+   or volumes.
+3. The injection site on a lifelike human body (real anatomy skin with a
+   realistic skin material: warm tone, soft sheen; abdomen close-up).
+4. Through the skin: the layers, the depot forming.
+5. Into a capillary, then the bloodstream: red cells streaming, the drug as
+   champagne light.
+6. Pull back: the whole translucent body with vasculature glowing.
+7. Title + "Enter the body" / "Read the facts first".
+Chapter captions are real DOM text (accessible, one short line each).
+"Skip intro" is always visible. Keyboard: Space/PageDown/arrows scroll,
+Enter enters, Escape skips. Reduced motion: no scrubbing; chapters become a
+calm sequence of still frames with captions and buttons. `mountIntro(host,
+{ reducedMotion, onEnter, onFacts }) → { dispose() }` is unchanged; the intro
+owns the page scroll while visible and restores it on exit.
+
+New module: `js/scene/vial.js` → `createVial(THREE, { envMap, scale }) →
+{ group, dispose() }` (local frame and real size documented in the file).
+
+## Editable body (appearance only)
+
+A "Body" control panel lives inside the stage (`#body-editor`, rendered by
+`js/ui/bodyeditor.js`, styled in `css/stage.css`): Sex (Male / Female),
+Height, Weight, Age (adults only, 18–90). It emits
+`body:change { sex, heightCm, weightKg, age }`.
+
+Hard rule: appearance only. `body:change` may be consumed only by
+`js/scene/*` (and `js/ui/bodyeditor.js` itself). The timeline, PK model,
+effects, risk check and content never read it, and nothing derived from it
+is ever shown as a level, dose, amount or risk. The panel shows the line
+"Changes how the body looks. It never changes the timeline or suggests a
+dose." Every input in the panel carries `data-appearance-only`.
+(Enforced by `tests/exclusions.test.mjs`.)
+
+Rendering: female anatomy from the same HRA source (`assets/anatomy/
+body-female.glb` + `landmarks-female.json`, same names/frame); height =
+uniform scale; weight = subcutaneous fat thickness (skin displacement along
+normals weighted by region, and the fat layer in the tissue cross-section
+gets thicker or thinner); age = subtle (posture/stature, fat distribution).
+Defaults: male 175 cm 75 kg 35 y; female 162 cm 65 kg 35 y.
+
+## Sources (strict)
+
+Only claims an independent checker confirmed or corrected; no news outlets,
+no press-release re-hosts, no computed database values, no chart-read
+values. See `research/LEDGER.md`. `data/sources.js` is generated.
+
+## Events added
+
+`motion:change { reducedMotion }` (main.js), `body:change {...}` (body
+editor). Bus extras: `once`, `off`, `last(type)`.

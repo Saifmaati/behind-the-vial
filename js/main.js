@@ -14,6 +14,8 @@ const SITE_PHRASE = { abdomen: 'the abdomen', thigh: 'the thigh', arm: 'the uppe
 const DEFAULT_PEPTIDE = 'retatrutide';
 const STATUS_SHORT = { approved: 'Approved', 'in-trials': 'In trials', 'research-only': 'Research chemical' };
 const ANATOMY_URL = new URL('../assets/anatomy/body.glb', import.meta.url).href;
+// The in-stage CC BY credit links to the rendered asset register (a raw .md on Pages is not readable).
+const ASSETS_HREF = 'https://github.com/Saifmaati/behind-the-vial/blob/main/ASSETS.md#anatomy';
 
 // Plain-language narration for each step of the injection sequence. The injection module may send
 // its own short `label`; it becomes the headline and this text explains it.
@@ -110,10 +112,10 @@ function scrollBehavior() {
   return state.reducedMotion ? 'auto' : 'smooth';
 }
 
-function focusHeading(node, { scroll = false } = {}) {
+function focusHeading(node, { scroll = false, instant = false } = {}) {
   if (!node) return;
   if (!node.hasAttribute('tabindex')) node.setAttribute('tabindex', '-1');
-  if (scroll) node.closest('section')?.scrollIntoView({ behavior: scrollBehavior(), block: 'start' });
+  if (scroll) node.closest('section')?.scrollIntoView({ behavior: instant ? 'instant' : scrollBehavior(), block: 'start' });
   node.focus({ preventScroll: true });
 }
 
@@ -294,6 +296,10 @@ function initNav() {
 let intro = null;
 let introMounted = false;
 let introWatchdog = 0;
+let introLoading = null; // promise while intro.js is importing / mounting
+// The 3D body never starts while the intro's WebGL context is alive: it mounts only once the intro
+// has been disposed (its canvas removed and its context force-lost), see closeIntro().
+let introReleased = !state.introOpen;
 
 function setBackgroundInert(on) {
   for (const node of [$('.skip-link'), $('#site-header'), $('#app'), $('#site-footer')]) {
@@ -335,19 +341,22 @@ async function startIntro() {
   $('#intro-skip')?.addEventListener('click', () => onIntroButton('skip'));
   document.addEventListener('keydown', onIntroKey);
 
-  const mod = await safeImport('./intro.js', 'The intro animation');
-  if (!state.introOpen || typeof mod?.mountIntro !== 'function') return; // static DOM intro keeps working
-  try {
-    intro = await mod.mountIntro($('#intro'), {
-      reducedMotion: state.reducedMotion,
-      onEnter: () => closeIntro('enter'),
-      onFacts: () => closeIntro('facts'),
-    });
-    introMounted = true;
-    if (!state.introOpen) disposeIntro();
-  } catch (err) {
-    console.warn('[main] mountIntro failed; using the static intro.', err);
-  }
+  introLoading = (async () => {
+    const mod = await safeImport('./intro.js', 'The intro animation');
+    if (!state.introOpen || typeof mod?.mountIntro !== 'function') return; // static DOM intro keeps working
+    try {
+      intro = await mod.mountIntro($('#intro'), {
+        reducedMotion: state.reducedMotion,
+        onEnter: () => closeIntro('enter'),
+        onFacts: () => closeIntro('facts'),
+      });
+      introMounted = true;
+      if (!state.introOpen) disposeIntro();
+    } catch (err) {
+      console.warn('[main] mountIntro failed; using the static intro.', err);
+    }
+  })();
+  await introLoading;
 }
 
 function disposeIntro() {
@@ -366,18 +375,24 @@ function closeIntro(kind = 'enter') {
 
   const finish = () => {
     html.dataset.intro = 'done';
-    disposeIntro();
+    // If intro.js is still mounting (Skip pressed early), wait for it so its context is released too.
+    Promise.resolve(introLoading).catch(() => {}).then(() => {
+      disposeIntro();
+      introReleased = true;
+      maybeMountBody();
+    });
   };
   html.dataset.intro = 'leaving';
   if (state.reducedMotion) finish();
   else setTimeout(finish, 760);
 
-  if (kind === 'facts') focusHeading($('#overview-title'), { scroll: true });
+  // Instant: a smooth scroll does not run while the overlay still locks the page (body overflow
+  // hidden during 'leaving'); the fading overlay reveals the section instead.
+  if (kind === 'facts') focusHeading($('#overview-title'), { scroll: true, instant: true });
   else if (kind !== 'hash') {
     if (scrollY > 0) scrollTo({ top: 0, behavior: 'auto' });
     focusHeading($('#explorer-title'));
   }
-  maybeMountBody();
 }
 
 function initRouting() {
@@ -443,7 +458,7 @@ function watchStage() {
 }
 
 async function maybeMountBody() {
-  if (bodyMounting || state.introOpen || !stageNear) return;
+  if (bodyMounting || state.introOpen || !introReleased || !stageNear) return;
   bodyMounting = true;
   const host = $('#stage-host');
   if (!hasWebGL2()) {
@@ -465,7 +480,7 @@ async function maybeMountBody() {
     return;
   }
   try {
-    state.body = await mod.mountBody(host, { reducedMotion: state.reducedMotion, theme: state.theme });
+    state.body = await mod.mountBody(host, { reducedMotion: state.reducedMotion, theme: state.theme, creditHref: ASSETS_HREF });
     onStageReady();
   } catch (err) {
     console.warn('[main] mountBody failed.', err);
@@ -616,6 +631,34 @@ function loadOnce(key, path, label) {
   return moduleCache[key];
 }
 
+// The desktop layout sizes the stage so the timeline's head (and, on tall screens, its whole chart)
+// sits above the fixed disclaimer bar. The head wraps at narrower widths, so measure it.
+let tlMetricsRO = null;
+function watchTimelineMetrics(tHost) {
+  const tl = tHost?.querySelector('.tl');
+  const head = tl?.querySelector('.tl-head');
+  const foot = tl?.querySelector('.tl-scrub-foot') || tl?.querySelector('.tl-scrub') || tl?.querySelector('.tl-chart');
+  tlMetricsRO?.disconnect();
+  if (!tl || !head) return;
+  let last = '';
+  const set = () => {
+    const top = tl.getBoundingClientRect().top;
+    const headH = Math.round(head.getBoundingClientRect().bottom - top);
+    const coreH = foot ? Math.round(foot.getBoundingClientRect().bottom - top) : 0;
+    const key = `${headH}/${coreH}`;
+    if (key === last || headH <= 0) return; // hidden (coming soon) or unchanged
+    last = key;
+    html.style.setProperty('--tl-head-h', `${headH}px`);
+    if (coreH > 0) html.style.setProperty('--tl-core-h', `${coreH}px`);
+  };
+  set();
+  if ('ResizeObserver' in window) {
+    tlMetricsRO = new ResizeObserver(set);
+    tlMetricsRO.observe(head);
+    tlMetricsRO.observe(tl);
+  }
+}
+
 async function mountTimelineAndEffects(peptide, entry) {
   const tHost = $('#timeline');
   const eHost = $('#active-effects');
@@ -660,6 +703,7 @@ async function mountTimelineAndEffects(peptide, entry) {
     try {
       tHost.replaceChildren();
       state.timeline = await tl.mountTimeline(tHost, entry, { reducedMotion: state.reducedMotion });
+      watchTimelineMetrics(tHost);
     } catch (err) {
       console.warn('[main] mountTimeline failed.', err);
       notice(tHost, 'The timeline didn’t load. The sections below still cover onset, peak and clearance.', { replace: true, tone: 'warn' });
@@ -762,6 +806,25 @@ async function bootContent() {
   await selectPeptide(id, { fromUrl: true });
   bus.emit('peptide:select', { id }); // lets pickers reflect the initial choice (no-op for main)
   if (site) bus.emit('site:select', { site });
+  relandOnHash();
+}
+
+// A section link (#risk-check, #src-…) is resolved by the browser before the sections are filled, so
+// the target ends up far below the viewport once content renders above it. Land on it again, unless
+// the visitor has already started scrolling or interacting.
+let interacted = false;
+for (const t of ['wheel', 'touchstart', 'keydown', 'pointerdown']) addEventListener(t, () => { interacted = true; }, { once: true, passive: true, capture: true });
+function relandOnHash() {
+  let id = '';
+  try { id = decodeURIComponent(location.hash.slice(1)); } catch { return; }
+  if (!id || id === 'intro' || id === 'app' || state.introOpen) return;
+  const go = () => {
+    const target = document.getElementById(id);
+    if (!target || interacted) return;
+    target.scrollIntoView({ behavior: 'instant', block: 'start' });
+  };
+  requestAnimationFrame(go);
+  setTimeout(go, 350); // charts are drawn at their real width after a ResizeObserver pass
 }
 
 // ------------------------------------------------------------------ play button, narration

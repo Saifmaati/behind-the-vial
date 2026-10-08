@@ -819,6 +819,9 @@ html[data-theme="light"] .stage-host::after { box-shadow: inset 0 0 0 1px var(--
 .stage-host[data-state="fallback"] .stage-hud > :not(.hud-corner) { display: none; }
 /* The HUD adapts to the stage's own width, not the viewport's. */
 .stage-host { container-type: inline-size; container-name: stage; }
+@container stage (max-width: 900px) {
+  .hud-tl-kind { display: none; }
+}
 @container stage (max-width: 600px) {
   .hud-label--tl, .hud-ruler--x { display: none; }
 }
@@ -990,6 +993,9 @@ html[data-theme="light"] .stage-host::after { box-shadow: inset 0 0 0 1px var(--
 .readout dd { font-family: var(--font-mono); font-size: 0.95rem; color: var(--text); font-variant-numeric: tabular-nums; }
 
 .active-effects { min-width: 0; }
+/* Integration: the side-effect list already sits in a panel, so its own card chrome is dropped here. */
+.panel--effects .fx { padding: 0; border: 0; border-radius: 0; background: none; box-shadow: none; }
+.panel--effects .fx-eyebrow { display: none; } /* the panel's own h2 already names the list */
 
 /* ================================================================ content sections */
 .content { display: block; }
@@ -1187,7 +1193,19 @@ html[data-intro="leaving"] .disclaimer-text .sep { color: #4fd8eb; }
 }
 
 @media (min-width: 1100px) {
-  .explorer { padding-top: 24px; }
+  /* Integration: the explorer fits the viewport. The stage ends where the timeline's head (play,
+     time and level readout) still sits fully above the fixed disclaimer bar, so the body and the
+     timeline controls are on screen together; on very tall screens the whole chart fits too. */
+  :root {
+    --explorer-pad-top: 20px;
+    --explorer-gap: 14px;
+    /* main.js measures the timeline (--tl-head-h: top of the card to the bottom of its head;
+       --tl-core-h: to the bottom of the scrubber); the fallbacks match a one-row head. */
+    --tl-peek: calc(var(--tl-head-h, 92px) + 16px);
+    --stage-h: clamp(420px, calc(100dvh - var(--header-h) - var(--disclaimer-h) - var(--explorer-pad-top) - var(--explorer-gap) - var(--tl-peek)), 820px);
+  }
+  .explorer { padding-top: var(--explorer-pad-top); }
+  .timeline-wrap { margin-top: var(--explorer-gap); }
   .explorer-grid {
     grid-template-columns: minmax(266px, 304px) minmax(0, 1fr) minmax(260px, 320px);
     align-items: start;
@@ -1210,9 +1228,29 @@ html[data-intro="leaving"] .disclaimer-text .sep { color: #4fd8eb; }
     -webkit-mask-image: linear-gradient(180deg, transparent 0, #000 var(--fade-t), #000 calc(100% - var(--fade-b)), transparent 100%);
     mask-image: linear-gradient(180deg, transparent 0, #000 var(--fade-t), #000 calc(100% - var(--fade-b)), transparent 100%);
   }
-  .explorer-side { gap: 16px; }
-  .narration { min-height: 9em; }
-  .panel--effects { max-height: calc(var(--stage-h) - 330px); min-height: 180px; overflow: auto; scrollbar-width: thin; }
+  /* The live panels stay in view while the visitor scrolls down to the timeline chart. */
+  .explorer-side {
+    position: sticky;
+    top: calc(var(--header-h) + var(--explorer-pad-top));
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    max-height: calc(100dvh - var(--header-h) - var(--disclaimer-h) - var(--explorer-pad-top) - 12px);
+  }
+  .explorer-side > .panel { flex: none; }
+  .narration { min-height: 7em; }
+  .explorer-side > .panel--effects {
+    flex: 1 1 auto;
+    min-height: 200px;
+    overflow: auto;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
+    scrollbar-color: var(--line-strong) transparent;
+  }
+}
+@media (min-width: 1100px) and (min-height: 1180px) {
+  /* Tall screens: the stage, the timeline head and the whole level chart fit together. */
+  :root { --tl-peek: calc(var(--tl-core-h, 424px) + 16px); }
 }
 
 @media (min-width: 900px) {

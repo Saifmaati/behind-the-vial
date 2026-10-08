@@ -45,16 +45,36 @@ test('no numeric entry fields anywhere (nothing to type a dose, weight or lab va
   assert.deepEqual(findAll(/\.type\s*=\s*["'`]number["'`]/gi), []);
 });
 
-test('range inputs exist only in the time scrubber (js/timeline.js)', () => {
-  const hits = findAll(/type\s*=\s*["'`]?range|\.type\s*=\s*["'`]range/gi).filter(h => !h.startsWith('js/timeline.js'));
+// The owner asked (2026-10-08) for an editable body: sex, height, weight, age. It is allowed ONLY
+// as an appearance control in js/ui/bodyeditor.js, and it may never reach the timeline, PK model,
+// effects, risk check or content.
+const BODY_EDITOR = 'js/ui/bodyeditor.js';
+
+test('range inputs exist only in the time scrubber and the appearance-only body editor', () => {
+  const hits = findAll(/type\s*=\s*["'`]?range|\.type\s*=\s*["'`]range/gi)
+    .filter(h => !h.startsWith('js/timeline.js') && !h.startsWith(BODY_EDITOR));
   assert.deepEqual(hits, []);
 });
 
-test('no input, select or textarea is named or labelled for dose, weight, sex or lab values', () => {
+test('no input, select or textarea is named or labelled for dose, weight, sex or lab values (outside the body editor)', () => {
   const tagRe = /<(input|select|textarea)\b[^>]*>/gi;
   const bad = /\b(dose|dosage|dosing|mg|mcg|milligram|units?|weight|kg|lbs?|bmi|gender|sex|creatinine|egfr|a1c|bloodwork|amount|volume|ml)\b/i;
-  const hits = findAll(tagRe).filter(h => bad.test(h.replace(/aria-describedby="[^"]*"/, '')));
+  const hits = findAll(tagRe).filter(h => !h.startsWith(BODY_EDITOR) && bad.test(h.replace(/aria-describedby="[^"]*"/, '')));
   assert.deepEqual(hits, []);
+});
+
+test('body editor is appearance-only: never mentions dose, carries the disclaimer, and only the 3D scene listens to it', () => {
+  const editor = files.find(f => f.path === BODY_EDITOR);
+  if (!editor) return; // not built yet
+  assert.match(editor.text, /data-appearance-only/, 'body editor inputs must carry data-appearance-only');
+  assert.match(editor.text, /never changes the timeline/i, 'body editor must say it never changes the timeline');
+  assert.doesNotMatch(editor.text.replace(/suggests? a dose|never[^.]{0,80}dose/gi, ''), /\bdos(e|es|ing|age)\b|\bmg\b|\blevels?\b/i, 'body editor may not talk about doses or levels');
+  assert.doesNotMatch(editor.text, /from ['"]\.\.?\/(?:\.\.\/)?(?:pk|timeline|effects)\.js['"]/, 'body editor may not import pk/timeline/effects');
+  const listeners = findAll(/['"`]body:change['"`]/g).filter(h => !h.startsWith('js/scene/') && !h.startsWith(BODY_EDITOR) && !h.startsWith('js/bus.js'));
+  assert.deepEqual(listeners, [], 'only js/scene/* may consume body:change');
+  for (const f of files.filter(f => /^js\/(pk|timeline|effects)\.js$|^js\/ui\/(?!bodyeditor)/.test(f.path))) {
+    assert.doesNotMatch(f.text, /heightCm|weightKg|bodyeditor/, `${f.path} must not read body editor state`);
+  }
 });
 
 test('no dose calculators, safe-dose language, titration, reconstitution or technique wording', () => {

@@ -9,6 +9,7 @@
 //          sequence:phase, sequence:done (via the injection module), stage:ready
 //
 // Extra options (optional, for tests and the sandbox): { bus, anatomy: 'auto' | 'placeholder' | 'glb', assetBase }.
+import * as THREE from 'three';
 import { createStage } from './stage.js';
 import { loadAnatomy, ORGAN_LABELS } from './anatomy.js';
 import { createVessels } from './vessels.js';
@@ -118,14 +119,18 @@ export async function mountBody(host, opts = {}) {
   legend.className = 'stage-legend';
   legend.setAttribute('aria-label', 'Colour key');
   legend.innerHTML = '<li><span class="sw sw--artery" aria-hidden="true"></span>Arteries</li><li><span class="sw sw--vein" aria-hidden="true"></span>Veins</li><li><span class="sw sw--drug" aria-hidden="true"></span>Drug</li>';
-  host.append(tools, skipBtn, legend);
-  added.push(tools, skipBtn, legend);
+  // Attribution for the anatomy (CC BY 4.0 requires it next to the work); links to the asset register.
+  const credit = document.createElement('p');
+  credit.className = 'stage-credit';
+  credit.innerHTML = `Anatomy: <a href="${opts.creditHref || './ASSETS.md'}" target="_blank" rel="noopener" aria-label="Anatomy: CC BY 4.0, from HRA, VOXEL-MAN and BodyParts3D. Asset licences (opens in a new tab)"><span class="stage-credit__long">CC BY 4.0 (HRA, VOXEL-MAN, BodyParts3D)</span><span class="stage-credit__short">CC BY 4.0</span></a>`;
+  host.append(tools, skipBtn, legend, credit);
+  added.push(tools, skipBtn, legend, credit);
   host.classList.add('has-body3d');
 
   // ---------------------------------------------------------------- state
   const state = {
     site: null, peptideId: null, entry: undefined, playing: false, focus: null,
-    effects: [], warnings: [],
+    effects: [], warnings: [], level: 0,
   };
 
   // ---------------------------------------------------------------- views
@@ -154,33 +159,43 @@ export async function mountBody(host, opts = {}) {
       const f = anatomy.siteFrame(s);
       if (!f) continue;
       callouts.set(`site:${s}`, {
-        anchor: f.point, title: SITE_LABELS[s], text: 'injection site', tone: 'site', group: 'sites',
+        // the body is see-through, so a site label only hides once its side faces well away
+        anchor: f.point, normal: f.normal, facing: -0.45, title: SITE_LABELS[s], text: 'injection site', tone: 'site', group: 'sites',
         side: s === 'abdomen' ? 'left' : 'right', ariaLabel: `Choose injection site: ${SITE_LABELS[s]}`,
         onClick: () => bus.emit('site:select', { site: s }),
       });
     }
   }
+  // Surface anchors (on the skin) carry a normal so their labels hide when that side faces away.
+  function surfaceNormal(organ) {
+    if (organ === 'injection_site') return anatomy.siteFrame(state.site || 'abdomen')?.normal || null;
+    const n = anatomy.landmarks?.organs?.[organ]?.normal;
+    return Array.isArray(n) ? normalCache[organ] || (normalCache[organ] = new THREE.Vector3().fromArray(n).normalize()) : null;
+  }
+  const normalCache = {};
   function applyEffects(items) {
     state.effects = Array.isArray(items) ? items : [];
     anatomy.clearHighlights('effect');
     callouts.clear('effects');
+    if (state.playing) return; // the sequence owns the body; effects come back when it ends
     const byOrgan = new Map();
     const also = new Set();
     for (const it of state.effects) {
       const organ = it?.organ || it?.organId;
-      if (!organ) continue;
+      // no site chosen yet: there is no injection site to point at (it would default to the abdomen)
+      if (!organ || (organ === 'injection_site' && !state.site)) continue;
       const e = byOrgan.get(organ) || { names: [], sev: 0 };
       e.names.push(it.name || it.title || it.id || 'Side effect');
       e.sev = Math.max(e.sev, SEVERITY[it.severity] || 1);
       byOrgan.set(organ, e);
-      for (const a of it.alsoOrgans || []) also.add(a);
+      for (const a of it.alsoOrgans || []) if (a !== 'injection_site' || state.site) also.add(a);
     }
     for (const [organ, e] of byOrgan) {
       const serious = e.sev >= 3;
       anatomy.highlight(organ, { channel: 'effect', color: serious ? HC.danger : HC.warn, intensity: serious ? 1.15 : 0.95, pulse: 0.6 });
       const text = e.names.length > 2 ? `${e.names.slice(0, 2).join(', ')} +${e.names.length - 2} more` : e.names.join(', ');
       callouts.set(`effect:${organ}`, {
-        anchor: anchorOf(organ), title: label(organ), text, tone: serious ? 'danger' : 'warn', organ, group: 'effects',
+        anchor: anchorOf(organ), normal: surfaceNormal(organ), title: label(organ), text, tone: serious ? 'danger' : 'warn', organ, group: 'effects',
         ariaLabel: `${label(organ)}: ${e.names.join(', ')}. Show on the body.`,
       });
     }
@@ -197,6 +212,7 @@ export async function mountBody(host, opts = {}) {
     state.warnings = list;
     anatomy.clearHighlights('risk');
     callouts.clear('risk');
+    if (state.playing) return;
     const byOrgan = new Map();
     for (const w of list) {
       const organ = w?.organ;
@@ -208,7 +224,7 @@ export async function mountBody(host, opts = {}) {
     for (const [organ, titles] of byOrgan) {
       anatomy.highlight(organ, { channel: 'risk', color: HC.danger, intensity: 1.35, pulse: 1.25 });
       callouts.set(`risk:${organ}`, {
-        anchor: anchorOf(organ), title: `Warning · ${label(organ)}`,
+        anchor: anchorOf(organ), normal: surfaceNormal(organ), title: `Warning · ${label(organ)}`,
         text: titles.length > 1 ? `${titles[0]} (+${titles.length - 1} more)` : titles[0],
         tone: 'danger', organ, group: 'risk', ariaLabel: `Warning for ${label(organ)}: ${titles.join('; ')}. Show on the body.`,
       });
@@ -233,10 +249,20 @@ export async function mountBody(host, opts = {}) {
     renderSiteLabels();
   }
   function setPlaying(on) {
+    const was = state.playing;
     state.playing = on;
     skipBtn.hidden = !on;
     host.classList.toggle('is-sequence-playing', on);
     for (const g of ['effects', 'risk', 'focus']) callouts.setGroupVisible(g, !on);
+    // keep labels clear of the skip button while it shows (it sits higher on wide stages; see stage.css)
+    callouts.setInsets({ bottom: on ? (host.clientWidth > 600 ? 52 : 26) : 0 });
+    if (on !== was) {
+      // While the sequence plays it owns the organ glow: warnings and side effects step back, and the
+      // timeline's drug level waits until the drug has actually been shown arriving.
+      applyEffects(state.effects);
+      applyRisk(state.warnings);
+      vessels.setDrugLevel(on ? 0 : state.level);
+    }
     renderSiteLabels();
   }
 
@@ -251,6 +277,7 @@ export async function mountBody(host, opts = {}) {
     anatomy.selectSite(site);
     for (const k of ['injection_site', 'fat']) { const v = anchorCache.get(k); if (v) v.copy(anatomy.organAnchor(k)); }
     if (state.playing && changed) { injection.reset(); setPlaying(false); }
+    else if (changed && state.effects.some((it) => (it?.organ || it?.organId) === 'injection_site' || (it?.alsoOrgans || []).includes('injection_site'))) applyEffects(state.effects); // new site (normal, anchor)
     if (state.focus) setFocus(null);
     renderSiteLabels();
     if (!state.playing) {
@@ -280,7 +307,14 @@ export async function mountBody(host, opts = {}) {
     }).catch((e) => { console.error('[scene] sequence failed', e); setPlaying(false); });
   });
 
-  on('time:change', ({ level }) => { vessels.setDrugLevel(Number.isFinite(level) ? level : 0); });
+  on('time:change', ({ level, levelNorm, tDays }) => {
+    // weekly mode reports level > 1 (build-up); the glow takes the 0..1 level within the current view
+    state.level = Number.isFinite(levelNorm) ? levelNorm : Number.isFinite(level) ? Math.min(1, Math.max(0, level)) : 0;
+    if (state.playing) return;
+    vessels.setDrugLevel(state.level);
+    // once the visitor moves along the timeline, its level drives the glow instead of the arrival flash
+    if (Number(tDays) > 0.01 && injection.hasArrivals) injection.fadeArrivals();
+  });
   on('effects:active', ({ items, ids }) => {
     let list = items;
     if ((!Array.isArray(list) || !list.length) && Array.isArray(ids) && state.entry?.sideEffects) {
@@ -308,12 +342,16 @@ export async function mountBody(host, opts = {}) {
 
   // ---------------------------------------------------------------- pointer: hotspots + organs
   const canvas = stage.canvas;
+  const camRel = new THREE.Vector3();
   let down = null;
   const finePointer = !!globalThis.matchMedia?.('(hover: hover) and (pointer: fine)').matches;
   function pickAt(x, y) {
     if (!state.playing) {
       const h = stage.pick(x, y, anatomy.hotspotTargets);
-      if (h?.object?.userData?.site) return { site: h.object.userData.site };
+      const site = h?.object?.userData?.site;
+      const f = site && anatomy.siteFrame(site);
+      // not a hotspot on the far side of the body (the same limit the site labels and rings use)
+      if (f && f.normal.dot(camRel.subVectors(stage.camera.position, f.point)) > -0.45 * camRel.length()) return { site };
     }
     const o = stage.pick(x, y, anatomy.pickables);
     if (o?.object?.userData?.organId) return { organ: o.object.userData.organId };
@@ -375,12 +413,13 @@ export async function mountBody(host, opts = {}) {
   try { bus.emit('stage:ready', { anatomy: anatomy.source }); } catch (e) { console.error(e); }
 
   let disposed = false;
-  return {
+  const api = {
     stage, anatomy, vessels, injection, callouts,
     get state() { return { ...state }; },
     dispose() {
       if (disposed) return;
       disposed = true;
+      delete host.__btvBody;
       for (const off of offs) { try { off(); } catch { /* ignore */ } }
       cancelAnimationFrame(hoverRaf);
       canvas.removeEventListener('pointerdown', onDown);
@@ -398,4 +437,7 @@ export async function mountBody(host, opts = {}) {
       delete host.dataset.anatomy;
     },
   };
+  // Dev/test handle (headless checks reach the scene through the host element, not a global).
+  Object.defineProperty(host, '__btvBody', { value: api, configurable: true, enumerable: false });
+  return api;
 }

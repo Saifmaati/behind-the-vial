@@ -181,10 +181,12 @@ html[data-theme="light"] .bv-callout { box-shadow: 0 6px 20px -12px rgba(10, 30,
   box-shadow: 0 0 0 5px var(--focus-halo, rgba(143, 233, 255, 0.28));
 }
 
+/* Wide stages keep the CC BY credit visible during the sequence, so the skip button sits above the
+   bottom HUD row; narrow stages hide the credit while it plays and use the lower spot. */
 .stage-skip {
   position: absolute;
   left: 50%;
-  bottom: 36px;
+  bottom: 66px;
   z-index: var(--z-callouts, 3);
   display: inline-flex;
   align-items: center;
@@ -254,15 +256,76 @@ html[data-theme="light"] .bv-callout { box-shadow: 0 6px 20px -12px rgba(10, 30,
 }
 .stage-zoom-hint.is-visible { opacity: 1; }
 
+/* Anatomy attribution (CC BY 4.0): small, quiet, but a real link with a visible focus ring. */
+.stage-credit {
+  position: absolute;
+  left: 40px;
+  bottom: 38px;
+  z-index: var(--z-callouts, 3);
+  margin: 0;
+  color: var(--muted, #8696a7);
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 0.6rem;
+  letter-spacing: 0.06em;
+  line-height: 1.2;
+  white-space: nowrap;
+  pointer-events: none;
+}
+.stage-credit a {
+  color: inherit;
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, currentColor 45%, transparent);
+  text-underline-offset: 2px;
+  pointer-events: auto;
+  border-radius: 2px;
+}
+.stage-credit a:hover { color: var(--text-2, #b3c1ce); text-decoration-color: currentColor; }
+.stage-credit__short { display: none; }
+.stage-credit a:focus-visible {
+  outline: 2px solid var(--focus, #8fe9ff);
+  outline-offset: 2px;
+  color: var(--text, #e9f0f6);
+}
+
+/* WebGL context lost: a calm status note over the frozen frame. */
+.stage-context-note {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  z-index: var(--z-stage-overlay, 4);
+  max-width: min(360px, calc(100% - 48px));
+  padding: 12px 16px;
+  border: 1px solid var(--line-strong, rgba(150, 196, 230, 0.22));
+  border-radius: var(--radius-m, 10px);
+  background: var(--surface-glass, rgba(7, 12, 18, 0.72));
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  color: var(--text, #e9f0f6);
+  font-size: 0.82rem;
+  line-height: 1.4;
+  text-align: center;
+  transform: translate(-50%, -50%);
+}
+.stage-context-note[hidden] { display: none; }
+.stage-host.is-context-lost #stage-canvas-host,
+.stage-host.is-context-lost #callout-layer { visibility: hidden; }
+
 /* The stage frame is a size container (app.css); follow its width, like the HUD does. */
 @container stage (max-width: 600px) {
   .stage-legend { top: 20px; }
+  .stage-credit { left: 36px; }
+  .stage-host.is-sequence-playing .stage-credit { visibility: hidden; }
+  .stage-skip { bottom: 36px; }
 }
 @container stage (max-width: 430px) {
   .stage-tools { right: 10px; gap: 4px; }
   .stage-tool { width: 34px; height: 34px; }
-  /* the phase label moves to the top-left here, so the key drops to the free bottom-left corner */
-  .stage-legend { top: auto; bottom: 20px; left: 36px; gap: 10px; font-size: 0.58rem; }
+  /* the phase label moves to the top-left here; the key sits right under it (the bottom row belongs
+     to the site label and the credit) */
+  .stage-legend { top: 38px; left: 36px; gap: 10px; font-size: 0.58rem; }
+  .stage-credit { bottom: 20px; font-size: 0.56rem; letter-spacing: 0.04em; }
+  .stage-credit__long { display: none; }
+  .stage-credit__short { display: inline; }
   .stage-skip { bottom: 42px; }
 }
 @container stage (max-width: 360px) {
