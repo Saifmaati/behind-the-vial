@@ -33,12 +33,17 @@ export async function extractHRA(file, { log = () => {}, skeleton = true } = {})
   if (skeleton) {
     // Identical selection to tools/build-anatomy.mjs (vertebrae, sacrum, coccyx, hip bones, leg bones; femur sub-patches excluded).
     const femurPatches = [/condyle/, /intercondylar/, /enthesis/, /perichondular/, /patellar_surface/, /articular_cartilage/, /distal_most/];
-    meshes.hraBones = M.weld(M.merge([
-      hra.collect('VH_M_vertebra'), hra.collect(['VH_M_sacrum', 'VH_M_coccyx']),
-      hra.collect(['VH_M_ilium_compact_bone', 'VH_M_ischium_compact_bone', 'VH_M_pubis_compact_bone']),
-      hra.collect(['VH_M_femur_L', 'VH_M_femur_R'], { exclude: femurPatches }),
-      hra.collect(['VH_M_tibia_L', 'VH_M_tibia_R', 'VH_M_fibula_L', 'VH_M_fibula_R', 'VH_M_patella_L', 'VH_M_patella_R']),
-    ]), 1e-6);
+    const bones = {
+      spine: hra.collect('VH_M_vertebra'), sacrum: hra.collect(['VH_M_sacrum', 'VH_M_coccyx']),
+      hip_L: hra.collect(['VH_M_ilium_compact_bone_L', 'VH_M_ischium_compact_bone_L', 'VH_M_pubis_compact_bone_L']),
+      hip_R: hra.collect(['VH_M_ilium_compact_bone_R', 'VH_M_ischium_compact_bone_R', 'VH_M_pubis_compact_bone_R']),
+      femur_L: hra.collect('VH_M_femur_L', { exclude: femurPatches }), femur_R: hra.collect('VH_M_femur_R', { exclude: femurPatches }),
+    };
+    for (const b of ['tibia', 'fibula', 'patella']) for (const s of ['L', 'R']) bones[`${b}_${s}`] = hra.collect(`VH_M_${b}_${s}`);
+    for (const [n, m] of Object.entries(bones)) meshes[`bone_${n}`] = M.weld(m, 1e-6);
+    // merged in the same order of parts as tools/build-anatomy.mjs (vertebrae, sacrum+coccyx, hip bones, femurs, leg bones)
+    meshes.hraBones = M.weld(M.merge([bones.spine, bones.sacrum, bones.hip_L, bones.hip_R, bones.femur_L, bones.femur_R,
+      bones.tibia_L, bones.tibia_R, bones.fibula_L, bones.fibula_R, bones.patella_L, bones.patella_R]), 1e-6);
     log(`HRA bones: ${M.triCount(meshes.hraBones)} tris`);
   }
   // HRA organ centroids for the SIO similarity fit (same pairs and method as the male build).

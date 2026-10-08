@@ -162,8 +162,19 @@ function reflectRadios(host, selector, isOn) {
 // ------------------------------------------------------------------ theme + motion
 
 function syncThemeColor() {
-  const color = getComputedStyle(html).getPropertyValue('--bg').trim() || (state.theme === 'light' ? '#f3f6f9' : '#05080c');
+  const color = getComputedStyle(html).getPropertyValue('--bg').trim() || (state.theme === 'light' ? '#F6F2EA' : '#0A0A0B');
   for (const m of $$('meta[name="theme-color"]')) m.setAttribute('content', color);
+}
+
+// A visitor-initiated theme switch cross-fades the whole page (View Transitions where supported,
+// app.css sets the timing); instant under reduced motion or in older browsers.
+function crossFadeTheme(apply) {
+  if (state.reducedMotion || typeof document.startViewTransition !== 'function') return apply();
+  try {
+    document.startViewTransition(apply);
+  } catch {
+    apply();
+  }
 }
 
 function applyTheme(theme, { persist = false, emit = true } = {}) {
@@ -192,6 +203,7 @@ function applyMotion(reduce, { persist = false, emit = true } = {}) {
     btn.setAttribute('aria-pressed', String(state.reducedMotion));
     btn.title = state.reducedMotion ? 'Reduce motion: on' : 'Reduce motion: off';
   }
+  if (state.reducedMotion) settleMotion();
   // Not in the original contract: lets mounted modules adapt without a reload (see docs/decisions/foundation.md).
   if (emit) bus.emit('motion:change', { reducedMotion: state.reducedMotion });
 }
@@ -199,7 +211,7 @@ function applyMotion(reduce, { persist = false, emit = true } = {}) {
 function initPreferences() {
   applyTheme(state.theme, { emit: false });
   applyMotion(state.reducedMotion, { emit: false });
-  $('#theme-toggle')?.addEventListener('click', () => applyTheme(state.theme === 'dark' ? 'light' : 'dark', { persist: true }));
+  $('#theme-toggle')?.addEventListener('click', () => crossFadeTheme(() => applyTheme(state.theme === 'dark' ? 'light' : 'dark', { persist: true })));
   $('#motion-toggle')?.addEventListener('click', () => applyMotion(!state.reducedMotion, { persist: true }));
   media('(prefers-color-scheme: light)')?.addEventListener?.('change', (e) => {
     const stored = store.get('localStorage', 'btv.theme');
@@ -291,6 +303,271 @@ function initNav() {
   }
 }
 
+// ------------------------------------------------------------------ luxury feel (theme agent)
+// Preloader, the explorer composing in, the condensing header, section reveals and eased anchor
+// scrolling. Every piece is presentation only and switches off under reduced motion.
+
+const reveals = new Set();
+
+// Reduced motion turned on (header toggle or OS): show everything in its final state at once.
+function settleMotion() {
+  for (const node of reveals) node.classList.add('is-revealed');
+  if (html.dataset.compose) delete html.dataset.compose;
+  if (html.dataset.preload === 'show') finishPreloaderNow?.();
+}
+
+// The explorer's parts rise into place, staggered (app.css html[data-compose]). The 3D body waits
+// until they have settled (maybeMountBody), so its heavy first frame never stutters the motion.
+let composeTimers = [];
+let composeBusyUntil = 0;
+function composeExplorer({ delay = 0 } = {}) {
+  composeTimers.forEach(clearTimeout);
+  composeTimers = [];
+  if (state.reducedMotion) {
+    delete html.dataset.compose;
+    composeBusyUntil = 0;
+    return;
+  }
+  composeBusyUntil = performance.now() + delay + 1250;
+  html.dataset.compose = 'pending';
+  const go = () => requestAnimationFrame(() => requestAnimationFrame(() => {
+    if (html.dataset.compose !== 'pending') return;
+    html.dataset.compose = 'in';
+    composeTimers.push(setTimeout(() => { if (html.dataset.compose === 'in') delete html.dataset.compose; }, 1700));
+  }));
+  if (delay > 0) composeTimers.push(setTimeout(go, delay));
+  else go();
+}
+
+// Preloader: obsidian, the wordmark and one champagne line that follows real progress: the fonts,
+// three.js (only when WebGL 2 exists) and the anatomy as it streams. It leaves as soon as the fonts
+// and three.js are in (giving the anatomy a short grace period), and never later than PRELOAD_CAP_MS.
+// The boot script never shows it under reduced motion; app.css hides it after 8 s whatever happens.
+const PRELOAD_CAP_MS = 3200;
+const PRELOAD_GLB_GRACE_MS = 900;
+let finishPreloaderNow = null;
+let preloadSettled = html.dataset.preload !== 'show';
+const preloadListeners = [];
+function onPreloadSettled(fn) {
+  if (preloadSettled) fn();
+  else preloadListeners.push(fn);
+}
+function settlePreload() {
+  if (preloadSettled) return;
+  preloadSettled = true;
+  for (const fn of preloadListeners.splice(0)) {
+    try { fn(); } catch (err) { console.error('[main] preload listener failed', err); }
+  }
+}
+
+function initPreloader() {
+  if (html.dataset.preload !== 'show') {
+    settlePreload();
+    return;
+  }
+  const bar = $('.preloader-bar');
+  const covered = !state.introOpen; // with the intro open, the preloader reveals the intro instead
+  if (covered && !state.reducedMotion) html.dataset.compose = 'pending'; // composes in as the cover lifts
+  const parts = { fonts: { w: 0.3, p: 0 }, three: { w: 0.3, p: 0 }, glb: { w: 0.4, p: 0 } };
+  let shown = 0;
+  let raf = 0;
+  let essentialsAt = 0;
+  let finished = false;
+  const total = () => Object.values(parts).reduce((sum, x) => sum + x.w * x.p, 0);
+  const paint = () => {
+    raf = 0;
+    const v = finished ? 1 : total();
+    if (v > shown) {
+      shown = v;
+      bar?.style.setProperty('--progress', shown.toFixed(3));
+    }
+  };
+  const finish = () => {
+    if (finished) return;
+    finished = true;
+    clearTimeout(cap);
+    finishPreloaderNow = null;
+    paint();
+    const leave = () => {
+      html.dataset.preload = 'leaving';
+      if (covered) composeExplorer({ delay: 140 });
+      setTimeout(() => {
+        delete html.dataset.preload;
+        settlePreload();
+      }, 700);
+    };
+    if (state.reducedMotion) {
+      delete html.dataset.preload;
+      if (covered) composeExplorer();
+      settlePreload();
+    } else setTimeout(leave, 300); // let the line arrive
+  };
+  const check = () => {
+    if (finished) return;
+    const essentials = parts.fonts.p >= 1 && parts.three.p >= 1;
+    if (essentials && !essentialsAt) {
+      essentialsAt = performance.now();
+      setTimeout(check, PRELOAD_GLB_GRACE_MS + 20);
+    }
+    if (essentials && (parts.glb.p >= 1 || performance.now() - essentialsAt >= PRELOAD_GLB_GRACE_MS)) finish();
+  };
+  const set = (key, p) => {
+    parts[key].p = Math.max(parts[key].p, Math.min(1, p));
+    if (!raf) raf = requestAnimationFrame(paint);
+    check();
+  };
+  const cap = setTimeout(finish, PRELOAD_CAP_MS);
+  finishPreloaderNow = finish;
+
+  // fonts: the faces visible on the first screen
+  if (document.fonts?.load) {
+    const faces = ['400 1em Inter', '500 1em Inter', '400 1em Newsreader', 'italic 400 1em Newsreader'];
+    let n = 0;
+    for (const f of faces) {
+      document.fonts.load(f).catch(() => {}).finally(() => set('fonts', ++n / faces.length));
+    }
+  } else set('fonts', 1);
+
+  // three.js and the anatomy only matter when the 3D view can run
+  const webgl = hasWebGL2();
+  if (webgl) import('three').catch(() => {}).finally(() => set('three', 1));
+  else set('three', 1);
+
+  if (!webgl || lowData() || prefetched || typeof fetch !== 'function') {
+    set('glb', 1);
+    return;
+  }
+  prefetched = true; // this stream warms the HTTP cache for the scene's own request
+  fetch(ANATOMY_URL, { credentials: 'same-origin' }).then(async (res) => {
+    const size = Number(res.headers.get('content-length')) || 0;
+    if (!res.ok || !res.body?.getReader) {
+      await res.arrayBuffer?.().catch(() => {});
+      set('glb', 1);
+      return;
+    }
+    const reader = res.body.getReader();
+    let got = 0;
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      got += value?.byteLength || 0;
+      set('glb', size ? got / size : Math.min(0.9, got / 3.5e6));
+    }
+    set('glb', 1);
+  }).catch(() => set('glb', 1));
+}
+
+// Header: transparent over the page at the top, an obsidian (or ivory) glass bar once scrolled.
+// Its box never changes height, so nothing below it moves.
+function initHeaderCondense() {
+  const header = $('#site-header');
+  if (!header) return;
+  let on = null;
+  let raf = 0;
+  const update = () => {
+    raf = 0;
+    const next = scrollY > 8;
+    if (next === on) return;
+    on = next;
+    header.dataset.condensed = String(next);
+  };
+  addEventListener('scroll', () => { if (!raf) raf = requestAnimationFrame(update); }, { passive: true });
+  update();
+}
+
+// Sections (and the footer) rise into place once, the first time they enter the viewport.
+function initReveal() {
+  if (!('IntersectionObserver' in window)) return;
+  const targets = [...$$('.content-section'), $('#site-footer')].filter(Boolean);
+  const io = new IntersectionObserver((entries) => {
+    for (const e of entries) {
+      if (!e.isIntersecting) continue;
+      e.target.classList.add('is-revealed');
+      io.unobserve(e.target);
+    }
+  }, { rootMargin: '0px 0px -12% 0px', threshold: 0 });
+  for (const t of targets) {
+    reveals.add(t);
+    if (state.reducedMotion) t.classList.add('is-revealed');
+    else io.observe(t);
+  }
+  html.classList.add('reveal-on');
+  addEventListener('beforeprint', () => { for (const t of targets) t.classList.add('is-revealed'); });
+}
+
+// In-page links glide to their target (eased, with the sticky header's offset), then update the
+// hash and move focus to the target's heading. Any wheel, touch or key input stops the glide.
+let glide = 0;
+function stopGlide() {
+  if (glide) cancelAnimationFrame(glide);
+  glide = 0;
+}
+
+function scrollTargetTop(node) {
+  const pad = parseFloat(getComputedStyle(html).scrollPaddingTop) || 0;
+  const margin = parseFloat(getComputedStyle(node).scrollMarginTop) || 0;
+  const max = Math.max(0, document.documentElement.scrollHeight - innerHeight);
+  return Math.min(max, Math.max(0, node.getBoundingClientRect().top + scrollY - pad - margin));
+}
+
+function focusAnchorTarget(node) {
+  if (node.id === 'app') return node.focus({ preventScroll: true });
+  if (node.id === 'explorer') return focusHeading($('#explorer-title'));
+  if (node.matches('section')) {
+    const h = node.querySelector('h2, h1');
+    if (h) return focusHeading(h);
+  }
+  if (node.hasAttribute('tabindex') || node.matches('a[href], button, input, select, textarea, summary')) {
+    node.focus({ preventScroll: true });
+  }
+}
+
+function glideTo(node, hash) {
+  stopGlide();
+  const arrive = () => {
+    // Setting the hash at the resting position keeps :target, history and the focus start point
+    // right; the browser computes the same offset, so nothing moves.
+    if (hash && location.hash !== hash) location.hash = hash;
+    focusAnchorTarget(node);
+  };
+  const y0 = scrollY;
+  const dist = scrollTargetTop(node) - y0;
+  if (state.reducedMotion || Math.abs(dist) < 2) {
+    scrollTo({ top: y0 + dist, behavior: 'instant' });
+    arrive();
+    return;
+  }
+  const dur = Math.min(1300, Math.max(560, Math.sqrt(Math.abs(dist)) * 18));
+  const ease = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
+  const t0 = performance.now();
+  const step = (now) => {
+    const t = Math.min(1, (now - t0) / dur);
+    const live = scrollTargetTop(node); // follows late layout (charts, fonts) on the way
+    scrollTo({ top: y0 + (live - y0) * ease(t), behavior: 'instant' });
+    if (t < 1) glide = requestAnimationFrame(step);
+    else {
+      glide = 0;
+      arrive();
+    }
+  };
+  glide = requestAnimationFrame(step);
+}
+
+function initSmoothAnchors() {
+  for (const t of ['wheel', 'touchstart', 'keydown']) addEventListener(t, stopGlide, { passive: true });
+  document.addEventListener('click', (e) => {
+    if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+    const a = e.target.closest?.('a[href^="#"]');
+    if (!a || state.introOpen || a.closest('#intro')) return;
+    let id = '';
+    try { id = decodeURIComponent(a.getAttribute('href').slice(1)); } catch { return; }
+    const node = id && id !== 'intro' ? document.getElementById(id) : null;
+    if (!node) return;
+    e.preventDefault();
+    glideTo(node, `#${a.getAttribute('href').slice(1)}`);
+  });
+}
+
 // ------------------------------------------------------------------ intro
 
 let intro = null;
@@ -307,12 +584,15 @@ function setBackgroundInert(on) {
   }
 }
 
-let prefetched = false;
+let prefetched = false; // the preloader may already be streaming the anatomy (see initPreloader)
+function lowData() {
+  const c = navigator.connection;
+  return !!(c && (c.saveData || /(^|-)2g$/.test(c.effectiveType || '')));
+}
 function prefetchAnatomy() {
   if (prefetched) return;
   prefetched = true;
-  const c = navigator.connection;
-  if (c && (c.saveData || /(^|-)2g$/.test(c.effectiveType || ''))) return;
+  if (lowData()) return;
   const link = el('link', { rel: 'prefetch', href: ANATOMY_URL, as: 'fetch', crossorigin: 'anonymous' });
   document.head.append(link);
 }
@@ -382,9 +662,12 @@ function closeIntro(kind = 'enter') {
       maybeMountBody();
     });
   };
+  // Fade through obsidian (app.css): the intro's picture and words go first, then its dark ground
+  // dissolves while the explorer composes in underneath; 'done' lands after both have finished.
   html.dataset.intro = 'leaving';
+  if (kind !== 'facts') composeExplorer({ delay: 380 });
   if (state.reducedMotion) finish();
-  else setTimeout(finish, 760);
+  else setTimeout(finish, 1000);
 
   // Instant: a smooth scroll does not run while the overlay still locks the page (body overflow
   // hidden during 'leaving'); the fading overlay reveals the section instead.
@@ -459,6 +742,18 @@ function watchStage() {
 
 async function maybeMountBody() {
   if (bodyMounting || state.introOpen || !introReleased || !stageNear) return;
+  // Presentation (theme agent): the scene's first frame is heavy, so it starts only once the
+  // preloader has lifted and the explorer has finished composing in.
+  if (state.stage === 'idle' && (!preloadSettled || composeBusyUntil > performance.now())) setStageState('loading');
+  if (!preloadSettled) {
+    onPreloadSettled(maybeMountBody);
+    return;
+  }
+  const settleIn = composeBusyUntil - performance.now();
+  if (settleIn > 16) {
+    setTimeout(maybeMountBody, settleIn);
+    return;
+  }
   bodyMounting = true;
   const host = $('#stage-host');
   if (!hasWebGL2()) {
@@ -1028,8 +1323,12 @@ function step(name, fn) {
 }
 
 step('preferences', initPreferences);
+step('preloader', initPreloader);
 step('layout', initLayoutMetrics);
+step('header', initHeaderCondense);
 step('nav', initNav);
+step('anchors', initSmoothAnchors);
+step('reveal', initReveal);
 step('scroll-fades', initScrollFades);
 step('routing', initRouting);
 step('hud', initHudHint);

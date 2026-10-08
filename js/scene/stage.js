@@ -10,6 +10,9 @@
 // Extras (additive): stage.onTheme(fn) → off; stage.setReducedMotion(bool); stage.homeView(opts);
 //   stage.zoom(factor); stage.getView(); stage.fitDistance(halfH, halfW); stage.homeDistance;
 //   stage.onContextChange(fn(lost)) → off; stage.contextLost;
+//   stage.setBodyFrame(heightM, scaleRatio) — the editable body's height: the home framing grows for
+//     tall bodies (shorter ones keep the default frame, so they read as shorter); a camera at home
+//     follows, one framing something else keeps it centred as the body scales; stage.homeTarget
 //   stage.advance(seconds, step) — dev/test hook: deterministic time steps + one frame
 //   (with stage.timeScale = 0 the real-time loop keeps drawing but scene time stands still).
 //
@@ -22,9 +25,10 @@
 // body (+Z), positive azimuth swings toward the person's left (+X); elevation 0 = level, positive =
 // looking down from above. duration is in milliseconds (values ≤ 10 are read as seconds).
 //
-// The canvas is transparent: the stage frame's CSS background (--stage-bg, grid, HUD) shows through,
-// so the scene sits seamlessly in both themes. Bloom is composited as additive light (alpha is left
-// untouched), which keeps glows luminous over the dark frame and naturally faint in the light theme.
+// The canvas is transparent: the stage frame's CSS background (--stage-bg, the warm vignette in
+// stage.css, the HUD) shows through, so the scene sits seamlessly in both themes. Bloom is composited
+// as additive light (alpha is left untouched) and kept restrained: luminous over obsidian, nearly
+// absent over ivory. Luxury palette (v2): warm key light, champagne rim, champagne floor hairlines.
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
@@ -44,18 +48,18 @@ const HOME_EL = 4;
 
 export const STAGE_THEMES = {
   dark: {
-    bloomStrength: 0.72, bloomRadius: 0.5, bloomThreshold: 0.72,
+    bloomStrength: 0.42, bloomRadius: 0.42, bloomThreshold: 0.8,
     exposure: 1.0,
-    key: 1.15, rim: 1.5, fill: 0.3, env: 0.45,
-    rimColor: 0x7fdcff, keyColor: 0xf2f7ff, hemiSky: 0xbfe6ff, hemiGround: 0x101820,
-    floor: 0x5fd4ff, floorAlpha: 0.55, floorGlow: 0x1d6f8a,
+    key: 1.1, rim: 1.25, fill: 0.28, env: 0.4,
+    rimColor: 0xe6d3a3, keyColor: 0xfff3e2, hemiSky: 0xf1e6d2, hemiGround: 0x120e0a,
+    floor: 0xc8a96a, floorAlpha: 0.44, floorGlow: 0x4a3a20,
   },
   light: {
-    bloomStrength: 0.22, bloomRadius: 0.35, bloomThreshold: 0.92,
+    bloomStrength: 0.12, bloomRadius: 0.3, bloomThreshold: 0.95,
     exposure: 1.0,
-    key: 2.1, rim: 0.7, fill: 0.7, env: 0.75,
-    rimColor: 0x9fd8ea, keyColor: 0xffffff, hemiSky: 0xffffff, hemiGround: 0xb8c6d2,
-    floor: 0x1f4a62, floorAlpha: 0.5, floorGlow: 0x7fb6cc,
+    key: 2.0, rim: 0.6, fill: 0.7, env: 0.75,
+    rimColor: 0xf3e6c8, keyColor: 0xfffaf0, hemiSky: 0xfffdf8, hemiGround: 0xcfc3ad,
+    floor: 0x2e2920, floorAlpha: 0.42, floorGlow: 0xd9c9a6,
   },
 };
 
@@ -108,22 +112,25 @@ function makeFloor() {
       void main() {
         float r = length(vXZ);
         float a = 0.0;
-        a += ringLine(r, 0.34, 0.0006) * 0.55;
-        a += ringLine(r, 0.62, 0.0008) * 0.45;
-        a += ringLine(r, 0.92, 0.0006) * 0.22;
-        // fine concentric hairlines near the feet
-        float f = r / 0.04;
+        // a watch-dial floor: three hairline rings, sixty minute ticks and twelve longer indices on the
+        // middle ring, and very faint concentric lines near the feet
+        a += ringLine(r, 0.34, 0.0004) * 0.5;
+        a += ringLine(r, 0.62, 0.0005) * 0.42;
+        a += ringLine(r, 0.92, 0.0004) * 0.2;
+        float f = r / 0.05;
         float g = abs(fract(f - 0.5) - 0.5) / max(fwidth(f), 1e-4);
-        a += (1.0 - min(g, 1.0)) * 0.10 * (1.0 - smoothstep(0.1, 0.6, r));
-        // radial ticks on the middle ring
+        a += (1.0 - min(g, 1.0)) * 0.06 * (1.0 - smoothstep(0.1, 0.55, r));
         float ang = atan(vXZ.y, vXZ.x);
-        float tk = abs(fract(ang / 6.2831853 * 72.0) - 0.5);
-        float tickMask = step(0.6, r) * (1.0 - step(0.66, r));
-        a += (1.0 - smoothstep(0.06, 0.12, tk * 2.0 * r * 2.0)) * tickMask * 0.35;
+        float tk = abs(fract(ang / 6.2831853 * 60.0) - 0.5);
+        float tickMask = step(0.6, r) * (1.0 - step(0.635, r));
+        a += (1.0 - smoothstep(0.05, 0.1, tk * 2.0 * r * 2.0)) * tickMask * 0.3;
+        float hk = abs(fract(ang / 6.2831853 * 12.0) - 0.5);
+        float hourMask = step(0.6, r) * (1.0 - step(0.675, r));
+        a += (1.0 - smoothstep(0.03, 0.06, hk * 2.0 * r * 2.0)) * hourMask * 0.3;
         // soft pool of light under the figure
         float pool = exp(-r * r * 9.0);
-        vec3 col = uColor * a + uGlow * pool * 0.55;
-        float alpha = (a + pool * 0.35) * uAlpha * (1.0 - smoothstep(0.75, 1.15, r));
+        vec3 col = uColor * a + uGlow * pool * 0.5;
+        float alpha = (a + pool * 0.3) * uAlpha * (1.0 - smoothstep(0.75, 1.15, r));
         gl_FragColor = vec4(col, alpha);
       }`,
     transparent: true,
@@ -171,10 +178,10 @@ export async function createStage(host, { reducedMotion = false, theme = 'dark' 
   let envRT = buildEnv();
   scene.environment = envRT.texture;
 
-  const hemi = new THREE.HemisphereLight(0xffffff, 0x101820, 0.4);
-  const key = new THREE.DirectionalLight(0xffffff, 1.5);
+  const hemi = new THREE.HemisphereLight(0xf1e6d2, 0x120e0a, 0.4);
+  const key = new THREE.DirectionalLight(0xfff3e2, 1.5);
   key.position.set(1.6, 3.2, 2.6);
-  const rim = new THREE.DirectionalLight(0x7fdcff, 1.4);
+  const rim = new THREE.DirectionalLight(0xe6d3a3, 1.4);
   rim.position.set(-2.2, 1.8, -2.6);
   const fill = new THREE.DirectionalLight(0xffffff, 0.35);
   fill.position.set(-2.4, 0.6, 1.8);
@@ -238,6 +245,9 @@ export async function createStage(host, { reducedMotion = false, theme = 'dark' 
   let last = 0;
   let time = 0;
   let homeDistance = 3.6;
+  const homeTarget = new THREE.Vector3(...HOME_TARGET);
+  const prevHomeTarget = new THREE.Vector3();
+  let bodyHalfH = BODY_HALF_H;
   const raycaster = new THREE.Raycaster();
   const ndc = new THREE.Vector2();
   const hits = [];
@@ -255,6 +265,7 @@ export async function createStage(host, { reducedMotion = false, theme = 'dark' 
     get time() { return time; },
     get flying() { return flight.active; },
     get homeDistance() { return homeDistance; },
+    get homeTarget() { return homeTarget; },
   };
 
   // ---------------------------------------------------------------- theme
@@ -285,7 +296,7 @@ export async function createStage(host, { reducedMotion = false, theme = 'dark' 
 
   // ---------------------------------------------------------------- sizing
   function computeHome() {
-    return stage.fitDistance(BODY_HALF_H, BODY_HALF_W) * 1.04;
+    return stage.fitDistance(bodyHalfH, BODY_HALF_W) * 1.04;
   }
   stage.fitDistance = (halfH, halfW = 0) => {
     const aspect = size.width / size.height || 1;
@@ -414,8 +425,32 @@ export async function createStage(host, { reducedMotion = false, theme = 'dark' 
   }
   stage.cancelFlight = endFlight;
   stage.homeView = (opts = {}) => stage.flyTo({
-    target: HOME_TARGET, distance: homeDistance, azimuth: HOME_AZ, elevation: HOME_EL, duration: 1300, ...opts,
+    target: homeTarget.toArray(), distance: homeDistance, azimuth: HOME_AZ, elevation: HOME_EL, duration: 1300, ...opts,
   });
+  // Editable body (appearance only): bodies up to the default height keep the default frame (so a
+  // shorter body reads as shorter against the floor rings); taller ones widen it so the head stays in
+  // view. A camera at home follows the new home; any other view stays centred on what it frames as
+  // the body scales about the feet. Called on every tween step; no allocation.
+  stage.setBodyFrame = (heightM = 1.75, scaleRatio = 1) => {
+    prevHomeTarget.copy(homeTarget);
+    const prevDist = homeDistance;
+    bodyHalfH = Math.max(BODY_HALF_H, heightM / 2 + 0.055);
+    homeTarget.set(0, bodyHalfH - 0.03, 0);
+    homeDistance = computeHome();
+    controls.maxDistance = homeDistance * 1.35;
+    if (flight.active) return;
+    offset.copy(camera.position).sub(controls.target);
+    const d = offset.length();
+    const atHome = controls.target.distanceTo(prevHomeTarget) < 0.02 && Math.abs(d - prevDist) < 0.03 * prevDist;
+    if (atHome) {
+      offset.setLength(homeDistance);
+      controls.target.copy(homeTarget);
+    } else if (Number.isFinite(scaleRatio) && Math.abs(scaleRatio - 1) > 1e-6) {
+      controls.target.multiplyScalar(scaleRatio);
+    } else return;
+    camera.position.copy(controls.target).add(offset);
+    camera.lookAt(controls.target);
+  };
   stage.getView = () => {
     const v = currentView();
     return { target: controls.target.toArray(), distance: v.r, azimuth: v.az / DEG, elevation: v.el / DEG };
@@ -644,7 +679,7 @@ export async function createStage(host, { reducedMotion = false, theme = 'dark' 
   // ---------------------------------------------------------------- go
   applySize();
   setTheme(stage.theme);
-  placeCamera(new THREE.Vector3(...HOME_TARGET), homeDistance, HOME_AZ * DEG, HOME_EL * DEG);
+  placeCamera(homeTarget, homeDistance, HOME_AZ * DEG, HOME_EL * DEG);
   controls.update();
   updateRunning();
   return stage;

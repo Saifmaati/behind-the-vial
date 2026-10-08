@@ -3,16 +3,23 @@
 //
 //   cd tools && npm install          # dev dependencies only
 //   node tools/build-anatomy.mjs     # downloads sources (first run), builds assets/anatomy/{body.glb,landmarks.json}
+//   node tools/build-anatomy.mjs --sex female   # builds assets/anatomy/{body-female.glb,landmarks-female.json}
 //
-// Flags: --offline (never download), --fresh (recompute cached warp landmarks), --no-skeleton
+// Flags: --sex male|female (default male), --out <dir> (default assets/anatomy), --offline (never download),
+//        --fresh (recompute cached warp landmarks), --no-skeleton, --landmarks-only (reuse the cached meshes)
 //
 // Sources (all CC BY 4.0; see assets/anatomy/LICENSE.md):
 //   * HRA 3D Reference Organ Set, United Male v1.9 (NIH HuBMAP; Visible Human Male): skin, organs, torso vessels, spine/pelvis/leg bones
 //   * VOXEL-MAN Segmented Internal Organs of the Visible Human Male (Höhne et al. 2025): stomach, thyroid, rib cage, shoulder girdle
 //   * BodyParts3D 4.0 (DBCLS): limb, neck and head vessels; skull, arm, hand and foot bones (non-rigidly warped into the HRA body)
 //
+// Female build (--sex female): HRA 3D Reference Organ Set, United Female v1.10 (Visible Human Female) is the backbone
+// (skin, organs incl. uterus and ovaries, torso vessels, spine, sacrum, leg bones, sternum); only the needed byte ranges
+// of its 374.5 MB GLB are fetched (tools/anatomy/hra-ranged.mjs). Stomach, thyroid and rib cage come from SIO through
+// SIO -> HRA male (similarity) -> HRA female (thin-plate spline); BodyParts3D is warped straight into the female body.
+//
 // Output frame (docs/ARCHITECTURE.md "3D world contract"): metres, +Y up, feet at y=0, facing +Z, centred on x=0,z=0,
-// height 1.75 m, the person's left = +X.
+// height 1.75 m (male) / 1.62 m (female), the person's left = +X.
 import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -26,17 +33,28 @@ import { preAlign, makeWarp, warpLandmarks } from './anatomy/bp3d-warp.mjs';
 import { writeGLB } from './anatomy/glb.mjs';
 import { ensureSources, safeUnzip, readXlsxRows, SOURCES } from './anatomy/sources.mjs';
 import { buildLandmarks } from './anatomy/landmarks.mjs';
-import { tubeEnd, bridgeTube, insideField, clampInside } from './anatomy/vessels.mjs';
+import { tubeEnd, bridgeTube, insideField, clampInside, pushOutside } from './anatomy/vessels.mjs';
+import { ensureRanged, openRanged } from './anatomy/hra-ranged.mjs';
+import { HRA_FEMALE, FEMALE_FETCH, FEMALE_FETCH_EXCLUDE, openFemaleHRA, breastMask, maleToFemale } from './anatomy/female.mjs';
+import { topSlab } from './anatomy/bp3d-warp.mjs';
 
-const args = new Set(process.argv.slice(2));
+const argv = process.argv.slice(2);
+const args = new Set(argv);
+const argVal = (name, def) => { const i = argv.indexOf(name); return i >= 0 && argv[i + 1] && !argv[i + 1].startsWith('--') ? argv[i + 1] : def; };
+const SEX = argVal('--sex', 'male');
+if (!['male', 'female'].includes(SEX)) throw new Error(`--sex must be male or female (got "${SEX}")`);
+const FEMALE = SEX === 'female';
+const SUFFIX = FEMALE ? '-female' : ''; // output and cache file suffix
+const STATURE = FEMALE ? 1.62 : 1.75; // contract statures (docs/ARCHITECTURE.md); the editor scales from these
 const ROOT = resolve(fileURLToPath(new URL('..', import.meta.url)));
 const RAW = join(ROOT, 'tools/.cache/anatomy-raw');
 const WORK = join(ROOT, 'tools/.cache/anatomy-build');
-const OUT = join(ROOT, 'assets/anatomy');
+const OUT = resolve(argVal('--out', join(ROOT, 'assets/anatomy')));
+const HRA_MALE_FILE = join(RAW, 'hra/glb/3d-vh-m-united-v1.9.glb');
 mkdirSync(WORK, { recursive: true }); mkdirSync(OUT, { recursive: true });
 const T0 = Date.now();
 const log = (...a) => console.log(`[${((Date.now() - T0) / 1000).toFixed(1).padStart(6)}s]`, ...a);
-const report = { generated: new Date().toISOString(), meshes: {}, warnings: [] };
+const report = { generated: new Date().toISOString(), sex: SEX, meshes: {}, warnings: [] };
 const warn = (msg) => { report.warnings.push(msg); log('WARN', msg); };
 
 // ---------------------------------------------------------------------------------------------------------------
@@ -45,9 +63,17 @@ await ensureSources(RAW, { offline: args.has('--offline'), log });
 safeUnzip(join(RAW, 'sio/zip/VOXEL-MAN_segmented-internal-organs.zip'), join(RAW, 'sio/data'), ['VOXEL-MAN_segmented-internal-organs/labels/*'], { marker: 'VOXEL-MAN_segmented-internal-organs/labels/labels2029.tif' });
 safeUnzip(join(RAW, 'bp3d/zip/partof_BP3D_4.0_obj_99.zip'), join(RAW, 'bp3d/obj'), [], { marker: 'partof_BP3D_4.0_obj_99/FJ1252.obj' });
 safeUnzip(join(RAW, 'bp3d/zip/isa_BP3D_4.0_obj_99.zip'), join(RAW, 'bp3d/obj'), [], { marker: 'isa_BP3D_4.0_obj_99/FJ1682M.obj' });
+let femaleHead = null;
+if (FEMALE) {
+  ({ head: femaleHead } = await ensureRanged({
+    url: HRA_FEMALE.url, file: join(RAW, HRA_FEMALE.file), manifest: join(ROOT, 'tools/anatomy/hra-female-ranges.json'),
+    expect: { size: HRA_FEMALE.size, headSha256: HRA_FEMALE.headSha256 }, names: FEMALE_FETCH, exclude: FEMALE_FETCH_EXCLUDE,
+    offline: args.has('--offline'), log,
+  }));
+}
 await M.ready;
 
-const STAGE = join(WORK, 'stage-meshes.bin');
+const STAGE = join(WORK, `stage-meshes${SUFFIX}.bin`);
 let final, organs, vesselParts, skinBounds, k;
 if (args.has('--landmarks-only') && existsSync(STAGE)) {
   log('2-5/7 skipped (--landmarks-only): loading cached meshes');
@@ -55,11 +81,12 @@ if (args.has('--landmarks-only') && existsSync(STAGE)) {
   final = {}; organs = {}; vesselParts = new Map();
   for (const [n, m] of Object.entries(all)) { const [kind, name] = n.split('::'); if (kind === 'final') final[name] = m; else if (kind === 'organ') organs[name] = m; else vesselParts.set(name, m); }
   ({ skinBounds, k } = JSON.parse(readFileSync(STAGE + '.json', 'utf8')));
-  Object.assign(report, JSON.parse(readFileSync(join(WORK, 'report.json'), 'utf8')), { warnings: [] });
+  Object.assign(report, JSON.parse(readFileSync(join(WORK, `report${SUFFIX}.json`), 'utf8')), { warnings: [] });
 } else {
 // ---------------------------------------------------------------------------------------------------------------
-log('2/7 HRA united male: skin, organs, torso vessels, bones');
-const hra = await openHRA(join(RAW, 'hra/glb/3d-vh-m-united-v1.9.glb'));
+log(`2/7 HRA united ${SEX}: skin, organs, torso vessels, bones`);
+// Female: logical (male) node names are translated to the VH_F_ nodes by openFemaleHRA (tools/anatomy/female.mjs).
+const hra = FEMALE ? await openFemaleHRA(join(RAW, HRA_FEMALE.file), femaleHead) : await openHRA(HRA_MALE_FILE);
 const skinHRA = M.weld(hra.collect('VH_M_skin'), 1e-6);
 skinBounds = M.bounds(skinHRA);
 // Inside-field of the skin, used to keep warped / re-posed geometry under the skin (see step 4).
@@ -89,6 +116,10 @@ const ORGANS = {
   stomach: { sio: ['stomach', 'body of stomach', 'cardia', 'fundus of stomach', 'greater curvature', 'lesser curvature'], budget: 8000, src: 'sio' },
   thyroid: { sio: ['thyroid gland'], budget: 3000, src: 'sio' },
 };
+if (FEMALE) Object.assign(ORGANS, { // optional female-only meshes (contract: 'uterus', 'ovaries')
+  uterus: { hra: ['VH_F_uterus'], h: 0.0012, cap: true, close: 2, budget: 5000, src: 'hra' },
+  ovaries: { hra: ['VH_F_ovary'], h: 0.0008, keep: 2, budget: 2000, src: 'hra' },
+});
 organs = {};
 for (const [id, o] of Object.entries(ORGANS)) {
   if (!o.hra) continue;
@@ -98,12 +129,21 @@ for (const [id, o] of Object.entries(ORGANS)) {
 
 // Torso vessels. Colour/classification follows the textbook convention of blood oxygenation:
 // pulmonary arteries carry deoxygenated blood (drawn blue -> "veins"), pulmonary veins oxygenated (red -> "arteries").
-const HRA_ARTERIES = [
+const HRA_ARTERIES = FEMALE ? [
+  // the female set has no brachiocephalic-trunk parent node; its supra-aortic stubs are excluded one by one
+  ['VH_F_aorta', { exclude: ['VH_F_brachiocephalic_artery_a', 'VH_F_brachiocephalic_artery_b', 'VH_F_left_common_carotid_artery', 'VH_F_left_subclavian_artery'] }],
+  ['VH_F_arteries_of_heart', { exclude: ['VH_F_aorta', 'VH_F_pulmonary_artery'] }], ['VH_F_arteries_of_kidney'], ['VH_F_arteries_of_spleen'], ['VH_F_arteries_of_gallbladder'],
+  ['VH_F_arteries_of_liver'], ['VH_F_arteries_of_large_intestine'], ['VH_F_uterine_artery'], ['VH_F_pulmonary_vein'],
+] : [
   ['VH_M_aorta', { exclude: ['VH_M_brachiocephalic_artery', 'VH_M_left_common_carotid_artery', 'VH_M_left_subclavian_artery'] }],
   ['VH_M_cardiac_artery'], ['VH_M_arteries_of_kidney'], ['VH_M_arteries_of_spleen'], ['VH_M_arteries_of_gallbladder'],
   ['VH_M_arteries_of_liver'], ['VH_M_arteries_of_large_intestine'], ['VH_M_pulmonary_vein'],
 ];
-const HRA_VEINS = [
+const HRA_VEINS = FEMALE ? [
+  // no brachiocephalic or external iliac veins in the female set: BodyParts3D supplies them (step 4)
+  ['VH_F_vena_cava'], ['VH_F_cardiac_vein'], ['VH_F_veins_of_kidney'], ['VH_F_veins_of_spleen'], ['VH_F_veins_of_gallbladder'],
+  ['VH_F_veins_of_liver'], ['VH_F_veins_of_large_intestine'], ['VH_F_uterine_vein'], ['VH_F_pulmonary_artery'],
+] : [
   ['VH_M_vena_cava'], ['VH_M_brachiocephalic_vein'], ['VH_M_cardiac_vein'], ['VH_M_veins_of_kidney'], ['VH_M_veins_of_spleen'],
   ['VH_M_veins_of_gallbladder'], ['VH_M_veins_of_liver'], ['VH_M_veins_of_large_intestine'], ['VH_M_pulmonary_artery'],
 ];
@@ -118,21 +158,52 @@ for (const n of ['VH_M_ascending_aorta', 'VH_M_aortic_arch', 'VH_M_descending_ao
   'VH_M_inferior_vena_cava_a', 'VH_M_inferior_vena_cava_b', 'VH_M_brachiocephalic_vein_L', 'VH_M_brachiocephalic_vein_R', 'VH_M_common_iliac_vein_L', 'VH_M_external_iliac_vein_L',
   'VH_M_external_iliac_vein_R', 'VH_M_right_cardiac_atrium', 'VH_M_heart_right_ventricle', 'VH_M_left_cardiac_atrium', 'VH_M_heart_left_ventricle', 'VH_M_aortic_valve',
   'VH_M_pulmonary_valve', 'VH_M_tricuspid_valve', 'VH_M_mitral_valve', 'VH_M_hilum_L', 'VH_M_lungs_L', 'VH_M_subcutaneous_abdominal_adipose_tissue', 'VH_M_eyes', 'VH_M_femur_L',
-  'VH_M_femur_R', 'VH_M_tibia_L', 'VH_M_patella_L', 'VH_M_larynx', 'VH_M_trachea', 'VH_M_ilium_compact_bone_L', 'VH_M_lumbar_vertebra_2', 'VH_M_lumbar_vertebra_5']) {
+  'VH_M_femur_R', 'VH_M_tibia_L', 'VH_M_patella_L', 'VH_M_larynx', 'VH_M_trachea', 'VH_M_ilium_compact_bone_L', 'VH_M_lumbar_vertebra_2', 'VH_M_lumbar_vertebra_5',
+  ...(FEMALE ? ['VH_M_common_iliac_vein_R'] : [])]) {
+  if (FEMALE && hra.translate(n) === null) continue; // supplied from BodyParts3D in step 4
   if (!vesselParts.has(n)) vesselParts.set(n, M.weld(hra.collect(n), 1e-6));
 }
 
 // Bones (HRA): vertebrae, sacrum, coccyx, hip bones, leg bones (femur sub-patches excluded).
 const femurPatches = [/condyle/, /intercondylar/, /enthesis/, /perichondular/, /patellar_surface/, /articular_cartilage/, /distal_most/];
-const hraBones = M.weld(M.merge([
+// Female: the HRA pelvis is the ilium only, so the hip bones come from BodyParts3D (step 4); the female set has its own
+// sternum and manubrium, which replace the SIO sternum.
+const hraBones = FEMALE ? M.weld(M.merge([
+  hra.collect('VH_M_vertebra'), hra.collect(['VH_M_sacrum', 'VH_M_coccyx']),
+  hra.collect(['VH_M_femur_L', 'VH_M_femur_R'], { exclude: femurPatches }),
+  hra.collect(['VH_M_tibia_L', 'VH_M_tibia_R', 'VH_M_fibula_L', 'VH_M_fibula_R', 'VH_M_patella_L', 'VH_M_patella_R']),
+  hra.collect(['VH_F_sternum', 'VH_F_manubrium']),
+]), 1e-6) : M.weld(M.merge([
   hra.collect('VH_M_vertebra'), hra.collect(['VH_M_sacrum', 'VH_M_coccyx']),
   hra.collect(['VH_M_ilium_compact_bone', 'VH_M_ischium_compact_bone', 'VH_M_pubis_compact_bone']),
   hra.collect(['VH_M_femur_L', 'VH_M_femur_R'], { exclude: femurPatches }),
   hra.collect(['VH_M_tibia_L', 'VH_M_tibia_R', 'VH_M_fibula_L', 'VH_M_fibula_R', 'VH_M_patella_L', 'VH_M_patella_R']),
 ]), 1e-6);
 
+// BodyParts3D handles and the warp landmark pairs (BodyParts3D -> this HRA body). Computed on first use: the male
+// build uses them in step 4; the female build already needs them in step 3 (for the male -> female spline).
+const WARP_VERSION = 4;
+let bpCtx = null;
+const bpSetup = () => {
+  if (bpCtx) return bpCtx;
+  const po = new BP3D(join(RAW, 'bp3d'), 'partof');
+  const isa = new BP3D(join(RAW, 'bp3d'), 'isa');
+  const ringSkin = M.simplify(skinHRA, 150000, { error: 0.005 });
+  const lmCache = join(WORK, `warp-landmarks${SUFFIX}.json`);
+  const wopts = FEMALE ? { hip: 'crest', sternum: true, maskHRA: breastMask(femaleHead), fingerOrder: 'lateral' } : {};
+  const optsKey = FEMALE ? 'hip=crest;sternum;mask=breasts;fingers=lateral' : undefined; // part of the cache key
+  let lmk = existsSync(lmCache) && !args.has('--fresh') ? JSON.parse(readFileSync(lmCache, 'utf8')) : null;
+  if (!lmk || lmk.version !== WARP_VERSION || lmk.optsKey !== optsKey) {
+    lmk = { version: WARP_VERSION, optsKey, ...warpLandmarks({ hra, po, isa, hraSkin: ringSkin, log: (m) => log('  ' + m), opts: wopts }) };
+    writeFileSync(lmCache, JSON.stringify(lmk));
+  } else log(`  using cached warp landmarks (${lmk.src.length}); --fresh recomputes`);
+  return (bpCtx = { po, isa, ringSkin, lmk });
+};
+
 // ---------------------------------------------------------------------------------------------------------------
-log('3/7 SIO (Visible Human Male label volume): stomach, thyroid, rib cage; rigid registration to HRA');
+log(`3/7 SIO (Visible Human Male label volume): stomach, thyroid, rib cage; rigid registration to HRA male${FEMALE ? ', then spline to HRA female' : ''}`);
+// SIO is segmented from the Visible Human Male, so it is always registered to the male HRA body first.
+const hraM = FEMALE ? openRanged(HRA_MALE_FILE) : hra; // female build: low-memory reader (registration only)
 const sio = loadSIO(join(RAW, 'sio/data/VOXEL-MAN_segmented-internal-organs/labels'));
 const LT = labelTable(readXlsxRows(join(RAW, 'sio/zip/SIO_Object_Labels.xlsx')));
 const L = (...names) => names.flatMap((n) => { const v = LT.get(n); if (!v) throw new Error(`SIO label missing: ${n}`); return v; });
@@ -141,7 +212,7 @@ const voxelCentroid = (m, h = 0.002) => {
   for (let k = 0; k < g.nz; k++) for (let j = 0; j < g.ny; j++) for (let i = 0; i < g.nx; i++) if (g.data[i + g.nx * (j + g.ny * k)]) { n++; s[0] += i; s[1] += j; s[2] += k; }
   return s.map((v, a) => g.origin[a] + (v / n) * g.h);
 };
-const kidL = M.surfaceCentroid(hra.collect('VH_M_left_kidney'))[0] > 0 ? 'VH_M_left_kidney' : 'VH_M_right_kidney';
+const kidL = M.surfaceCentroid(hraM.collect('VH_M_left_kidney'))[0] > 0 ? 'VH_M_left_kidney' : 'VH_M_right_kidney';
 const kidR = kidL === 'VH_M_left_kidney' ? 'VH_M_right_kidney' : 'VH_M_left_kidney';
 const regPairs = [
   ['liver', ['VH_M_liver'], L('liver')], ['spleen', ['VH_M_spleen'], L('spleen')],
@@ -151,32 +222,67 @@ const regPairs = [
   ['pancreas', ['VH_M_pancreas'], L('pancreas')], ['lung L', ['VH_M_lungs_L'], L('left lung')], ['lung R', ['VH_M_lungs_R'], L('right lung')],
 ];
 const A = [], B = [];
-for (const [, hn, labels] of regPairs) { A.push(sio.stats(labels).centroid); B.push(voxelCentroid(M.weld(hra.collect(hn), 1e-6))); }
+for (const [, hn, labels] of regPairs) { A.push(sio.stats(labels).centroid); B.push(voxelCentroid(M.weld(hraM.collect(hn), 1e-6))); }
 const sioSim = fitSimilarity(A, B);
 report.sioRegistration = { scale_m_per_voxel: +sioSim.s.toFixed(6), rms_mm: +(sioSim.rms * 1000).toFixed(1), residuals_mm: Object.fromEntries(regPairs.map((p, i) => [p[0], +(sioSim.residuals[i] * 1000).toFixed(1)])) };
 log(`  SIO -> HRA similarity: scale ${sioSim.s.toFixed(6)} m/voxel, RMS ${(sioSim.rms * 1000).toFixed(1)} mm over ${A.length} organs`);
+let toBody = (p) => sioSim.apply(p); // SIO voxel index -> this body's HRA frame
+if (FEMALE) {
+  // Male HRA -> female HRA thin-plate spline: every warp landmark tag present in both bodies (spine, leg bones, organ
+  // centroids, skin rings, hands, feet) plus gut and sternum pairs around the stomach and the rib cage.
+  const { lmk: lmkF } = bpSetup();
+  const maleCache = join(WORK, 'warp-landmarks.json');
+  let lmkM = existsSync(maleCache) ? JSON.parse(readFileSync(maleCache, 'utf8')) : null;
+  if (!lmkM || lmkM.version !== WARP_VERSION) {
+    log('  male warp landmarks not cached: computing them (slow)');
+    const { po, isa } = bpSetup();
+    lmkM = { version: WARP_VERSION, ...warpLandmarks({ hra: hraM, po, isa, hraSkin: M.simplify(M.weld(hraM.collect('VH_M_skin'), 1e-6), 150000, { error: 0.005 }), log: (m) => log('  ' + m) }) };
+    writeFileSync(maleCache, JSON.stringify(lmkM));
+  }
+  const extra = [];
+  for (const n of ['VH_M_duodenum_superior', 'VH_M_duodenal_ampulla', 'VH_M_esophageal_impression_of_liver', 'VH_M_gastric_impression_of_liver', 'VH_M_duodenal_impression_of_liver',
+    'VH_M_colic_impression_of_liver', 'VH_M_transverse_colon', 'VH_M_splenic_flexure_of_colon', 'VH_M_hepatic_flexure_of_colon', 'VH_M_superior_mesenteric_artery']) {
+    // (the celiac trunk was tried and dropped: its male and female meshes cover different lengths, so their centroids
+    // disagree with the pancreas pair by about 4 cm)
+    extra.push([`gut:${n.slice(5)}`, M.surfaceCentroid(hraM.collect(n)), M.surfaceCentroid(hra.collect(n))]);
+  }
+  const sioSternum = M.mapVertices(V.surfaceNets(V.blur(V.gridFromMask(sio.mask(L('sternum')), sio.W, sio.H, sio.D, { pad: 2 }), 1), 0.5), (x, y, z) => sioSim.apply([x, y, z]));
+  extra.push(['sternum:all', M.surfaceCentroid(sioSternum), M.surfaceCentroid(hra.collect(['VH_F_sternum', 'VH_F_manubrium']))]);
+  extra.push(['sternum:notch', topSlab(sioSternum, 0.006), topSlab(hra.collect('VH_F_manubrium'), 0.006)]);
+  const m2f = maleToFemale(lmkM, lmkF, extra);
+  // sanity check on structures that are NOT landmarks: distance between the mapped male centroid and the true female one
+  const check = Object.fromEntries([['gallbladder', 'VH_M_gallbladder'], ['aortic arch', 'VH_M_aortic_arch'], ['hepatic portal vein', 'VH_M_hepatic_portal_vein'], ['splenic artery', 'VH_M_splenic_artery'], ['celiac trunk', 'VH_M_celiac_trunk']].map(([k2, n]) => [k2, +(M.dist(m2f.apply(M.surfaceCentroid(hraM.collect(n))), M.surfaceCentroid(hra.collect(n))) * 1000).toFixed(1)]));
+  report.maleToFemale = { pairs: m2f.count, extraPairs: extra.map((e) => e[0]), maxResidual_mm: +(m2f.maxResidual * 1000).toFixed(1), worstResiduals: m2f.worst, checkDistances_mm: check };
+  log(`  largest spline residuals: ${m2f.worst.join(', ')}`);
+  log(`  HRA male -> female spline on ${m2f.count} pairs (max residual ${(m2f.maxResidual * 1000).toFixed(1)} mm); mapped-vs-true centroid distance (not landmarks): ${Object.entries(check).map(([a, b]) => `${a} ${b} mm`).join(', ')}`);
+  toBody = (p) => m2f.apply(sioSim.apply(p));
+}
 const sioMesh = (labels, { blurPasses = 1, iterations = 10 } = {}) => {
   const g = V.gridFromMask(sio.mask(labels), sio.W, sio.H, sio.D, { pad: 2 });
   const m = V.surfaceNets(V.blur(g, blurPasses), 0.5);
-  return M.orientOutward(M.taubin(M.mapVertices(m, (x, y, z) => sioSim.apply([x, y, z])), { iterations }));
+  return M.orientOutward(M.taubin(M.mapVertices(m, (x, y, z) => toBody([x, y, z])), { iterations }));
 };
 for (const [id, o] of Object.entries(ORGANS)) if (o.sio) { organs[id] = sioMesh(L(...o.sio)); log(`  ${id}: ${M.triCount(organs[id])} tris, ${(M.volumeCentroid(organs[id]).volume * 1000).toFixed(3)} L`); }
-const ribNames = [...LT.keys()].filter((n) => /^(left|right) (rib \d+|costal cartilage .+|clavicle|clavicular cartilage|scapula)$|^sternum$/.test(n));
+if (FEMALE) {
+  // Contact resolution: the spline places the (male) SIO stomach well but leaves part of it inside the larger female
+  // liver's left lobe. Vertices inside a neighbouring organ are moved to just outside it, then lightly smoothed, so the
+  // stomach rests against the liver's gastric impression instead of passing through it.
+  const contacts = {};
+  for (const other of ['liver', 'spleen', 'heart', 'lungs', 'pancreas', 'large_intestine', 'kidneys']) {
+    const r = pushOutside(organs.stomach, organs[other]); organs.stomach = r.mesh;
+    if (r.moved) contacts[other] = { vertices: r.moved, share: +(r.moved / (organs.stomach.positions.length / 3)).toFixed(3), maxMove_mm: +(r.maxMove * 1000).toFixed(1) };
+  }
+  organs.stomach = M.orientOutward(M.taubin(organs.stomach, { iterations: 4 }));
+  report.stomachContacts = contacts;
+  log(`  stomach contact resolution: ${Object.entries(contacts).map(([k2, v]) => `${k2} ${(v.share * 100).toFixed(1)}% of vertices (max ${v.maxMove_mm} mm)`).join(', ') || 'none needed'}; now ${(M.volumeCentroid(organs.stomach).volume * 1000).toFixed(3)} L`);
+}
+const ribNames = [...LT.keys()].filter((n) => /^(left|right) (rib \d+|costal cartilage .+|clavicle|clavicular cartilage|scapula)$|^sternum$/.test(n) && !(FEMALE && n === 'sternum'));
 // (SIO shoulder girdle is in the cadaver's arms-down pose; the HRA skin has abducted arms, so keep it under the skin)
 const sioBones = args.has('--no-skeleton') ? null : keepInside(sioMesh(L(...ribNames), { iterations: 6 }));
 
 // ---------------------------------------------------------------------------------------------------------------
 log('4/7 BodyParts3D: thin-plate-spline warp into the HRA body; limb/neck/head vessels; skull, arm, hand, foot bones');
-const po = new BP3D(join(RAW, 'bp3d'), 'partof');
-const isa = new BP3D(join(RAW, 'bp3d'), 'isa');
-const ringSkin = M.simplify(skinHRA, 150000, { error: 0.005 });
-const lmCache = join(WORK, 'warp-landmarks.json');
-const WARP_VERSION = 4;
-let lmk = existsSync(lmCache) && !args.has('--fresh') ? JSON.parse(readFileSync(lmCache, 'utf8')) : null;
-if (!lmk || lmk.version !== WARP_VERSION) {
-  lmk = { version: WARP_VERSION, ...warpLandmarks({ hra, po, isa, hraSkin: ringSkin, log: (m) => log('  ' + m) }) };
-  writeFileSync(lmCache, JSON.stringify(lmk));
-} else log(`  using cached warp landmarks (${lmk.src.length}); --fresh recomputes`);
+const { po, isa, ringSkin, lmk } = bpSetup();
 const pa = preAlign(po, ringSkin);
 // Junction landmarks: make BodyParts3D vessels start exactly where the HRA torso vessels end.
 const endOf = (m, dir, tol = 0.003) => {
@@ -188,7 +294,17 @@ const endOf = (m, dir, tol = 0.003) => {
 };
 const bpPre = (tree, name) => pa.preMesh(tree.mesh(name));
 const hv = (n) => vesselParts.get(n);
-const junctions = [
+const junctions = FEMALE ? [
+  ['brachiocephalic trunk origin', endOf(bpPre(isa, 'brachiocephalic artery'), [0, -1, 0]), endOf(hv('VH_M_brachiocephalic_artery_a'), [0, -1, 0])],
+  ['left common carotid origin', endOf(bpPre(isa, 'left common carotid artery'), [0, -1, 0]), endOf(hv('VH_M_left_common_carotid_artery_a'), [0, -1, 0])],
+  ['left subclavian origin', endOf(bpPre(isa, 'left subclavian artery'), [0, -1, 0]), endOf(hv('VH_M_left_subclavian_artery_a'), [0, -1, 0])],
+  ['aortic bifurcation', endOf(bpPre(isa, 'abdominal aorta'), [0, -1, 0]), endOf(hv('VH_M_descending_aorta_b'), [0, -1, 0])],
+  // female set: no brachiocephalic or external iliac veins, so BodyParts3D's are joined to the HRA superior vena cava
+  // (where both brachiocephalic veins meet) and to the distal ends of the HRA common iliac veins
+  ['superior vena cava (brachiocephalic confluence)', endOf(bpPre(isa, 'superior vena cava'), [0, 1, 0]), endOf(hv('VH_M_superior_vena_cava'), [0, 1, 0])],
+  ['left common iliac vein (distal end)', endOf(bpPre(isa, 'left common iliac vein'), [0.5, -1, 0.2]), endOf(hv('VH_M_common_iliac_vein_L'), [0.5, -1, 0.2])],
+  ['right common iliac vein (distal end)', endOf(bpPre(isa, 'right common iliac vein'), [-0.5, -1, 0.2]), endOf(hv('VH_M_common_iliac_vein_R'), [-0.5, -1, 0.2])],
+] : [
   ['brachiocephalic trunk origin', endOf(bpPre(isa, 'brachiocephalic artery'), [0, -1, 0]), endOf(hv('VH_M_brachiocephalic_artery_a'), [0, -1, 0])],
   ['left common carotid origin', endOf(bpPre(isa, 'left common carotid artery'), [0, -1, 0]), endOf(hv('VH_M_left_common_carotid_artery_a'), [0, -1, 0])],
   ['left subclavian origin', endOf(bpPre(isa, 'left subclavian artery'), [0, -1, 0]), endOf(hv('VH_M_left_subclavian_artery_a'), [0, -1, 0])],
@@ -216,6 +332,7 @@ const BP_VEINS = [
   ...both('internal jugular vein', 'subclavian vein', 'axillary vein', 'cephalic vein', 'basilic vein', 'median cubital vein', 'medial brachial vein', 'radial vein', 'ulnar vein',
     'superficial palmar venous arch', 'femoral vein', 'deep femoral vein', 'great saphenous vein', 'small saphenous vein', 'popliteal vein', 'posterior tibial vein',
     'anterior tibial vein', 'superficial epigastric vein'),
+  ...(FEMALE ? both('brachiocephalic vein', 'external iliac vein') : []),
 ];
 // Warped BodyParts3D geometry is kept inside the HRA skin (superficial veins/arteries and finger bones can land a few
 // millimetres outside because the two bodies differ): such vertices are pushed inward along the skin's inside-field.
@@ -226,6 +343,10 @@ const bpVessel = (tree, name) => {
 vesselParts.set('left humerus', warp.mapMesh(po.mesh('left humerus')));
 const bpArtList = [...BP_ARTERIES.map((n) => bpVessel(isa, n)), ...BP_ARTERIES_PARTOF.map((n) => bpVessel(po, n))];
 const bpVeinList = BP_VEINS.map((n) => bpVessel(isa, n));
+if (FEMALE) { // logical names used by the flow paths
+  for (const [logical, bp] of [['VH_M_brachiocephalic_vein_L', 'left brachiocephalic vein'], ['VH_M_brachiocephalic_vein_R', 'right brachiocephalic vein'],
+    ['VH_M_external_iliac_vein_L', 'left external iliac vein'], ['VH_M_external_iliac_vein_R', 'right external iliac vein']]) vesselParts.set(logical, vesselParts.get(bp));
+}
 // BodyParts3D 4.0 has no geometry for the cervical internal carotid, the lower vertebral artery or the upper internal
 // jugular vein. Bridge those gaps with tubes that join the real vessel ends (cubic Hermite, matched end radii).
 const bridges = [];
@@ -261,16 +382,17 @@ if (!args.has('--no-skeleton')) {
   for (const s of SIDES) {
     for (const n of ['humerus', 'radius', 'ulna', ...CARPALS]) { const nm = `${s} ${n}`; if (po.has(nm)) parts.push(po.mesh(nm)); else if (isa.has(nm)) parts.push(isa.mesh(nm)); else warn(`BodyParts3D: no bone "${nm}"`); }
     parts.push(po.mesh(`${s} hand`), po.mesh(`${s} foot`));
+    if (FEMALE) parts.push(po.mesh(`${s} hip bone`));
   }
   bpBones = keepInside(M.weld(warp.mapMesh(M.merge(parts)), 1e-6));
 }
 
 // ---------------------------------------------------------------------------------------------------------------
 log('5/7 assemble in contract frame, simplify, compress');
-k = 1.75 / skinBounds.size[1];
+k = STATURE / skinBounds.size[1];
 const toWorldS = (p) => [(p[0] - skinBounds.center[0]) * k, (p[1] - skinBounds.min[1]) * k, (p[2] - skinBounds.center[2]) * k];
 const W = (m) => M.mapVertices(m, (x, y, z) => toWorldS([x, y, z]));
-report.frame = { units: 'm', up: '+Y', front: '+Z', personLeft: '+X', scaleFromHRA: +k.toFixed(6), sourceHeight_m: +skinBounds.size[1].toFixed(4), height_m: 1.75 };
+report.frame = { units: 'm', up: '+Y', front: '+Z', personLeft: '+X', scaleFromHRA: +k.toFixed(6), sourceHeight_m: +skinBounds.size[1].toFixed(4), height_m: STATURE };
 
 // Containment check (HRA frame): share of each mesh's vertices that lie inside the skin.
 const insideShare = (m) => { let n = 0; const p = m.positions; for (let i = 0; i < p.length; i += 3) if (skinField.sample([p[i], p[i + 1], p[i + 2]]) > 0.5) n++; return +(n / (p.length / 3)).toFixed(4); };
@@ -293,26 +415,33 @@ const COLORS = {
   skin: [0.55, 0.78, 0.86], brain: [0.85, 0.65, 0.7], thyroid: [0.79, 0.44, 0.53], heart: [0.78, 0.25, 0.29], lungs: [0.9, 0.64, 0.65], liver: [0.55, 0.23, 0.2],
   gallbladder: [0.45, 0.56, 0.24], stomach: [0.85, 0.56, 0.45], pancreas: [0.9, 0.72, 0.42], spleen: [0.48, 0.21, 0.33], small_intestine: [0.89, 0.63, 0.52],
   large_intestine: [0.79, 0.55, 0.42], kidneys: [0.63, 0.27, 0.25], bladder: [0.84, 0.7, 0.36], arteries: [0.93, 0.33, 0.3], veins: [0.3, 0.45, 0.9], skeleton: [0.91, 0.89, 0.82],
+  uterus: [0.8, 0.5, 0.53], ovaries: [0.87, 0.68, 0.6],
 };
-const SRC = {
+const SRC = FEMALE ? {
+  hra: 'HRA 3D Reference Organ Set, United Female v1.10 (NIH HuBMAP; Visible Human Female), CC BY 4.0',
+  sio: 'VOXEL-MAN Segmented Internal Organs of the Visible Human Male (Höhne et al., 2025), CC BY 4.0; spline-warped into the female body',
+  bp3d: 'BodyParts3D 4.0, © The Database Center for Life Science, CC BY 4.0',
+} : {
   hra: 'HRA 3D Reference Organ Set, United Male v1.9 (NIH HuBMAP; Visible Human Male), CC BY 4.0',
   sio: 'VOXEL-MAN Segmented Internal Organs of the Visible Human Male (Höhne et al., 2025), CC BY 4.0',
   bp3d: 'BodyParts3D 4.0, © The Database Center for Life Science, CC BY 4.0',
 };
 const meshSources = { skin: [SRC.hra], arteries: [SRC.hra, SRC.bp3d], veins: [SRC.hra, SRC.bp3d], skeleton: [SRC.hra, SRC.sio, SRC.bp3d] };
 for (const [id, o] of Object.entries(ORGANS)) meshSources[id] = [SRC[o.src]];
-const ORDER = ['skin', 'brain', 'thyroid', 'heart', 'lungs', 'liver', 'gallbladder', 'stomach', 'pancreas', 'spleen', 'small_intestine', 'large_intestine', 'kidneys', 'bladder', 'arteries', 'veins', 'skeleton'];
+const ORDER = ['skin', 'brain', 'thyroid', 'heart', 'lungs', 'liver', 'gallbladder', 'stomach', 'pancreas', 'spleen', 'small_intestine', 'large_intestine', 'kidneys', 'bladder', ...(FEMALE ? ['uterus', 'ovaries'] : []), 'arteries', 'veins', 'skeleton'];
 const items = ORDER.filter((id) => final[id]).map((id) => ({ name: id, mesh: final[id], color: COLORS[id], extras: { sources: meshSources[id] } }));
 for (const it of items) report.meshes[it.name] = { triangles: M.triCount(it.mesh), vertices: it.mesh.positions.length / 3 };
-const glbPath = join(OUT, 'body.glb');
+const glbPath = join(OUT, `body${SUFFIX}.glb`);
 await writeGLB(glbPath, items, {
   compress: true,
-  copyright: 'Anatomy: HRA 3D Reference Organs (NIH HuBMAP, CC BY 4.0); VOXEL-MAN Segmented Internal Organs of the Visible Human Male (CC BY 4.0); BodyParts3D (DBCLS, CC BY 4.0). Adapted for PeptideScope.',
+  copyright: FEMALE
+    ? 'Anatomy: HRA 3D Reference Organs, United Female (NIH HuBMAP, CC BY 4.0); VOXEL-MAN Segmented Internal Organs of the Visible Human Male (CC BY 4.0); BodyParts3D (DBCLS, CC BY 4.0). Adapted for PeptideScope.'
+    : 'Anatomy: HRA 3D Reference Organs (NIH HuBMAP, CC BY 4.0); VOXEL-MAN Segmented Internal Organs of the Visible Human Male (CC BY 4.0); BodyParts3D (DBCLS, CC BY 4.0). Adapted for PeptideScope.',
   extras: { frame: report.frame, license: 'CC BY 4.0 (adapted material; see assets/anatomy/LICENSE.md)', vesselClassification: 'by blood oxygenation: pulmonary arteries are in "veins", pulmonary veins in "arteries"' },
 });
 report.glbBytes = statSync(glbPath).size;
-log(`  body.glb ${(report.glbBytes / 1e6).toFixed(2)} MB; triangles: ${items.map((i) => `${i.name} ${M.triCount(i.mesh)}`).join(', ')}`);
-if (report.glbBytes > 3.5e6) warn(`body.glb is ${(report.glbBytes / 1e6).toFixed(2)} MB (> 3.5 MB budget)`);
+log(`  body${SUFFIX}.glb ${(report.glbBytes / 1e6).toFixed(2)} MB; triangles: ${items.map((i) => `${i.name} ${M.triCount(i.mesh)}`).join(', ')}`);
+if (report.glbBytes > 3.5e6) warn(`body${SUFFIX}.glb is ${(report.glbBytes / 1e6).toFixed(2)} MB (> 3.5 MB budget)`);
 const cache = {};
 for (const [n, m] of Object.entries(final)) cache[`final::${n}`] = m;
 for (const [n, m] of Object.entries(organs)) cache[`organ::${n}`] = m;
@@ -324,8 +453,17 @@ const toWorld = (p) => [(p[0] - skinBounds.center[0]) * k, (p[1] - skinBounds.mi
 // ---------------------------------------------------------------------------------------------------------------
 log('6/7 landmarks: organ centres, injection sites, flow paths');
 const fromWorld = (p) => [p[0] / k + skinBounds.center[0], p[1] / k + skinBounds.min[1], p[2] / k + skinBounds.center[2]];
-const lm = buildLandmarks({ final, organsHRA: organs, vesselParts, toWorld, fromWorld, log: (m) => log('  ' + m), warn });
-lm.meta = {
+const lm = buildLandmarks({ final, organsHRA: organs, vesselParts, toWorld, fromWorld, log: (m) => log('  ' + m), warn, stature: STATURE, extraOrgans: FEMALE ? ['uterus', 'ovaries'] : [] });
+lm.meta = FEMALE ? {
+  generator: 'tools/build-anatomy.mjs --sex female',
+  sex: 'female',
+  frame: 'metres, +Y up, feet at y=0, body faces +Z, centred on x=0 z=0, person\'s left = +X',
+  stature: { height_m: STATURE, sourceHeight_m: +skinBounds.size[1].toFixed(4), note: 'Visible Human Female (HRA United Female v1.10) scaled uniformly to 1.62 m' },
+  sources: [HRA_FEMALE.url, ...SOURCES.filter((s) => !/elements|crosswalk|hra-united-male/.test(s.id)).map((s) => s.url)],
+  registrationReference: SOURCES.find((s) => s.id === 'hra-united-male').url,
+  attribution: 'Anatomy adapted from the HRA 3D Reference Organs, United Female (NIH HuBMAP, CC BY 4.0), the VOXEL-MAN Segmented Internal Organs of the Visible Human Male (Höhne et al., CC BY 4.0) and BodyParts3D (© DBCLS, CC BY 4.0).',
+  checks: lm.checks,
+} : {
   generator: 'tools/build-anatomy.mjs',
   frame: 'metres, +Y up, feet at y=0, body faces +Z, centred on x=0 z=0, person\'s left = +X',
   sources: SOURCES.filter((s) => !/elements|crosswalk/.test(s.id)).map((s) => s.url),
@@ -333,11 +471,11 @@ lm.meta = {
   checks: lm.checks,
 };
 delete lm.checks;
-writeFileSync(join(OUT, 'landmarks.json'), JSON.stringify(lm, (key, v) => (typeof v === 'number' ? Math.round(v * 1e4) / 1e4 : v)));
+writeFileSync(join(OUT, `landmarks${SUFFIX}.json`), JSON.stringify(lm, (key, v) => (typeof v === 'number' ? Math.round(v * 1e4) / 1e4 : v)));
 report.landmarks = { organs: Object.keys(lm.organs).length, sites: Object.keys(lm.sites), paths: Object.fromEntries(Object.entries(lm.paths).map(([k2, p]) => [k2, p.length])), checks: lm.meta.checks };
 
 // ---------------------------------------------------------------------------------------------------------------
 log('7/7 report');
-writeFileSync(join(WORK, 'report.json'), JSON.stringify(report, null, 2));
-console.log(JSON.stringify({ glbMB: +(report.glbBytes / 1e6).toFixed(3), meshes: report.meshes, sio: report.sioRegistration, warp: report.warp, landmarks: report.landmarks, warnings: report.warnings }, null, 2));
+writeFileSync(join(WORK, `report${SUFFIX}.json`), JSON.stringify(report, null, 2));
+console.log(JSON.stringify({ sex: SEX, glbMB: +(report.glbBytes / 1e6).toFixed(3), meshes: report.meshes, sio: report.sioRegistration, maleToFemale: report.maleToFemale, warp: report.warp, insideSkin: report.insideSkin, landmarks: report.landmarks, warnings: report.warnings }, null, 2));
 if (lm.meta.checks.outside.length) { console.error('FAIL: waypoints outside the skin:', lm.meta.checks.outside); process.exitCode = 1; }

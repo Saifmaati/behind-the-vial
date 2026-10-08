@@ -4,24 +4,34 @@
 //   body.dispose();
 //
 // Listens: site:select, sequence:start, time:change, effects:active, risk:change, organ:focus,
-//          theme:change, peptide:loaded (and motion:change { reducedMotion } when main sends it)
+//          theme:change, peptide:loaded, body:change (and motion:change { reducedMotion } when main sends it)
 // Emits:   site:select (hotspot / site label click), organ:focus (callout or organ click),
-//          sequence:phase, sequence:done (via the injection module), stage:ready
+//          sequence:phase, sequence:done (via the injection module), stage:ready,
+//          body:change { sex, heightCm, weightKg, age } (from the body editor it mounts in the stage)
+//
+// Editable body (appearance only): the "Body" button in the stage corner opens js/ui/bodyeditor.js.
+// body:change reaches only this scene: height scales the anatomy about the feet, weight offsets the
+// skin by region and thickens or thins the fat layer of the injection cross-section, age adds a slight
+// stature loss and shifts fat toward the abdomen, and Female swaps in body-female.glb when published.
+// It never touches the timeline, the effects, the risk check or any content. Locked while the
+// injection sequence plays.
 //
 // Extra options (optional, for tests and the sandbox): { bus, anatomy: 'auto' | 'placeholder' | 'glb', assetBase }.
 import * as THREE from 'three';
 import { createStage } from './stage.js';
-import { loadAnatomy, ORGAN_LABELS } from './anatomy.js';
+import { loadAnatomy, ORGAN_LABELS, bodyParams, hasVariant } from './anatomy.js';
 import { createVessels } from './vessels.js';
 import { createInjection } from './injection.js';
 import { createCallouts } from './callouts.js';
+import { mountBodyEditor, normalizeBody, BODY_EDITOR_DEFAULTS } from '../ui/bodyeditor.js';
 
 const SITE_LABELS = { abdomen: 'Abdomen', thigh: 'Thigh', arm: 'Upper arm' };
 const SEVERITY = { common: 1, notable: 2, serious: 3 };
-// 3D highlight colours (luminous versions of the --warn / --danger / --accent hues; never green).
+// 3D highlight colours (the --warn bronze amber, --danger and champagne --focus of the luxury palette;
+// never green).
 const HL = {
-  dark: { warn: 0xffa53a, danger: 0xff3d55, focus: 0x6fe6ff, drug: 0x9ff4ff },
-  light: { warn: 0xe08600, danger: 0xd3122f, focus: 0x0a7f96, drug: 0x0a8fa6 },
+  dark: { warn: 0xd9a05b, danger: 0xe06a5f, focus: 0xe6d3a3, drug: 0xf1dda8 },
+  light: { warn: 0x8f5410, danger: 0xb3261e, focus: 0x7a5c28, drug: 0x8f6c2c },
 };
 
 function miniBus() {
@@ -127,6 +137,128 @@ export async function mountBody(host, opts = {}) {
   added.push(tools, skipBtn, legend, credit);
   host.classList.add('has-body3d');
 
+  let disposed = false;
+
+  // ---------------------------------------------------------------- editable body (appearance only)
+  // body:change → anatomy.setBody (tweened). Each tween step refreshes the cached callout anchors and
+  // the camera's home framing (no allocation). Female swaps in the female anatomy when it is published.
+  const hudModel = host.querySelector('.hud-label--tl');
+  let bodyDesc = { ...BODY_EDITOR_DEFAULTS.male };
+  let pendingBody = null;
+  let lastBodyH = anatomy.modelHeight * anatomy.bodyScale;
+  let femaleOk = false;
+  let wantSex = 'male'; // the sex last asked for (it may arrive before the female files are confirmed)
+  let swapping = null;
+  const refreshAnchor = (v, organ) => { anatomy.organAnchor(organ, v); };
+  function onBodyStep(b) {
+    anchorCache.forEach(refreshAnchor);
+    const h = anatomy.modelHeight * b.scale;
+    stage.setBodyFrame(h, h / (lastBodyH || h));
+    lastBodyH = h;
+  }
+  let offBodyStep = anatomy.onBodyChange(onBodyStep);
+  function updateHud() {
+    if (!hudModel) return;
+    const kind = hudModel.querySelector('.hud-tl-kind');
+    const text = `Visible Human ${anatomy.variant === 'female' ? 'Female' : 'Male'} · ${(bodyDesc.heightCm / 100).toFixed(2)} m`;
+    // keep the "Anatomical model · " prefix (app.css hides it on narrow stages); replace the rest
+    const node = kind ? kind.nextSibling : hudModel.firstChild;
+    if (node && node.nodeType === 3) node.nodeValue = text;
+    else if (!node) hudModel.append(document.createTextNode(text));
+  }
+  // Labels keep clear of the open panel: a side panel on wide stages, a bottom sheet on narrow ones.
+  function editorInsets(open, panel) {
+    if (!open || !panel) { callouts.setInsets(state.playing ? { right: 0 } : { right: 0, bottom: 0 }); return; }
+    const hr = host.getBoundingClientRect(), pr = panel.getBoundingClientRect();
+    if (pr.width > hr.width * 0.7) callouts.setInsets({ bottom: Math.max(0, hr.bottom - pr.top + 8 - 40), right: 0 });
+    else callouts.setInsets({ right: Math.max(0, hr.right - pr.left + 8 - 56), bottom: 0 });
+  }
+  const editor = mountBodyEditor(host, {
+    initial: bodyDesc,
+    femaleAvailable: false,
+    onChange: (d) => bus.emit('body:change', d),
+    onToggle: editorInsets,
+    onOpen: () => { if (!femaleOk) checkFemale(); },
+  });
+  added.push(editor.elements.toggle, editor.elements.panel);
+  function checkFemale() {
+    if (opts.anatomy === 'placeholder') return Promise.resolve(false);
+    return hasVariant('female', opts.assetBase).then((ok) => {
+      if (disposed) return false;
+      femaleOk = ok;
+      editor.setFemaleAvailable(ok);
+      if (ok && wantSex === 'female' && bodyDesc.sex !== 'female') applyBody(withSex(bodyDesc, 'female'));
+      return ok;
+    });
+  }
+  // untouched height and weight follow the new sex's defaults (the editor does the same)
+  function withSex(desc, sex) {
+    const from = BODY_EDITOR_DEFAULTS[desc.sex] || BODY_EDITOR_DEFAULTS.male, to = BODY_EDITOR_DEFAULTS[sex];
+    return {
+      ...desc, sex,
+      heightCm: desc.heightCm === from.heightCm ? to.heightCm : desc.heightCm,
+      weightKg: desc.weightKg === from.weightKg ? to.weightKg : desc.weightKg,
+    };
+  }
+  function applyBody(d, { instant = false } = {}) {
+    if (d?.sex === 'female' || d?.sex === 'male') wantSex = d.sex;
+    bodyDesc = normalizeBody(d, bodyDesc);
+    if (bodyDesc.sex === 'female' && !femaleOk) bodyDesc = { ...bodyDesc, sex: 'male' };
+    editor.sync(bodyDesc);
+    if (state.playing) { pendingBody = bodyDesc; return; } // the sequence owns the body until it ends
+    if (anatomy.variant !== bodyDesc.sex) { swapVariant(bodyDesc.sex); return; }
+    anatomy.setBody(bodyParams(bodyDesc, anatomy.modelHeight), { instant });
+    updateHud();
+  }
+  async function swapVariant(variant) {
+    if (swapping) { swapping.want = variant; return; }
+    const job = { want: variant };
+    swapping = job;
+    editor.setBusy(true, `Loading the ${variant} anatomy…`);
+    try {
+      const next = await loadAnatomy(stage, { source: opts.anatomy || 'auto', base: opts.assetBase, variant });
+      if (disposed) { next.dispose(); return; }
+      replaceAnatomy(next);
+    } catch (e) {
+      console.warn(`[scene] the ${variant} anatomy could not be loaded`, e);
+      if (variant === 'female') {
+        femaleOk = false;
+        editor.setFemaleAvailable(false);
+        bodyDesc = { ...bodyDesc, sex: 'male' };
+        job.want = 'male';
+      }
+    } finally {
+      swapping = null;
+      editor.setBusy(false);
+    }
+    if (disposed) return;
+    if (job.want !== anatomy.variant && (job.want !== 'female' || femaleOk)) { swapVariant(job.want); return; }
+    applyBody(bodyDesc, { instant: true });
+  }
+  function replaceAnatomy(next) {
+    offBodyStep();
+    injection.dispose();
+    vessels.dispose();
+    anatomy.dispose();
+    callouts.clear();
+    anchorCache.clear();
+    for (const k of Object.keys(normalCache)) delete normalCache[k];
+    anatomy = next;
+    vessels = createVessels(stage, anatomy);
+    injection = createInjection(stage, anatomy, vessels, { emit: (t, d) => bus.emit(t, d), callouts });
+    offBodyStep = anatomy.onBodyChange(onBodyStep);
+    host.dataset.anatomy = anatomy.source;
+    host.dataset.variant = anatomy.variant;
+    // restore what the scene was showing
+    if (state.site) anatomy.selectSite(state.site);
+    vessels.setDrugTargets((state.entry?.targets || []).map((t) => t.organ).filter(Boolean));
+    vessels.setDrugLevel(state.playing ? 0 : state.level);
+    applyEffects(state.effects);
+    applyRisk(state.warnings);
+    if (state.focus) { const f = state.focus; state.focus = null; setFocus(f); }
+    renderSiteLabels();
+  }
+
   // ---------------------------------------------------------------- state
   const state = {
     site: null, peptideId: null, entry: undefined, playing: false, focus: null,
@@ -138,7 +270,7 @@ export async function mountBody(host, opts = {}) {
   function siteView(site) {
     if (!anatomy.siteFrame(site)) return null;
     const az = site === 'arm' ? 62 : site === 'thigh' ? 24 : 16;
-    return { target: [0, 0.9, 0], distance: stage.homeDistance, azimuth: az, elevation: 4 };
+    return { target: stage.homeTarget.toArray(), distance: stage.homeDistance, azimuth: az, elevation: 4 };
   }
   function organView(organ) {
     const c = anatomy.organCenter(organ);
@@ -252,6 +384,7 @@ export async function mountBody(host, opts = {}) {
     const was = state.playing;
     state.playing = on;
     skipBtn.hidden = !on;
+    editor.setLocked(on);
     host.classList.toggle('is-sequence-playing', on);
     for (const g of ['effects', 'risk', 'focus']) callouts.setGroupVisible(g, !on);
     // keep labels clear of the skip button while it shows (it sits higher on wide stages; see stage.css)
@@ -264,6 +397,7 @@ export async function mountBody(host, opts = {}) {
       vessels.setDrugLevel(on ? 0 : state.level);
     }
     renderSiteLabels();
+    if (!on && pendingBody) { const b = pendingBody; pendingBody = null; applyBody(b); }
   }
 
   // ---------------------------------------------------------------- bus wiring
@@ -275,7 +409,7 @@ export async function mountBody(host, opts = {}) {
     const changed = site !== state.site;
     state.site = site;
     anatomy.selectSite(site);
-    for (const k of ['injection_site', 'fat']) { const v = anchorCache.get(k); if (v) v.copy(anatomy.organAnchor(k)); }
+    for (const k of ['injection_site', 'fat']) { const v = anchorCache.get(k); if (v) anatomy.organAnchor(k, v); }
     if (state.playing && changed) { injection.reset(); setPlaying(false); }
     else if (changed && state.effects.some((it) => (it?.organ || it?.organId) === 'injection_site' || (it?.alsoOrgans || []).includes('injection_site'))) applyEffects(state.effects); // new site (normal, anchor)
     if (state.focus) setFocus(null);
@@ -333,6 +467,7 @@ export async function mountBody(host, opts = {}) {
     stage.setTheme(theme === 'light' ? 'light' : 'dark');
   });
   on('motion:change', ({ reducedMotion }) => stage.setReducedMotion(!!reducedMotion));
+  on('body:change', (d) => applyBody(d));
   stage.onTheme((t) => {
     HC = HL[t] || HL.dark;
     applyEffects(state.effects);
@@ -410,16 +545,24 @@ export async function mountBody(host, opts = {}) {
 
   // ---------------------------------------------------------------- ready
   host.dataset.anatomy = anatomy.source;
+  host.dataset.variant = anatomy.variant;
+  checkFemale();
+  // a body set before the scene mounted (sandbox, tests) is applied at once
+  { const last = bus.last?.('body:change'); if (last) applyBody(last, { instant: true }); else updateHud(); }
   try { bus.emit('stage:ready', { anatomy: anatomy.source }); } catch (e) { console.error(e); }
 
-  let disposed = false;
   const api = {
-    stage, anatomy, vessels, injection, callouts,
+    // getters: the anatomy, vessels and injection are rebuilt when the body editor swaps Male / Female
+    get stage() { return stage; }, get anatomy() { return anatomy; }, get vessels() { return vessels; },
+    get injection() { return injection; }, get callouts() { return callouts; }, get editor() { return editor; },
+    get body() { return { ...bodyDesc }; },
     get state() { return { ...state }; },
     dispose() {
       if (disposed) return;
       disposed = true;
       delete host.__btvBody;
+      offBodyStep();
+      editor.dispose();
       for (const off of offs) { try { off(); } catch { /* ignore */ } }
       cancelAnimationFrame(hoverRaf);
       canvas.removeEventListener('pointerdown', onDown);
@@ -433,8 +576,9 @@ export async function mountBody(host, opts = {}) {
       anatomy.dispose();
       stage.dispose();
       for (const el of added) el.remove();
-      host.classList.remove('has-body3d', 'is-sequence-playing');
+      host.classList.remove('has-body3d', 'is-sequence-playing', 'has-body-editor-open');
       delete host.dataset.anatomy;
+      delete host.dataset.variant;
     },
   };
   // Dev/test handle (headless checks reach the scene through the host element, not a global).

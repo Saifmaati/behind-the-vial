@@ -33,8 +33,10 @@ const ORGAN_LABEL = {
   kidneys: 'Kidneys', bladder: 'Bladder', skin: 'Skin', fat: 'Fat tissue', injection_site: 'Injection site', muscle: 'Muscle',
   eyes: 'Eyes', blood: 'Bloodstream',
 };
-const DRUG = { dark: 0x9ff4ff, light: 0x0a8fa6 };
-const ORGAN_DRUG = { dark: 0x2fcbe6, light: 0x0a8fa6 }; // saturated enough to stay cyan on pale organs
+// Luxury palette: the drug is luminous champagne (dark) or a deep gold ink (light); on organ surfaces
+// a warmer gold so it still reads on pale tissue.
+const DRUG = { dark: 0xf1dda8, light: 0x8f6c2c };
+const ORGAN_DRUG = { dark: 0xe2be72, light: 0x8f6c2c };
 
 // ------------------------------------------------------------------ tissue block shader
 const BLOCK_VERT = /* glsl */`
@@ -65,7 +67,7 @@ const BLOCK_FRAG = /* glsl */`
   }
   vec3 muscle(vec2 q) {
     float s = 0.5 + 0.5 * sin(q.y * 5200.0 + vn(q * vec2(90.0, 260.0)) * 7.0);
-    vec3 base = lin(vec3(0.62, 0.17, 0.2));
+    vec3 base = lin(vec3(0.58, 0.2, 0.2));
     vec3 c = mix(base * 0.72, base * 1.18, s);
     float fasc = vn(vec2(q.x * 140.0, q.y * 700.0));
     c *= 0.82 + 0.26 * smoothstep(0.25, 0.75, fasc);
@@ -79,7 +81,7 @@ const BLOCK_FRAG = /* glsl */`
     float pap = sin(q.x * 1500.0) * 0.00022 + sin(q.x * 640.0 + 1.3) * 0.00012;
     if (vNL.y > 0.5) {
       float n = vn(vL.xz * 2200.0) * 0.5 + vn(vL.xz * 700.0) * 0.5;
-      col = mix(lin(vec3(0.83, 0.62, 0.53)), lin(vec3(0.92, 0.75, 0.66)), n);
+      col = mix(lin(vec3(0.82, 0.64, 0.55)), lin(vec3(0.9, 0.76, 0.67)), n);
       col *= 0.9 + 0.1 * smoothstep(0.3, 0.7, vn(vL.xz * 9000.0));
     } else if (vNL.y < -0.5) {
       col = muscle(q);
@@ -92,7 +94,7 @@ const BLOCK_FRAG = /* glsl */`
       col = mix(col, lin(vec3(0.7, 0.4, 0.4)), smoothstep(0.00035, 0.0, abs(depth - uLayers.x - pap * 0.4)) * 0.6);
     } else if (depth < uLayers.z) {
       vec3 v = voro(q * 640.0);
-      vec3 cell = mix(lin(vec3(0.99, 0.89, 0.58)), lin(vec3(0.94, 0.77, 0.4)), clamp(v.x * 0.95, 0.0, 1.0));
+      vec3 cell = mix(lin(vec3(0.97, 0.89, 0.66)), lin(vec3(0.91, 0.78, 0.5)), clamp(v.x * 0.95, 0.0, 1.0));
       cell *= 0.9 + 0.18 * v.z;
       float edge = smoothstep(0.025, 0.1, v.y);
       col = mix(lin(vec3(0.85, 0.58, 0.48)), cell, edge);
@@ -302,8 +304,12 @@ export function createInjection(stage, anatomy, vessels, { emit, callouts } = {}
   scene.add(root);
 
   // ---------------------------------------------------------------- site frames
+  // Frames follow the editable body (scale and skin offset); they are rebuilt lazily after a change.
   const frames = {};
+  let framesDirty = false;
+  const offBody = anatomy.onBodyChange?.(() => { framesDirty = true; }) || (() => {});
   function frameFor(site) {
+    if (framesDirty) { for (const k of Object.keys(frames)) delete frames[k]; framesDirty = false; }
     if (frames[site]) return frames[site];
     const f = anatomy.siteFrame(site);
     if (!f) return null;
@@ -354,9 +360,9 @@ export function createInjection(stage, anatomy, vessels, { emit, callouts } = {}
             m.needsUpdate = true;
           }
           // keep the white plastic below the bloom threshold so it reads as plastic, not light
-          if (M.plunger) { M.plunger.envMapIntensity = 0.35; M.plunger.color?.setHex?.(0x8d969e); }
-          if (M.glass) { M.glass.opacity = 0.12; M.glass.envMapIntensity = 0.45; M.glass.color?.setHex?.(0xbcc8d2); }
-          if (M.hub) M.hub.color?.setHex?.(0xa9b3bc);
+          if (M.plunger) { M.plunger.envMapIntensity = 0.35; M.plunger.color?.setHex?.(0x9a958c); }
+          if (M.glass) { M.glass.opacity = 0.12; M.glass.envMapIntensity = 0.45; M.glass.color?.setHex?.(0xd2cabb); }
+          if (M.hub) M.hub.color?.setHex?.(0xb4ad9f);
           syringePivot.add(syringe.group);
           // remember material states so the syringe can fade in and out
           syringe.group.traverse((o) => {
@@ -411,8 +417,8 @@ export function createInjection(stage, anatomy, vessels, { emit, callouts } = {}
   const edgeMat = new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0, depthWrite: false });
   const capMat = new THREE.ShaderMaterial({
     uniforms: {
-      uCap: { value: new THREE.Color(0xa63a5a) }, uArt: { value: new THREE.Color(0xd8343c) }, uVen: { value: new THREE.Color(0x3d5fd0) },
-      uLymph: { value: new THREE.Color(0xa89f8a) }, uDrug: { value: drugColor }, uFill: { value: 0 }, uOpacity: { value: 0 }, uGlow: { value: 1 },
+      uCap: { value: new THREE.Color(0x9a3c48) }, uArt: { value: new THREE.Color(0xc4524a) }, uVen: { value: new THREE.Color(0x5b7db8) },
+      uLymph: { value: new THREE.Color(0xb8ad96) }, uDrug: { value: drugColor }, uFill: { value: 0 }, uOpacity: { value: 0 }, uGlow: { value: 1 },
     },
     vertexShader: CAP_VERT, fragmentShader: CAP_FRAG, transparent: true,
   });
@@ -442,7 +448,10 @@ export function createInjection(stage, anatomy, vessels, { emit, callouts } = {}
     const F = frameFor(site);
     if (!F) return false;
     const hasLymph = !!peptide?.absorption?.steps?.some?.((s) => s.id === 'lymph');
-    const key = `${site}|${hasLymph}`;
+    // The fat layer follows the editable body: a heavier body shows a thicker layer under the skin
+    // (quantised so the block is only rebuilt when the thickness really changes).
+    const fatScale = Math.round((anatomy.siteTissue?.(site)?.fatScale ?? 1) * 40) / 40;
+    const key = `${site}|${hasLymph}|${fatScale}`;
     // local frame: x = b, y = n (0 at the skin, negative = deeper), z = t (cut face at z = 0, facing the camera)
     block.quaternion.copy(F.quat);
     block.position.copy(F.point);
@@ -452,10 +461,16 @@ export function createInjection(stage, anatomy, vessels, { emit, callouts } = {}
     for (const o of [blockMesh, edges, capMesh, depotMesh]) if (o) { o.geometry.dispose(); block.remove(o); }
     if (seepPoints) block.remove(seepPoints);
     const small = site === 'arm';
-    // Illustrative proportions (not a measurement): skin ≈ 4.5 mm, fat below it, then muscle.
-    const W = small ? 0.036 : 0.05, D = small ? 0.026 : 0.03, TH = small ? 0.016 : 0.022;
-    const epi = 0.0012, derm = 0.0045, fat = small ? 0.0165 : 0.0185;
-    const tip = small ? 0.0095 : 0.0105; // the needle tip stops in the middle of the fat layer
+    // Illustrative proportions (not a measurement): skin ≈ 4.5 mm, fat below it, then muscle. The
+    // needle tip stays where it is; only the fat layer around it grows or thins.
+    const W = small ? 0.036 : 0.05, TH = small ? 0.016 : 0.022;
+    const epi = 0.0012, derm = 0.0045;
+    const tip = small ? 0.0095 : 0.0105;
+    const fat0 = small ? 0.0165 : 0.0185;
+    // a lean body thins the layer, but never so far that the depot would seem to sit in the muscle
+    const depotRy = small ? 0.0032 : 0.0036;
+    const fat = Math.max(tip + depotRy + 0.0009, derm + (fat0 - derm) * fatScale);
+    const D = fat + (small ? 0.0095 : 0.0115);
     blockDims = { W, D, TH, epi, derm, fat, tip };
     blockMat.uniforms.uLayers.value.set(epi, derm, fat, D);
     const bg = new THREE.BoxGeometry(W, D, TH, 1, 1, 1);
@@ -465,7 +480,7 @@ export function createInjection(stage, anatomy, vessels, { emit, callouts } = {}
     edges = new THREE.LineSegments(new THREE.EdgesGeometry(bg), edgeMat);
     edges.renderOrder = 7;
     // depot: a flattened bolus centred on the needle tip, in the fat layer
-    const dr = new THREE.Vector3(small ? 0.0048 : 0.0058, small ? 0.0032 : 0.0036, 0.0042);
+    const dr = new THREE.Vector3(small ? 0.0048 : 0.0058, depotRy, 0.0042);
     depotMesh = new THREE.Mesh(new THREE.SphereGeometry(1, 40, 28), depotMat);
     depotMesh.position.set(0, -tip, 0.0003);
     depotMesh.userData.r = dr;
@@ -767,7 +782,8 @@ export function createInjection(stage, anatomy, vessels, { emit, callouts } = {}
     const r = vessels.routes?.[name];
     if (!r?.curve) return [];
     const out = [];
-    for (let i = 0; i <= n; i++) out.push(r.curve.getPointAt(i / n));
+    // routes are in the anatomy's model space
+    for (let i = 0; i <= n; i++) out.push(anatomy.toWorld ? anatomy.toWorld(r.curve.getPointAt(i / n)) : r.curve.getPointAt(i / n));
     return out;
   }
   const dirFromAngles = (azDeg, elDeg) => new THREE.Vector3(
@@ -828,6 +844,7 @@ export function createInjection(stage, anatomy, vessels, { emit, callouts } = {}
   const arrived = new Set();
   const arrivalFades = [];   // { organ, start, from, to, dur }
   const arrivalTimers = new Set();
+  const arrivalAnchors = {};
   let clock = 0;
   const ARRIVAL_REST = 0.7;
   function onArrive(organ, peptide) {
@@ -838,8 +855,10 @@ export function createInjection(stage, anatomy, vessels, { emit, callouts } = {}
     if (callouts) {
       const t = peptide?.targets?.find?.((x) => x.organ === organ);
       const rec = t?.receptors?.length ? `${t.receptors.join(' + ')} receptors` : 'drug arrives';
+      const out = arrivalAnchors[organ] || (arrivalAnchors[organ] = new THREE.Vector3());
       callouts.set(`arrival:${organ}`, {
-        anchor: anatomy.organAnchor?.(organ) || anatomy.organCenter(organ),
+        // a function, so the label follows the body if it is edited while the label still shows
+        anchor: () => (anatomy.organAnchor ? anatomy.organAnchor(organ, out) : anatomy.organCenter(organ, out)),
         title: ORGAN_LABEL[organ] || organ, text: rec, tone: 'drug', organ, group: 'arrival',
       });
     }
@@ -1108,7 +1127,7 @@ export function createInjection(stage, anatomy, vessels, { emit, callouts } = {}
     seepMat.uniforms.uCore.value = dark ? 1 : 0;
     seepMat.blending = dark ? THREE.AdditiveBlending : THREE.NormalBlending;
     seepMat.needsUpdate = true;
-    edgeMat.color.setHex(dark ? 0xd8f6ff : 0x24465c);
+    edgeMat.color.setHex(dark ? 0xe6d3a3 : 0x2e2920);
   }
   const offTheme = stage.onTheme((theme) => {
     applyTheme(theme);
@@ -1127,7 +1146,7 @@ export function createInjection(stage, anatomy, vessels, { emit, callouts } = {}
     get hasArrivals() { return arrived.size > 0; },
     dispose() {
       reset();
-      offFrame(); offTheme();
+      offFrame(); offTheme(); offBody();
       syringe?.dispose?.();
       root.traverse((o) => { o.geometry?.dispose?.(); });
       for (const m of [blockMat, edgeMat, capMat, depotMat, seepMat]) m.dispose();

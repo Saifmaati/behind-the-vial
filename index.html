@@ -6,8 +6,8 @@
   <title>PeptideScope · What a trending peptide does inside the body</title>
   <meta name="description" content="An education-only, interactive look at what happens inside the body after a viral peptide like retatrutide is injected: how it travels, when it peaks, its side effects, red flags, and what the evidence really says. Not medical advice. No dosing guidance.">
   <meta name="color-scheme" content="dark light">
-  <meta name="theme-color" content="#05080c" media="(prefers-color-scheme: dark)">
-  <meta name="theme-color" content="#f3f6f9" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#0A0A0B" media="(prefers-color-scheme: dark)">
+  <meta name="theme-color" content="#F6F2EA" media="(prefers-color-scheme: light)">
   <link rel="canonical" href="https://saifmaati.github.io/peptidescope/">
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="PeptideScope">
@@ -17,6 +17,7 @@
   <meta name="twitter:card" content="summary">
   <link rel="icon" href="./favicon.svg" type="image/svg+xml">
   <link rel="preload" href="./assets/fonts/InterVariable-latin.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="./assets/fonts/NewsreaderVariable-latin.woff2" as="font" type="font/woff2" crossorigin>
 
   <!-- Boot: theme, motion and intro state before first paint (no flash). main.js owns everything after this. -->
   <script>
@@ -28,8 +29,11 @@
       if (t !== 'light' && t !== 'dark') t = mq('(prefers-color-scheme: light)') ? 'light' : 'dark';
       d.setAttribute('data-theme', t);
       var m = get('localStorage', 'btv.motion');
-      if (m === 'reduce' || (m !== 'full' && mq('(prefers-reduced-motion: reduce)'))) d.setAttribute('data-motion', 'reduce');
+      var still = m === 'reduce' || (m !== 'full' && mq('(prefers-reduced-motion: reduce)'));
+      if (still) d.setAttribute('data-motion', 'reduce');
       else if (m === 'full') d.setAttribute('data-motion', 'full');
+      // Preloader (theme agent): obsidian + one champagne progress line, never under reduced motion.
+      if (!still && !/[?&]no-preload(?:[=&]|$)/.test(location.search)) d.setAttribute('data-preload', 'show');
       var h = location.hash, skip = /[?&]skip-intro(?:[=&]|$)/.test(location.search) ||
         (h.length > 1 && h !== '#intro') || get('sessionStorage', 'btv.introSeen') === '1';
       if (h === '#intro') skip = false;
@@ -64,7 +68,7 @@
     <symbol id="i-vial" viewBox="0 0 32 32">
       <rect x="10.75" y="2.75" width="10.5" height="4.25" rx="1.2" fill="none" stroke="currentColor" stroke-width="1.5"/>
       <path d="M12.5 7v1.6c0 1.3-3 1.9-3 4.1V26a3 3 0 0 0 3 3h7a3 3 0 0 0 3-3V12.7c0-2.2-3-2.8-3-4.1V7" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
-      <path d="M11.1 18.4h9.8V26a1.6 1.6 0 0 1-1.6 1.6h-6.6a1.6 1.6 0 0 1-1.6-1.6z" style="fill: var(--mark-liquid, #4fd8eb)"/>
+      <path d="M11.1 18.4h9.8V26a1.6 1.6 0 0 1-1.6 1.6h-6.6a1.6 1.6 0 0 1-1.6-1.6z" style="fill: var(--mark-liquid, #C8A96A)"/>
       <path d="M12.2 13.4v2.8" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" opacity=".55"/>
     </symbol>
     <symbol id="i-sun" viewBox="0 0 24 24">
@@ -97,6 +101,13 @@
     <symbol id="i-cube" viewBox="0 0 24 24">
       <g fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><path d="M12 2.8 20 7.4v9.2l-8 4.6-8-4.6V7.4z"/><path d="M4 7.4l8 4.6 8-4.6M12 12v9.2"/></g>
     </symbol>
+    <symbol id="i-seal" viewBox="0 0 24 24">
+      <g fill="none" stroke="currentColor" stroke-linecap="round">
+        <circle cx="12" cy="12" r="10.25" stroke-width="1"/>
+        <circle cx="12" cy="12" r="7.75" stroke-width=".75" stroke-dasharray="1.2 1.6" opacity=".75"/>
+        <path d="M12 8.4v3.9l2.4 1.5" stroke-width="1.2" stroke-linejoin="round"/>
+      </g>
+    </symbol>
     <symbol id="i-figure" viewBox="0 0 32 56">
       <g fill="none" stroke="currentColor" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round">
         <circle cx="16" cy="6.2" r="3.6"/>
@@ -108,6 +119,16 @@
   </svg>
 
   <a class="skip-link" href="#app">Skip to main content</a>
+
+  <!-- Preloader (decorative; main.js drives the line from real progress and removes it as soon as it can) -->
+  <div id="preloader" class="preloader force-dark" aria-hidden="true">
+    <div class="preloader-inner">
+      <svg class="preloader-mark" focusable="false"><use href="#i-vial"/></svg>
+      <p class="preloader-word">Peptide<em>Scope</em></p>
+      <div class="preloader-line"><span class="preloader-bar"></span></div>
+      <p class="preloader-caption">Education only</p>
+    </div>
+  </div>
 
   <!-- ===================== Intro overlay ===================== -->
   <div id="intro" class="intro force-dark" role="dialog" aria-modal="false" aria-labelledby="intro-title" aria-describedby="intro-sub">
@@ -230,7 +251,7 @@
               <span class="hud-corner hud-corner--br"></span>
               <span class="hud-ruler hud-ruler--y"></span>
               <span class="hud-ruler hud-ruler--x"></span>
-              <span class="hud-label hud-label--tl"><span class="hud-tl-kind">Anatomical model · </span>Visible Human Male · 1.75 m</span>
+              <span class="hud-label hud-label--tl"><span class="hud-tl-kind">Anatomical model · </span><span id="hud-model">Visible Human Male · 1.75 m</span></span>
               <span class="hud-label hud-label--tr"><span class="hud-dot"></span><span id="hud-phase">Standby</span></span>
               <span class="hud-label hud-label--bl" id="hud-hint">Drag to rotate · Scroll to zoom</span>
               <span class="hud-label hud-label--br">Site <span id="hud-site">not set</span></span>
@@ -294,57 +315,57 @@
     <!-- ===================== Content sections ===================== -->
     <div class="content">
       <section id="overview" class="content-section" aria-labelledby="overview-title">
-        <header class="section-head"><p class="eyebrow">01 · Overview</p><h2 id="overview-title">What it is and how it works</h2><p class="lede">Its legal status, what kind of drug it is, and which of the body’s own hormones it copies.</p></header>
+        <header class="section-head"><p class="eyebrow eyebrow--section"><span class="eyebrow-num">01</span> <span class="eyebrow-label">Overview</span></p><h2 id="overview-title">What it is and how it works</h2><p class="lede">Its legal status, what kind of drug it is, and which of the body’s own hormones it copies.</p></header>
         <div class="section-body" data-render="overview"></div>
       </section>
 
       <section id="pharmacology" class="content-section" aria-labelledby="pharmacology-title">
-        <header class="section-head"><p class="eyebrow">02 · Timing</p><h2 id="pharmacology-title">How fast it works and how long it stays</h2><p class="lede">When it starts acting, when it peaks, and how long it takes to leave the body, based on published trial data.</p></header>
+        <header class="section-head"><p class="eyebrow eyebrow--section"><span class="eyebrow-num">02</span> <span class="eyebrow-label">Timing</span></p><h2 id="pharmacology-title">How fast it works and how long it stays</h2><p class="lede">When it starts acting, when it peaks, and how long it takes to leave the body, based on published trial data.</p></header>
         <div class="section-body" data-render="pharmacology"></div>
       </section>
 
       <section id="side-effects" class="content-section" aria-labelledby="side-effects-title">
-        <header class="section-head"><p class="eyebrow">03 · Side effects</p><h2 id="side-effects-title">Side effects, organ by organ</h2><p class="lede">What people in studies reported, why each one happens, and what helps or when it usually passes.</p></header>
+        <header class="section-head"><p class="eyebrow eyebrow--section"><span class="eyebrow-num">03</span> <span class="eyebrow-label">Side effects</span></p><h2 id="side-effects-title">Side effects, organ by organ</h2><p class="lede">What people in studies reported, why each one happens, and what helps or when it usually passes.</p></header>
         <div class="section-body" data-render="side-effects"></div>
       </section>
 
       <section id="red-flags" class="content-section" aria-labelledby="red-flags-title">
-        <header class="section-head"><p class="eyebrow">04 · Red flags</p><h2 id="red-flags-title">Red flags: when to get help</h2><p class="lede">Signs that mean call 911 now, and signs that mean see a doctor today.</p></header>
+        <header class="section-head"><p class="eyebrow eyebrow--section"><span class="eyebrow-num">04</span> <span class="eyebrow-label">Red flags</span></p><h2 id="red-flags-title">Red flags: when to get help</h2><p class="lede">Signs that mean call 911 now, and signs that mean see a doctor today.</p></header>
         <div class="section-body" data-render="red-flags"></div>
       </section>
 
       <section id="too-much" class="content-section" aria-labelledby="too-much-title">
-        <header class="section-head"><p class="eyebrow">05 · Too much</p><h2 id="too-much-title">What happens if you take too much</h2><p class="lede">The warning signs of an overdose, what to do right away, and why a gray-market vial makes “how much” impossible to know.</p></header>
+        <header class="section-head"><p class="eyebrow eyebrow--section"><span class="eyebrow-num">05</span> <span class="eyebrow-label">Too much</span></p><h2 id="too-much-title">What happens if you take too much</h2><p class="lede">The warning signs of an overdose, what to do right away, and why a gray-market vial makes “how much” impossible to know.</p></header>
         <div class="section-body" data-render="too-much"></div>
       </section>
 
       <section id="dose-facts" class="content-section" aria-labelledby="dose-facts-title">
-        <header class="section-head"><p class="eyebrow">06 · Trial data</p><h2 id="dose-facts-title">What the trials actually tested</h2><p class="lede">The fixed groups studied in published trials, and how side effects and dropouts rose as the dose went up. Facts from studies, not guidance.</p></header>
+        <header class="section-head"><p class="eyebrow eyebrow--section"><span class="eyebrow-num">06</span> <span class="eyebrow-label">Trial data</span></p><h2 id="dose-facts-title">What the trials actually tested</h2><p class="lede">The fixed groups studied in published trials, and how side effects and dropouts rose as the dose went up. Facts from studies, not guidance.</p></header>
         <div class="section-body" data-render="dose-facts"></div>
       </section>
 
       <section id="evidence" class="content-section" aria-labelledby="evidence-title">
-        <header class="section-head"><p class="eyebrow">07 · Evidence</p><h2 id="evidence-title">How strong is the evidence?</h2><p class="lede">From anecdotes to large trials: how much real proof in people there is so far, and what is still unknown.</p></header>
+        <header class="section-head"><p class="eyebrow eyebrow--section"><span class="eyebrow-num">07</span> <span class="eyebrow-label">Evidence</span></p><h2 id="evidence-title">How strong is the evidence?</h2><p class="lede">From anecdotes to large trials: how much real proof in people there is so far, and what is still unknown.</p></header>
         <div class="section-body" data-render="evidence"></div>
       </section>
 
       <section id="claims" class="content-section" aria-labelledby="claims-title">
-        <header class="section-head"><p class="eyebrow">08 · Claims</p><h2 id="claims-title">Creator claims vs. the evidence</h2><p class="lede">Popular claims from TikTok and Instagram, checked one by one against published research.</p></header>
+        <header class="section-head"><p class="eyebrow eyebrow--section"><span class="eyebrow-num">08</span> <span class="eyebrow-label">Claims</span></p><h2 id="claims-title">Creator claims vs. the evidence</h2><p class="lede">Popular claims from TikTok and Instagram, checked one by one against published research.</p></header>
         <div class="section-body" data-render="claims"></div>
       </section>
 
       <section id="gray-market" class="content-section" aria-labelledby="gray-market-title">
-        <header class="section-head"><p class="eyebrow">09 · Gray market</p><h2 id="gray-market-title">What’s really in the vial</h2><p class="lede">Independent labs tested vials bought online. Some held less than the label said, some more, and some none of the drug at all.</p></header>
+        <header class="section-head"><p class="eyebrow eyebrow--section"><span class="eyebrow-num">09</span> <span class="eyebrow-label">Gray market</span></p><h2 id="gray-market-title">What’s really in the vial</h2><p class="lede">Independent labs tested vials bought online. Some held less than the label said, some more, and some none of the drug at all.</p></header>
         <div class="section-body" data-render="gray-market"></div>
       </section>
 
       <section id="risk-check" class="content-section" aria-labelledby="risk-check-title">
-        <header class="section-head"><p class="eyebrow">10 · Risk check</p><h2 id="risk-check-title">Personal risk check</h2><p class="lede">Tick anything that applies to you to see which warnings matter more. It only ever shows warnings. It can never tell you that you are in the clear.</p></header>
+        <header class="section-head"><p class="eyebrow eyebrow--section"><span class="eyebrow-num">10</span> <span class="eyebrow-label">Risk check</span></p><h2 id="risk-check-title">Personal risk check</h2><p class="lede">Tick anything that applies to you to see which warnings matter more. It only ever shows warnings. It can never tell you that you are in the clear.</p></header>
         <div class="section-body" data-render="risk-check"></div>
       </section>
 
       <section id="sources" class="content-section" aria-labelledby="sources-title">
-        <header class="section-head"><p class="eyebrow">11 · Sources</p><h2 id="sources-title">Sources</h2><p class="lede">Every fact on this page links to one of these. Anything we could not verify is clearly marked.</p></header>
+        <header class="section-head"><p class="eyebrow eyebrow--section"><span class="eyebrow-num">11</span> <span class="eyebrow-label">Sources</span></p><h2 id="sources-title">Sources</h2><p class="lede">Every fact on this page links to one of these. Anything we could not verify is clearly marked.</p></header>
         <div class="section-body" data-render="sources"></div>
       </section>
     </div>
@@ -366,7 +387,7 @@
       </div>
       <div class="footer-meta">
         <p class="footer-status">
-          <span class="badge badge--pending"><span class="badge-dot" aria-hidden="true"></span>Pharmacist review: pending</span>
+          <span class="seal"><svg class="seal-mark" aria-hidden="true" focusable="false"><use href="#i-seal"/></svg>Pharmacist review: pending</span>
           <span class="footer-checked">Content checked <time datetime="2026-10-07">2026-10-07</time></span>
         </p>
         <ul class="footer-links">

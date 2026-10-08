@@ -13,7 +13,7 @@ const ORD = ['first', 'second', 'third', 'fourth', 'fifth', 'sixth', 'seventh', 
 export const bpAxes = (p) => [p[0] / 1000, p[2] / 1000, -p[1] / 1000];
 
 /** Centroid of the vertices within `slab` metres of the mesh's highest point. */
-function topSlab(m, slab) {
+export function topSlab(m, slab) {
   const p = m.positions; let hi = -Infinity; for (let i = 1; i < p.length; i += 3) hi = Math.max(hi, p[i]);
   let n = 0; const c = [0, 0, 0];
   for (let i = 0; i < p.length; i += 3) if (p[i + 1] > hi - slab) { c[0] += p[i]; c[1] += p[i + 1]; c[2] += p[i + 2]; n++; }
@@ -66,9 +66,10 @@ export function makeWarp(pa, { src, dst }, extra = [], { lambda = 0.002 } = {}) 
  *   maskHRA(p): drop ring samples whose HRA point satisfies the predicate (the female breasts: a male BodyParts3D
  *        chest has no counterpart there, and pairing it would drag the anterior chest wall forward).
  *   armX: |x| beyond which a horizontal skin loop counts as the arm (axilla detection), metres.
+ *   fingerOrder: how fingertips are ordered after the thumb ('thumbDistance' or 'lateral'; see rings.mjs).
  */
 export function warpLandmarks({ hra, po, isa, hraSkin, log = () => {}, opts = {} }) {
-  const { hip = 'whole', sternum = false, maskHRA = null, armX = 0.17 } = opts;
+  const { hip = 'whole', sternum = false, maskHRA = null, armX = 0.17, fingerOrder = 'thumbDistance' } = opts;
   const pa = preAlign(po, hraSkin); const { s, pre, preMesh } = pa;
   const bpSkin = M.simplify(M.weld(preMesh(po.mesh('skin')), 1e-6), 120000, { error: 0.003 });
   log(`BP3D pre-scale ${s.toFixed(4)} (BP3D skin height ${pa.bpHeight.toFixed(3)} m -> HRA ${pa.hraHeight.toFixed(3)} m)`);
@@ -186,7 +187,7 @@ export function warpLandmarks({ hra, po, isa, hraSkin, log = () => {}, opts = {}
       const tr = traceLimb(skin, root, tip, armFrac, { k: 8 });
       // wrist = narrowest ring in the distal half; hand landmarks (5 fingertips + palm) beyond it
       const wrist = tr.rings.filter((r) => r && r.f >= 0.48).sort((a, c) => a.area - c.area)[0];
-      const hand = handLandmarks(skin, wrist.center, wrist.normal);
+      const hand = handLandmarks(skin, wrist.center, wrist.normal, { order: fingerOrder });
       return { tip, root, wrist, hand, ...tr };
     };
     const ab = arm(bpSkin, 'bp'), ah = arm(hraSkin, 'hra');

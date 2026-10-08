@@ -8,7 +8,9 @@
 <!-- Dev-only harness for js/scene/* (body3d). Simulates the bus: sites, sequence, time, effects, risk, focus, theme.
      Query: ?anatomy=placeholder|auto  ?theme=light|dark  ?site=abdomen|thigh|arm  ?rm=1 (reduced motion)
             ?speed=N (scales scene time; headless SwiftShader renders at a few fps and dt is clamped)
-            ?assets=/tools/.cache/body3d-glbtest/ (load body.glb + landmarks.json from another folder) -->
+            ?assets=/tools/.cache/body3d-glbtest/ (load body.glb + landmarks.json from another folder)
+            Editable body (appearance only): ?sex=male|female&h=<cm>&w=<kg>&age=<years> (applied before mount),
+            and the "Body" button in the stage. -->
 <script type="importmap">
 { "imports": { "three": "/vendor/three/three.module.min.js", "three/addons/": "/vendor/three/addons/" } }
 </script>
@@ -43,6 +45,13 @@
     <button id="inject">Inject</button><button id="skip">Skip</button>
     <button id="theme">Theme</button>
   </div>
+  <div class="sb-bar"><b>Body (test)</b>
+    <button data-body='{"sex":"male","heightCm":175,"weightKg":75,"age":35}'>Default</button>
+    <button data-body='{"sex":"male","heightCm":198,"weightKg":140,"age":40}'>Tall / heavy</button>
+    <button data-body='{"sex":"male","heightCm":152,"weightKg":46,"age":24}'>Short / light</button>
+    <button data-body='{"sex":"male","heightCm":175,"weightKg":75,"age":84}'>Older</button>
+    <button data-body='{"sex":"female","heightCm":162,"weightKg":65,"age":35}'>Female</button>
+  </div>
   <div class="sb-bar"><b>Time (test)</b><input id="time" type="range" min="0" max="22" step="0.05" value="0" aria-label="Time since injection, days (test harness)"><span id="time-out">0 d</span>
     <button id="fx">Effects</button><button id="risk">Risk</button><button id="focus">Focus liver</button><button id="clear">Clear</button>
   </div>
@@ -73,6 +82,10 @@
   const host = $('#stage-host');
   let entry = null;
   try { entry = (await import('/data/retatrutide.js')).default; } catch (e) { console.warn('no data', e); }
+  // a body set before the scene mounts is replayed by mountBody (bus.last)
+  if (q.get('sex') || q.get('h') || q.get('w') || q.get('age')) {
+    bus.emit('body:change', { sex: q.get('sex') || 'male', heightCm: Number(q.get('h')) || undefined, weightKg: Number(q.get('w')) || undefined, age: Number(q.get('age')) || undefined });
+  }
   const t0 = performance.now();
   const body = await mountBody(host, {
     bus, theme: html.dataset.theme, reducedMotion: html.dataset.motion === 'reduce' || matchMedia('(prefers-reduced-motion: reduce)').matches,
@@ -96,6 +109,7 @@
   for (const b of document.querySelectorAll('[data-site]')) b.addEventListener('click', () => bus.emit('site:select', { site: b.dataset.site }));
   let site = q.get('site');
   bus.on('site:select', (d) => { site = d.site; });
+  for (const b of document.querySelectorAll('[data-body]')) b.addEventListener('click', () => bus.emit('body:change', JSON.parse(b.dataset.body)));
   $('#inject').addEventListener('click', () => bus.emit('sequence:start', { site: site || 'abdomen', peptideId: entry?.id }));
   $('#skip').addEventListener('click', () => body.injection.skip());
   $('#theme').addEventListener('click', () => {

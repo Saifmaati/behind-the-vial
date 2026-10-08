@@ -27,7 +27,6 @@ export function parseHead(buf) {
   return { json, total, jsonLen, binLen, binStart, headLen: binStart };
 }
 
-const IDENT = [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1];
 function mul(a, b) { // column-major 4x4
   const o = new Array(16).fill(0);
   for (let c = 0; c < 4; c++) for (let r = 0; r < 4; r++) { let s = 0; for (let k = 0; k < 4; k++) s += a[k * 4 + r] * b[c * 4 + k]; o[c * 4 + r] = s; }
@@ -86,6 +85,53 @@ export function coalesce(ranges, gap = 65536) {
   const r = ranges.map((x) => x.slice()).sort((a, b) => a[0] - b[0]); const out = [];
   for (const x of r) { const last = out[out.length - 1]; if (last && x[0] <= last[1] + gap) last[1] = Math.max(last[1], x[1]); else out.push(x); }
   return out;
+}
+
+/**
+ * Low-memory reader with the same interface as openHRA() (hra.mjs): reads only the index and POSITION bytes of the
+ * collected nodes straight from the (possibly sparse) GLB on disk, instead of loading the whole file. Used by the
+ * female build for both HRA bodies.
+ */
+export function openRanged(file) {
+  const fd = openSync(file, 'r');
+  const h0 = Buffer.alloc(20); readSync(fd, h0, 0, 20, 0);
+  const headLen = 28 + h0.readUInt32LE(12); const hb = Buffer.alloc(headLen); readSync(fd, hb, 0, headLen, 0);
+  const head = parseHead(hb); const { json, binStart } = head; const T = nodeTable(json);
+  const readAcc = (ai) => {
+    const a = json.accessors[ai]; const bv = json.bufferViews[a.bufferView];
+    const comp = { 5121: 1, 5123: 2, 5125: 4, 5126: 4 }[a.componentType]; const ncomp = { SCALAR: 1, VEC2: 2, VEC3: 3, VEC4: 4 }[a.type];
+    const stride = bv.byteStride || comp * ncomp; const start = binStart + (bv.byteOffset || 0) + (a.byteOffset || 0);
+    const len = stride * (a.count - 1) + comp * ncomp; const buf = Buffer.alloc(len); readSync(fd, buf, 0, len, start);
+    const out = a.componentType === 5126 ? new Float32Array(a.count * ncomp) : new Uint32Array(a.count * ncomp);
+    const get = { 5121: (o) => buf.readUInt8(o), 5123: (o) => buf.readUInt16LE(o), 5125: (o) => buf.readUInt32LE(o), 5126: (o) => buf.readFloatLE(o) }[a.componentType];
+    for (let i = 0; i < a.count; i++) for (let c = 0; c < ncomp; c++) out[i * ncomp + c] = get(i * stride + c * comp);
+    return out;
+  };
+  const primMesh = (p, W) => {
+    if ((p.mode ?? 4) !== 4 || p.attributes.POSITION === undefined) return null;
+    const pos = readAcc(p.attributes.POSITION); let idx;
+    if (p.indices !== undefined) idx = readAcc(p.indices); else { idx = new Uint32Array(pos.length / 3); for (let i = 0; i < idx.length; i++) idx[i] = i; }
+    const det = W[0] * (W[5] * W[10] - W[9] * W[6]) - W[4] * (W[1] * W[10] - W[9] * W[2]) + W[8] * (W[1] * W[6] - W[5] * W[2]);
+    const P = new Float32Array(pos.length);
+    for (let i = 0; i < pos.length; i += 3) { const x = pos[i], y = pos[i + 1], z = pos[i + 2]; P[i] = W[0] * x + W[4] * y + W[8] * z + W[12]; P[i + 1] = W[1] * x + W[5] * y + W[9] * z + W[13]; P[i + 2] = W[2] * x + W[6] * y + W[10] * z + W[14]; }
+    if (det < 0) for (let i = 0; i < idx.length; i += 3) { const t = idx[i + 1]; idx[i + 1] = idx[i + 2]; idx[i + 2] = t; }
+    return { positions: P, indices: idx };
+  };
+  function collect(names, { exclude = [] } = {}) {
+    const ex = exclude.map((e) => (e instanceof RegExp ? e : new RegExp(`^${e}$`)));
+    const parts = [];
+    const visit = (k) => {
+      const n = json.nodes[k]; if (ex.some((r) => r.test(n.name))) return;
+      if (n.mesh !== undefined) for (const p of json.meshes[n.mesh].primitives) { const m = primMesh(p, T.world(k)); if (m) parts.push(m); }
+      (n.children || []).forEach(visit);
+    };
+    for (const name of [].concat(names)) { const i = T.byName.get(name); if (i === undefined) throw new Error(`HRA: node not found: ${name}`); visit(i); }
+    const nv = parts.reduce((a, m) => a + m.positions.length, 0), ni = parts.reduce((a, m) => a + m.indices.length, 0);
+    const positions = new Float32Array(nv), indices = new Uint32Array(ni); let ov = 0, oi = 0;
+    for (const m of parts) { positions.set(m.positions, ov); for (let i = 0; i < m.indices.length; i++) indices[oi + i] = m.indices[i] + ov / 3; ov += m.positions.length; oi += m.indices.length; }
+    return { positions, indices };
+  }
+  return { head, collect, has: (n) => T.byName.has(n), close: () => closeSync(fd) };
 }
 
 /**

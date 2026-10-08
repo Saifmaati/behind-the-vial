@@ -36,8 +36,9 @@ function castOut(skin, from, d) {
   return add(from, scale(norm(d), hits[0]));
 }
 
-export function buildLandmarks({ final, vesselParts, organsHRA, toWorld, fromWorld, log = () => {}, warn = () => {} }) {
+export function buildLandmarks({ final, vesselParts, organsHRA, toWorld, fromWorld, log = () => {}, warn = () => {}, stature = 1.75, extraOrgans = [] }) {
   const skin = final.skin;
+  const sH = stature / 1.75; // body-size factor for the few absolute search heights below (1 for the 1.75 m male)
   const P = (n) => { const m = vesselParts.get(n); if (!m) throw new Error(`landmarks: missing mesh ${n}`); return m; };
   const C = (n) => M.surfaceCentroid(P(n));
   const E = (n, dir, tol) => endOf(P(n), dir, tol);
@@ -48,9 +49,9 @@ export function buildLandmarks({ final, vesselParts, organsHRA, toWorld, fromWor
   // ---------------- organs (world frame) ----------------
   const organs = {};
   const sphere = (m) => { const c = M.volumeCentroid(m).centroid; let r = 0; for (let i = 0; i < m.positions.length; i += 3) r = Math.max(r, dist(c, [m.positions[i], m.positions[i + 1], m.positions[i + 2]])); return { center: c, radius: r }; };
-  for (const id of ['brain', 'thyroid', 'heart', 'lungs', 'liver', 'gallbladder', 'stomach', 'pancreas', 'spleen', 'small_intestine', 'large_intestine', 'kidneys', 'bladder']) {
+  for (const id of ['brain', 'thyroid', 'heart', 'lungs', 'liver', 'gallbladder', 'stomach', 'pancreas', 'spleen', 'small_intestine', 'large_intestine', 'kidneys', 'bladder', ...extraOrgans]) {
     organs[id] = sphere(final[id]);
-    if (id === 'lungs' || id === 'kidneys') {
+    if (id === 'lungs' || id === 'kidneys' || id === 'ovaries') {
       const comps = M.components(final[id]).slice(0, 2).map((c) => sphere(M.subsetTriangles(final[id], c)));
       const [l, r] = comps[0].center[0] > comps[1].center[0] ? comps : [comps[1], comps[0]];
       organs[id].parts = { left: l, right: r };
@@ -73,7 +74,7 @@ export function buildLandmarks({ final, vesselParts, organsHRA, toWorld, fromWor
   let navelH = null;
   for (let x = -0.012; x <= 0.01201; x += 0.002) { const z = zF(x, best.y); if (!navelH || z < navelH[2]) navelH = [x, best.y, z]; }
   const navel = W(navelH);
-  log(`navel dimple depth ${(best.depth * 1000).toFixed(1)} mm at ${navel.map((v) => v.toFixed(3))} (${(navel[1] / 1.75 * 100).toFixed(1)}% of stature)`);
+  log(`navel dimple depth ${(best.depth * 1000).toFixed(1)} mm at ${navel.map((v) => v.toFixed(3))} (${(navel[1] / stature * 100).toFixed(1)}% of stature)`);
   const site = (pt, label) => ({ point: pt, normal: surfaceNormal(skin, pt), label });
   const sites = {};
   const abdPt = castOut(skin, [navel[0] + 0.05, navel[1] - 0.015, navel[2] - 0.12], [0, 0, 1]);
@@ -91,8 +92,8 @@ export function buildLandmarks({ final, vesselParts, organsHRA, toWorld, fromWor
   // (~7 cm past the axillary fold), then a ray is cast toward the back/outer (posterolateral) surface.
   const sp = skin.positions; let tip = null;
   for (let i = 0; i < sp.length; i += 3) if (!tip || sp[i] > tip[0]) tip = [sp[i], sp[i + 1], sp[i + 2]];
-  const axY = findSplitHeight(skin, 1.45, 0.95, (c) => c[0] > 0.16, 0.003);
-  const armLoop0 = hLoops(skin, axY - 0.002).filter((l) => l.centroid[0] > 0.16).sort((a, b) => a.centroid[0] - b.centroid[0])[0];
+  const axY = findSplitHeight(skin, 1.45 * sH, 0.95 * sH, (c) => c[0] > 0.16 * sH, 0.003);
+  const armLoop0 = hLoops(skin, axY - 0.002).filter((l) => l.centroid[0] > 0.16 * sH).sort((a, b) => a.centroid[0] - b.centroid[0])[0];
   const medial = armLoop0.points.reduce((m, q) => (q[0] < m[0] ? q : m), armLoop0.points[0]);
   const armRoot = [medial[0], axY + 0.01, armLoop0.centroid[2]];
   const trace = traceLimb(skin, armRoot, tip, [0.13], { k: 8 });
@@ -259,6 +260,22 @@ export function buildLandmarks({ final, vesselParts, organsHRA, toWorld, fromWor
   const raW = W(RA), avW = W(AV);
   for (const k2 of ['abdomen_to_heart', 'thigh_to_heart', 'arm_to_heart']) out[k2][out[k2].length - 1] = raW;
   for (const k2 of Object.keys(out).filter((x) => x.startsWith('to_'))) out[k2][0] = avW;
+  // Smoothing can leave a waypoint of a superficial vein just outside a concave skin region (the inner thighs, where they
+  // touch). Push such a waypoint back under the skin along the normal of the nearest skin surface, 2 mm deeper.
+  const nudged = [];
+  const sv = skin.positions;
+  const nearestSkinNormal = (p) => {
+    let bi = 0, bd = Infinity; for (let i = 0; i < sv.length; i += 3) { const d = (sv[i] - p[0]) ** 2 + (sv[i + 1] - p[1]) ** 2 + (sv[i + 2] - p[2]) ** 2; if (d < bd) { bd = d; bi = i; } }
+    return surfaceNormal(skin, [sv[bi], sv[bi + 1], sv[bi + 2]], 0.006);
+  };
+  for (const [k2, pts] of Object.entries(out)) pts.forEach((p, i) => {
+    if (i === 0 || i === pts.length - 1 || inside(skin, p)) return;
+    const n = nearestSkinNormal(p); let q = p;
+    for (let st = 1; st <= 12 && !inside(skin, q); st++) q = sub(p, scale(n, 0.0015 * st));
+    q = sub(q, scale(n, 0.002));
+    if (inside(skin, q)) { pts[i] = q; nudged.push(`${k2}[${i}] ${(dist(p, q) * 1000).toFixed(1)} mm`); }
+  });
+  if (nudged.length) log(`nudged under the skin: ${nudged.join(', ')}`);
   const outside = [];
   let checked = 0;
   for (const [k2, pts] of Object.entries(out)) pts.forEach((p, i) => { checked++; if (!inside(skin, p)) outside.push(`${k2}[${i}]`); });
@@ -268,11 +285,11 @@ export function buildLandmarks({ final, vesselParts, organsHRA, toWorld, fromWor
   if (outside.length) warn(`waypoints outside skin: ${outside.join(', ')}`);
   const sitesInside = Object.fromEntries(Object.entries(sites).map(([k2, s]) => [k2, inside(skin, sub(s.point, scale(s.normal, 0.004))) && !inside(skin, add(s.point, scale(s.normal, 0.004)))]));
   return {
-    units: 'm', height: 1.75,
+    units: 'm', height: stature,
     organs,
     sites,
     paths: out,
     anchors: { navel: navel, aortic_root: avW, right_atrium: raW, right_ventricle: W(RV), left_atrium: W(LA), left_ventricle: W(LV), pulmonary_valve: W(PV) },
-    checks: { waypoints: checked, outside, sitesOnSurface: sitesInside, pathLengths_m: lengths },
+    checks: { waypoints: checked, outside, ...(nudged.length ? { nudged } : {}), sitesOnSurface: sitesInside, pathLengths_m: lengths },
   };
 }

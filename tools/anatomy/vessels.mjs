@@ -95,3 +95,34 @@ export function clampInside(m, field, { minF = 0.7, step = 0.0008, maxSteps = 80
   }
   return { mesh: { positions: p, indices: m.indices }, moved, maxMove };
 }
+
+/**
+ * Contact resolution: move the vertices of mesh `m` that lie inside the closed shell `organ` to just outside it (nearest
+ * exterior voxel by breadth-first search, plus `margin`). Used for an organ placed by a non-rigid fit (the female
+ * stomach) so that it rests against its neighbours instead of passing through them.
+ */
+export function pushOutside(m, organ, { h = 0.002, margin = 0.001, maxMove = 0.05 } = {}) {
+  const b = M.bounds(organ);
+  const solid = V.voxelizeSolid(organ, b, h, { close: 1 });
+  const { nx, ny, nz, origin, data } = solid; const N = nx * ny * nz;
+  const near = new Int32Array(N).fill(-1); const queue = new Int32Array(N); let qh = 0, qt = 0;
+  for (let i = 0; i < N; i++) if (!data[i]) { near[i] = i; queue[qt++] = i; }
+  while (qh < qt) {
+    const id = queue[qh++]; const i = id % nx, j = Math.floor(id / nx) % ny, k = Math.floor(id / (nx * ny));
+    for (const q of [i > 0 ? id - 1 : -1, i < nx - 1 ? id + 1 : -1, j > 0 ? id - nx : -1, j < ny - 1 ? id + nx : -1, k > 0 ? id - nx * ny : -1, k < nz - 1 ? id + nx * ny : -1]) {
+      if (q >= 0 && near[q] < 0) { near[q] = near[id]; queue[qt++] = q; }
+    }
+  }
+  const c = (id) => [origin[0] + (id % nx) * h, origin[1] + (Math.floor(id / nx) % ny) * h, origin[2] + Math.floor(id / (nx * ny)) * h];
+  const p = new Float32Array(m.positions); let moved = 0, maxD = 0;
+  for (let v = 0; v < p.length; v += 3) {
+    const q0 = [p[v], p[v + 1], p[v + 2]];
+    const i = Math.round((q0[0] - origin[0]) / h), j = Math.round((q0[1] - origin[1]) / h), k = Math.round((q0[2] - origin[2]) / h);
+    if (i < 0 || j < 0 || k < 0 || i >= nx || j >= ny || k >= nz) continue;
+    const id = i + nx * (j + ny * k); if (!data[id]) continue;
+    const t = c(near[id]); const d = sub(t, q0); const L = M.len(d); if (L > maxMove) continue;
+    const q = add(t, scale(norm(d), margin + h * 0.5));
+    p[v] = q[0]; p[v + 1] = q[1]; p[v + 2] = q[2]; moved++; maxD = Math.max(maxD, dist(q, q0));
+  }
+  return { mesh: { positions: p, indices: m.indices }, moved, maxMove: maxD };
+}

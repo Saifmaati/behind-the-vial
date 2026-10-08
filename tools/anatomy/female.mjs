@@ -5,8 +5,7 @@
 // the male HRA node names (VH_M_*); `openFemaleHRA` translates those *logical* names to the female nodes, so the
 // shared code (warp landmarks, flow paths) runs unchanged on the female body.
 import * as M from './mesh.mjs';
-import { openHRA } from './hra.mjs';
-import { nodeTable } from './hra-ranged.mjs';
+import { nodeTable, openRanged } from './hra-ranged.mjs';
 import { fitTPS } from './register.mjs';
 
 export const HRA_FEMALE = {
@@ -81,7 +80,7 @@ function boxMesh(b) {
  * refuses to collect nodes whose bytes were not fetched, and box proxies for the bounds-only nodes.
  */
 export async function openFemaleHRA(file, head) {
-  const raw = await openHRA(file);
+  const raw = openRanged(file);
   const T = nodeTable(head.json);
   const fetchedRoots = new Set([...FEMALE_FETCH].map((n) => T.byName.get(n)));
   const excludedRoots = new Set(FEMALE_FETCH_EXCLUDE.map((n) => T.byName.get(n)));
@@ -124,5 +123,7 @@ export function maleToFemale(lmkMale, lmkFemale, extra = [], { lambda = 0.002 } 
   lmkMale.tags.forEach((t, i) => { if (f.has(t)) { src.push(lmkMale.dst[i]); dst.push(f.get(t)); tags.push(t); } });
   for (const [t, a, b] of extra) if (a && b && a.every(Number.isFinite) && b.every(Number.isFinite)) { src.push(a); dst.push(b); tags.push(t); }
   const tps = fitTPS(src, dst, { lambda });
-  return { apply: tps.apply, count: src.length, tags, maxResidual: tps.maxResidual, mapMesh: (m) => M.mapVertices(m, (x, y, z) => tps.apply([x, y, z])) };
+  // leave-one-out style diagnostic: how far each pair's own target is from the smooth fit (regularised spline)
+  const worst = tags.map((t, i) => [t, tps.residuals[i]]).sort((a, b) => b[1] - a[1]).slice(0, 6).map(([t, r]) => `${t} ${(r * 1000).toFixed(1)} mm`);
+  return { apply: tps.apply, count: src.length, tags, maxResidual: tps.maxResidual, worst, mapMesh: (m) => M.mapVertices(m, (x, y, z) => tps.apply([x, y, z])) };
 }

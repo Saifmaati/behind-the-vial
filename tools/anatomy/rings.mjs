@@ -100,7 +100,7 @@ export function traceLimb(skin, root, tip, fractions, { k = 8, frac = 0.9 } = {}
  * Hand landmarks beyond the wrist plane: five fingertips (thumb first, then index..little) found as local maxima of the
  * distance from the wrist centre, plus the palm centre.
  */
-export function handLandmarks(skin, wrist, axis, { maxReach = 0.3, localR = 0.012, mergeR = 0.01 } = {}) {
+export function handLandmarks(skin, wrist, axis, { maxReach = 0.3, localR = 0.012, mergeR = 0.01, order = 'thumbDistance' } = {}) {
   const p = skin.positions; const I = skin.indices;
   const V = (i) => [p[i * 3], p[i * 3 + 1], p[i * 3 + 2]];
   // candidate vertices beyond the wrist plane, then keep only the surface connected to the wrist ring (the hand),
@@ -127,7 +127,14 @@ export function handLandmarks(skin, wrist, axis, { maxReach = 0.3, localR = 0.01
   const five = kept.slice(0, 5).map(V);
   if (five.length < 5) return null;
   five.sort((a, b) => dist(a, wrist) - dist(b, wrist));
-  const thumb = five[0]; const rest = five.slice(1).sort((a, b) => dist(a, thumb) - dist(b, thumb));
+  const thumb = five[0];
+  // 'thumbDistance' (default): index..little by distance from the thumb tip. 'lateral': by position across the hand,
+  // from the thumb side, which stays right when a curled little finger lies closer to the thumb than the ring finger.
+  let rest;
+  if (order === 'lateral') {
+    const tw = sub(thumb, wrist); const u = norm(sub(tw, scale(axis, dot(tw, axis))));
+    rest = five.slice(1).sort((a, b) => dot(sub(b, wrist), u) - dot(sub(a, wrist), u));
+  } else rest = five.slice(1).sort((a, b) => dist(a, thumb) - dist(b, thumb));
   const maxAlong = Math.max(...ids.map((i) => dot(sub(V(i), wrist), axis)));
   const palmIds = ids.filter((i) => dot(sub(V(i), wrist), axis) < 0.4 * maxAlong);
   const palm = palmIds.reduce((s, i) => add(s, V(i)), [0, 0, 0]).map((x) => x / palmIds.length);

@@ -45,18 +45,22 @@ export const MESH_ORGANS = ['brain', 'thyroid', 'heart', 'lungs', 'liver', 'gall
   'spleen', 'small_intestine', 'large_intestine', 'kidneys', 'bladder'];
 export const ANCHOR_ORGANS = ['skin', 'fat', 'injection_site', 'muscle', 'eyes', 'blood'];
 export const ORGAN_IDS = [...MESH_ORGANS, ...ANCHOR_ORGANS];
+// Organs only some models carry (the female anatomy adds the uterus and ovaries). They are shown, can
+// be focused and labelled, and take part in dimming; nothing in the content targets them.
+export const EXTRA_ORGANS = ['uterus', 'ovaries'];
 export const ORGAN_LABELS = {
   brain: 'Brain', thyroid: 'Thyroid', heart: 'Heart', lungs: 'Lungs', liver: 'Liver', gallbladder: 'Gallbladder',
   stomach: 'Stomach', pancreas: 'Pancreas', spleen: 'Spleen', small_intestine: 'Small intestine',
   large_intestine: 'Large intestine', kidneys: 'Kidneys', bladder: 'Bladder', skin: 'Skin', fat: 'Fat tissue',
   injection_site: 'Injection site', muscle: 'Muscle', eyes: 'Eyes', blood: 'Bloodstream',
+  uterus: 'Uterus', ovaries: 'Ovaries',
 };
 // Muted, desaturated natural tints (sRGB hex), like an anatomical plate under warm light. Never a
 // "safe" green: the gallbladder is a muted ochre rather than bile green.
 export const ORGAN_COLORS = {
-  heart: 0x8f3b3e, liver: 0x7c4636, stomach: 0xbf958b, small_intestine: 0xc8a395, large_intestine: 0xb28c7d,
-  pancreas: 0xcdb88f, kidneys: 0x7d3d44, brain: 0xc2aea7, lungs: 0xbd989c, thyroid: 0xa0494c,
-  gallbladder: 0x9a8152, spleen: 0x6f3c50, bladder: 0xcab395,
+  heart: 0x8a3a3d, liver: 0x74432f, stomach: 0xa9877c, small_intestine: 0xb29081, large_intestine: 0x9d7d6f,
+  pancreas: 0xbfa77d, kidneys: 0x763a41, brain: 0xb7a39b, lungs: 0xa58389, thyroid: 0x9a4649,
+  gallbladder: 0x9a8152, spleen: 0x6f3c50, bladder: 0xcab395, uterus: 0xb07e7e, ovaries: 0xc39e8b,
 };
 const CHANNELS = ['risk', 'effect', 'focus', 'arrival', 'default'];
 const SITES = ['abdomen', 'thigh', 'arm'];
@@ -71,7 +75,7 @@ const THEME = {
     artery: { core: 0x6a1f1b, rim: 0xc4524a, coreAlpha: 0.3, rimAlpha: 0.6, rimPower: 1.6, intensity: 1.0, additive: true },
     vein: { core: 0x1c2a4e, rim: 0x5b7db8, coreAlpha: 0.32, rimAlpha: 0.6, rimPower: 1.6, intensity: 1.0, additive: true },
     bone: { core: 0xe8dcc4, rim: 0xf3eee6, coreAlpha: 0.008, rimAlpha: 0.15, rimPower: 2.2, intensity: 0.75, additive: true },
-    organ: { opacity: 0.8, emissiveBase: 0.03, rim: 0.3, rimPower: 2.6, roughness: 0.52, env: 0.42, rimTint: 0xf1e4c4 },
+    organ: { opacity: 0.8, emissiveBase: 0.025, rim: 0.24, rimPower: 2.8, roughness: 0.55, env: 0.36, rimTint: 0xf1e4c4 },
     highlightGain: 0.72,
     tintGain: 0.5, tintMax: 0.55,
     hotspot: 0xe6d3a3,
@@ -1011,10 +1015,11 @@ function classifyName(raw) {
     smallintestine: 'small_intestine', intestine_small: 'small_intestine', small_bowel: 'small_intestine',
     largeintestine: 'large_intestine', intestine_large: 'large_intestine', colon: 'large_intestine',
     artery: 'arteries', arterial: 'arteries', vein: 'veins', venous: 'veins', bones: 'skeleton', bone: 'skeleton',
-    body: 'skin', gall_bladder: 'gallbladder', urinary_bladder: 'bladder',
+    body: 'skin', gall_bladder: 'gallbladder', urinary_bladder: 'bladder', ovary: 'ovaries', left_ovary: 'ovaries',
+    right_ovary: 'ovaries', womb: 'uterus',
   };
   n = alias[n] || n;
-  if (MESH_ORGANS.includes(n) || n === 'skin' || n === 'arteries' || n === 'veins' || n === 'skeleton') return n;
+  if (MESH_ORGANS.includes(n) || EXTRA_ORGANS.includes(n) || n === 'skin' || n === 'arteries' || n === 'veins' || n === 'skeleton') return n;
   return null;
 }
 
@@ -1159,6 +1164,9 @@ export async function loadAnatomy(stage, { source = 'auto', base, variant = 'mal
     if (!veinMesh) veinMesh = new THREE.Mesh(VT.veins, veinMat); else VT.veins.dispose();
   }
   if (!boneMesh && !usingGLB) boneMesh = new THREE.Mesh(buildSkeleton(), boneMat);
+  // organ ids this model actually has meshes for (the shared vocabulary plus any extras)
+  const meshIds = [...MESH_ORGANS, ...EXTRA_ORGANS.filter((id) => meshes[id])];
+  const allIds = [...ORGAN_IDS, ...EXTRA_ORGANS.filter((id) => meshes[id])];
 
   skinMesh.name = 'skin'; skinMesh.renderOrder = 10;
   // the skin is displaced in the vertex shader, so its stored bounds no longer hold
@@ -1183,7 +1191,7 @@ export async function loadAnatomy(stage, { source = 'auto', base, variant = 'mal
     for (const c of CHANNELS) s.slots[c] = mkSlot();
     return s;
   };
-  for (const id of ORGAN_IDS) organState[id] = mkState(id);
+  for (const id of allIds) organState[id] = mkState(id);
 
   const anchorIds = ['fat', 'injection_site', 'muscle', 'eyes', 'eyes', 'blood', 'skin'];
   const anchorSizes = [0.065, 0.05, 0.08, 0.045, 0.045, 0.09, 0.07];
@@ -1424,13 +1432,13 @@ export async function loadAnatomy(stage, { source = 'auto', base, variant = 'mal
     if (channel === 'drug') st.drug.on = false; else if (st.slots[channel]) st.slots[channel].on = false;
   }
   function clearHighlights(channel) {
-    for (const id of ORGAN_IDS) unhighlight(id, channel ? { channel } : {});
+    for (const id of allIds) unhighlight(id, channel ? { channel } : {});
   }
 
   let focusId = null;
   let isolate = false;
   function applyDimTargets() {
-    for (const oid of ORGAN_IDS) {
+    for (const oid of allIds) {
       organState[oid].dimTarget = isolate ? 0.05 : !focusId ? 1 : oid === focusId ? 1 : 0.2;
     }
     skinDimTarget = isolate ? 0.55 : focusId ? 0.5 : 1;
@@ -1488,7 +1496,7 @@ export async function loadAnatomy(stage, { source = 'auto', base, variant = 'mal
     // dimming (focus)
     const k = rm ? 1 : 1 - Math.exp(-dt * 7);
     let changed = dirtyOpacity;
-    for (const id of MESH_ORGANS) {
+    for (const id of meshIds) {
       const st = organState[id];
       if (Math.abs(st.dim - st.dimTarget) > 1e-3) { st.dim += (st.dimTarget - st.dim) * k; changed = true; }
     }
@@ -1497,7 +1505,7 @@ export async function loadAnatomy(stage, { source = 'auto', base, variant = 'mal
     if (Math.abs(boneDim - boneDimTarget) > 1e-3) { boneDim += (boneDimTarget - boneDim) * k; changed = true; }
     if (changed) {
       dirtyOpacity = false;
-      for (const id of MESH_ORGANS) {
+      for (const id of meshIds) {
         const m = organMats[id];
         if (!m) continue;
         const d = organState[id].dim;
@@ -1513,7 +1521,7 @@ export async function loadAnatomy(stage, { source = 'auto', base, variant = 'mal
     }
     // organ emissive
     const gain = T.highlightGain;
-    for (const id of ORGAN_IDS) {
+    for (const id of allIds) {
       const st = organState[id];
       let top = null;
       for (const c of CHANNELS) { if (st.slots[c].on) { top = st.slots[c]; break; } }
@@ -1594,7 +1602,7 @@ export async function loadAnatomy(stage, { source = 'auto', base, variant = 'mal
 
   // ---------------------------------------------------------------- pickables
   const pickables = [];
-  for (const id of MESH_ORGANS) if (meshes[id]) meshes[id].traverse((o) => { if (o.isMesh) { o.userData.organId = id; pickables.push(o); } });
+  for (const id of meshIds) if (meshes[id]) meshes[id].traverse((o) => { if (o.isMesh) { o.userData.organId = id; pickables.push(o); } });
 
   function dispose() {
     offFrame(); offTheme();

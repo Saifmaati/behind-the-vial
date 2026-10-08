@@ -1,6 +1,6 @@
 {
   "version": "0.0.1",
   "configurations": [
-    { "name": "btv", "runtimeExecutable": "node", "runtimeArgs": ["tools/serve.mjs", "8790"], "port": 8790 }
+    { "name": "peptidescope", "runtimeExecutable": "node", "runtimeArgs": ["tools/serve.mjs", "8790"], "port": 8790 }
   ]
 }
