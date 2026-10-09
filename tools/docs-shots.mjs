@@ -44,7 +44,7 @@ const SHOTS = [
   { name: 'explorer-light', url: '/?skip-intro', size: DESK, steps: [ready] },
   { name: 'explorer-dark', url: '/?skip-intro', size: DESK, dark: true, steps: [ready, ...pick('abdomen')] },
   { name: 'step-2-site', url: '/?skip-intro', size: DESK, steps: [ready, click('[data-peptide-id="retatrutide"]', 2000)] },
-  { name: 'inject-thigh', url: '/?skip-intro', size: DESK, steps: watch('thigh', 'The shot', 1600) },
+  { name: 'inject-thigh', url: '/?skip-intro', size: DESK, steps: watch('thigh', 'Under the skin', 900) },
   { name: 'inject-abdomen', url: '/?skip-intro', size: DESK, steps: watch('abdomen', 'Under the skin', 700) },
   { name: 'inject-upper-arm', url: '/?skip-intro', size: DESK, steps: watch('arm', 'Into the blood', 900) },
   {

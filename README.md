@@ -51,7 +51,7 @@ the body looks. No prices, shopping language, seller names or vendor links. `tes
 
 `npm run serve` (or `node tools/serve.mjs 8790`), then open http://127.0.0.1:8790/ . Opening `index.html`
 straight from disk (file://) will not work: browsers block JavaScript modules there, so the 3D body and the
-intro cannot load. Tests: `node --test tests/`.
+intro cannot load. Tests: `node --test tests/`. Before deploying, run `node tools/stamp.mjs` (content-hash cache-busting; a test fails if you forget). Screenshots: `node tools/docs-shots.mjs <site-url>`.
 
 ## Docs
 - [Product brief](docs/BRIEF.md)
