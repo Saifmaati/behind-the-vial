@@ -12,6 +12,7 @@ import { html, uid, plural } from './util.js';
 import { icon } from './icons.js';
 import { createCiteContext } from './cite.js';
 import { organButton } from './overview.js';
+import { summary } from './blocks.js';
 
 const checked = new Set();          // shared across mounts (peptide switches)
 let active = null;                  // the current mount's teardown
@@ -30,36 +31,34 @@ export function mountRiskCheck(host, entry, ctx) {
 
   const formId = uid('risk');
   const statusId = uid('risk');
+  // One column: each ticked item opens its warnings right underneath it, so they are never
+  // off screen from the box that was just ticked.
   host.innerHTML = String(html`
-  <div class="c-risk">
-    <p class="c-risk__note" role="note">${icon('alert', { size: 20 })}<span><strong>This check only shows warnings.</strong> It cannot tell you that you are safe, and it never gives a dose. Talk to a clinician.</span></p>
-    <div class="c-risk__grid">
-      <fieldset class="c-card c-risk__form" id="${formId}">
-        <legend class="c-risk__legend">Tick anything that applies to you</legend>
-        <p class="c-risk__privacy">${icon('lock', { size: 15 })}Your answers stay on this page. They are not saved or sent anywhere.</p>
-        <div class="c-risk__items">
-          ${items.map((it) => {
-            const id = `${formId}-${it.id}`;
-            return html`
-          <div class="c-check">
-            <input type="checkbox" class="c-check__box" id="${id}" value="${it.id}" aria-describedby="${id}-hint"${checked.has(it.id) ? html` checked` : ''}>
-            <label class="c-check__label" for="${id}">
-              <span class="c-check__text">${it.label}<span class="c-check__hint" id="${id}-hint">${it.hint || ''}</span></span>
-            </label>
-          </div>`;
-          })}
-        </div>
-        <button type="button" class="c-btn c-btn--quiet c-btn--sm" data-risk-clear>Clear my answers</button>
-      </fieldset>
-      <div class="c-risk__out">
-        <h3 class="c-h3 c-risk__outtitle">Warnings for ${name}</h3>
-        <p class="c-sr" id="${statusId}" role="status" aria-live="polite"></p>
-        <div class="c-risk__results" data-risk-results></div>
-      </div>
-    </div>
+  <div class="c-panel c-panel--risk c-risk">
+    ${summary(html`Tick anything that is true for you. The warnings our sources list for ${name} open right under it.`)}
+    <p class="c-notice c-notice--warn" role="note">${icon('alert', { size: 20 })}<span><strong>This check only shows warnings.</strong> It can never tell you that you are safe, and it never gives a dose. Talk to a doctor or pharmacist.</span></p>
+    <fieldset class="c-risk__form" id="${formId}">
+      <legend class="c-risk__legend">Tick anything that applies to you</legend>
+      <p class="c-risk__privacy">${icon('lock', { size: 16 })}Your answers stay on this page. They are not saved or sent anywhere.</p>
+      <ul class="c-risk__items" role="list">
+        ${items.map((it) => {
+          const id = `${formId}-${it.id}`;
+          return html`
+        <li class="c-check" data-risk-item="${it.id}">
+          <input type="checkbox" class="c-check__box" id="${id}" value="${it.id}" aria-describedby="${id}-hint"${checked.has(it.id) ? html` checked` : ''}>
+          <label class="c-check__label" for="${id}">
+            <span class="c-check__mark" aria-hidden="true">${icon('check', { size: 16 })}</span>
+            <span class="c-check__text">${it.label}<span class="c-check__hint" id="${id}-hint">${it.hintWhenMapped && !(mapped?.[it.id] || []).length ? '' : (it.hint || '')}</span></span>
+          </label>
+          <div class="c-check__out" data-risk-out="${it.id}"></div>
+        </li>`;
+        })}
+      </ul>
+      <button type="button" class="c-btn c-btn--quiet c-btn--sm" data-risk-clear>Clear my answers</button>
+    </fieldset>
+    <p class="c-sr" id="${statusId}" role="status" aria-live="polite"></p>
   </div>`);
 
-  const results = host.querySelector('[data-risk-results]');
   const status = host.querySelector(`#${statusId}`);
 
   function warningsFor(id) { return mapped ? (mapped[id] || []) : []; }
@@ -67,37 +66,27 @@ export function mountRiskCheck(host, entry, ctx) {
   function render({ announce = true } = {}) {
     const ticked = items.filter((it) => checked.has(it.id));
     const warnings = [];
-    if (!ticked.length) {
-      results.innerHTML = String(html`<p class="c-risk__empty">Nothing ticked yet. Tick anything that applies to see the warnings our sources list for ${name}.</p>`);
-    } else {
-      results.innerHTML = String(html`${ticked.map((it) => {
-        const ws = warningsFor(it.id);
-        ws.forEach((w) => warnings.push({ organ: w.organ, title: w.title, item: it.id }));
-        if (!ws.length) {
-          return html`
-          <section class="c-warn c-warn--none" aria-label="${it.label}">
-            <p class="c-warn__item">${it.label}</p>
-            <p class="c-warn__none">${mapped
-              ? `No specific warning for this in our sources for ${name}. That does not mean it is safe for you.`
-              : `We have not mapped warnings for ${name} yet. That does not mean it is safe for you.`}</p>
-          </section>`;
-        }
-        return html`
-          <section class="c-warn" aria-label="${it.label}">
-            <p class="c-warn__item">${it.label}</p>
-            ${ws.map((w) => html`
-            <div class="c-warn__card">
-              <p class="c-warn__title">${icon('alert', { size: 16 })}<span>${w.title}</span></p>
-              <p class="c-warn__text">${w.text}${ctx.mark(w)}</p>
-              <p class="c-warn__organ">${w.organ ? organButton(w.organ) : ''}</p>
-            </div>`)}
-          </section>`;
-      })}
-      <p class="c-risk__remind">${NOTE}</p>`);
+    for (const it of items) {
+      const out = host.querySelector(`[data-risk-out="${it.id}"]`);
+      if (!out) continue;
+      if (!checked.has(it.id)) { if (out.firstChild) out.replaceChildren(); continue; }
+      const ws = warningsFor(it.id);
+      // a whole-body warning (e.g. "under 18") lights no single organ on the 3D body
+      ws.forEach((w) => { if (!w.wholeBody) warnings.push({ organ: w.organ, title: w.title, item: it.id }); });
+      out.innerHTML = String(ws.length
+        ? html`${ws.map((w) => html`
+          <div class="c-warn__card">
+            <p class="c-warn__title">${icon('alert', { size: 16 })}<span>${w.title}</span></p>
+            <p class="c-warn__text">${w.text}${ctx.mark(w)}</p>
+            ${w.organ && !w.wholeBody ? html`<p class="c-warn__organ">${organButton(w.organ)}</p>` : ''}
+          </div>`)}`
+        : html`<p class="c-warn__none">${mapped
+          ? `No specific warning for this in our sources for ${name}. That does not mean it is safe for you.`
+          : `We have not mapped warnings for ${name} yet. That does not mean it is safe for you.`}</p>`);
     }
     if (announce && status) {
       status.textContent = ticked.length
-        ? `${plural(warnings.length, 'warning')} shown for ${plural(ticked.length, 'ticked item')}.`
+        ? `${plural(warnings.length, 'warning')} shown for ${plural(ticked.length, 'ticked item')}. ${NOTE}`
         : 'No items ticked.';
     }
     bus.emit('risk:change', { items: ticked.map((it) => it.id), warnings });

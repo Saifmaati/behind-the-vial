@@ -1,15 +1,15 @@
-// PeptideScope: #gray-market: what independent labs found inside vials sold
-// online, contamination and sterility, reported harms and enforcement.
-// Core message: with these products you cannot know how much you are getting.
+// PeptideScope: "What's really in the vial" (v4): what independent labs found inside
+// vials sold online, contamination and sterility, reported harms and enforcement.
+// Core message (the summary): with these products you cannot know how much you are getting.
 //
-// No charts. The vial tests are drawn as a row of glass vials: each vial's
-// fill shows the share of the label amount the lab found, a fine line marks
-// the label amount, and a vial where none of the labeled drug was found is
-// drawn empty with a ∅ mark. The exact figure is printed under every vial and
-// the same results sit in an accessible table inside a <details>.
+// No charts. The vial tests are drawn as a row of glass vials: each vial's fill shows
+// the share of the label amount the lab found, a thin line marks the label amount, and a
+// vial where none of the labeled drug was found is drawn empty with a ∅ mark. The exact
+// figure is printed under every vial; each vial's lab note opens in a row underneath.
 // Label amounts in mg are never shown: only "% of the label".
 import { html, raw, uid, plural } from './util.js';
 import { icon } from './icons.js';
+import { summary, group, more } from './blocks.js';
 
 // ---------------------------------------------------------------------------
 // shared summary (also used by #too-much)
@@ -111,6 +111,7 @@ function vialItem(t, scaleMax) {
     <p class="c-vial__fig">${none ? 'None' : fmtPct(t.pctOfLabel)}</p>
     <p class="c-vial__of">${none ? 'of the labeled drug found' : 'of the amount on the label'}</p>
     <p class="c-vial__name">${t.label}</p>
+    <p class="c-vial__sold">Sold as retatrutide</p>
     ${!none && IDENTITY[t.identity] ? html`<p class="c-vial__id c-vial__id--${t.identity}"><span class="c-vial__idmark" aria-hidden="true"></span>${IDENTITY[t.identity]}</p>` : ''}
   </li>`;
 }
@@ -118,43 +119,31 @@ function vialItem(t, scaleMax) {
 function vialFigure(gray, ctx) {
   const tests = [...(gray.vialTests || [])].sort((a, b) => (isNum(a.pctOfLabel) ? a.pctOfLabel : -1) - (isNum(b.pctOfLabel) ? b.pctOfLabel : -1));
   if (!tests.length) return '';
-  const sum = graySummary(gray);
   const scaleMax = scaleMaxFor(tests);
-  const capId = uid('cap');
   const listLabel = uid('vials');
-  const sourcesOfTests = [...new Set(tests.flatMap((t) => t.sources || []))];
   const anyNone = tests.some((t) => !isNum(t.pctOfLabel));
   return html`
-  <figure class="c-card c-card--lit c-vials">
+  <figure class="c-vials">
     <p class="c-sr" id="${listLabel}">Tested vials, drawn to scale, from the least to the most drug found</p>
     <ul class="c-vials__row" role="list" aria-labelledby="${listLabel}" style="--n: ${tests.length}">
       ${tests.map((t) => vialItem(t, scaleMax))}
     </ul>
-    <ul class="c-vials__key" role="list" aria-label="How to read the vials">
-      <li><span class="c-vials__swatch c-vials__swatch--fill" aria-hidden="true"></span>Fill: the labeled drug the lab found</li>
-      <li><span class="c-vials__swatch c-vials__swatch--line" aria-hidden="true"></span>Fine line: the amount the label claims</li>
-      ${anyNone ? html`<li><span class="c-vials__swatch c-vials__swatch--none" aria-hidden="true"></span>Drawn empty with ∅: none of the labeled drug found</li>` : ''}
-    </ul>
-    <figcaption class="c-figcap c-vials__cap">${sum.sentence}${ctx.cite(sourcesOfTests)}</figcaption>
+    <figcaption>
+      <ul class="c-vials__key" role="list" aria-label="How to read the vials">
+        <li><span class="c-vials__swatch c-vials__swatch--fill" aria-hidden="true"></span>Fill: the labeled drug the lab found</li>
+        <li><span class="c-vials__swatch c-vials__swatch--line" aria-hidden="true"></span>Thin line: what the label promised</li>
+        ${anyNone ? html`<li><span class="c-vials__swatch c-vials__swatch--none" aria-hidden="true"></span>Empty with ∅: none of the labeled drug found</li>` : ''}
+      </ul>
+    </figcaption>
   </figure>
-
-  <details class="c-details">
-    <summary>${icon('list', { size: 16 })}Show the vial results as a table</summary>
-    <div class="c-table-wrap" tabindex="0" role="region" aria-labelledby="${capId}">
-      <table class="c-table c-vtable">
-        <caption id="${capId}" class="c-sr">Independent vial tests, from the least to the most drug found</caption>
-        <thead><tr><th scope="col">Vial</th><th scope="col">Amount found (% of label)</th><th scope="col">Identity test</th><th scope="col">What the lab reported</th></tr></thead>
-        <tbody>${tests.map((t) => html`
-          <tr class="${isNum(t.pctOfLabel) ? '' : 'is-none'}">
-            <th scope="row">${t.label}</th>
-            <td class="c-num">${isNum(t.pctOfLabel) ? fmtPct(t.pctOfLabel) : html`<span class="c-none">None found</span>`}</td>
-            <td>${IDENTITY[t.identity] || 'Not reported'}</td>
-            <td>${t.note || ''}${ctx.mark(t)}</td>
-          </tr>`)}
-        </tbody>
-      </table>
-    </div>
-  </details>`;
+  <p class="c-kv__k c-vials__more">What the lab said about each vial</p>
+  <div class="c-rows">
+    ${tests.map((t) => more(
+      html`<span class="c-row__name">${t.label}</span><span class="c-row__meta">${isNum(t.pctOfLabel) ? `${fmtPct(t.pctOfLabel)} of the label` : 'None of the labeled drug'}${ctx.mark(t)}</span>`,
+      html`${IDENTITY[t.identity] ? html`<p class="c-kv__k">${IDENTITY[t.identity]}</p>` : ''}<p>${t.note || ''}${ctx.mark(t)}</p>`,
+      { attrs: html` data-vial-note="${t.id}"` },
+    ))}
+  </div>`;
 }
 
 // ---------------------------------------------------------------------------
@@ -179,95 +168,56 @@ function groupEnforcement(items = []) {
 
 const isWordValue = (v) => !/\d/.test(String(v || ''));
 
-function figureCards(items, ctx) {
-  if (!items.length) return '';
-  return html`
-  <ul class="c-gfigs" role="list">
-    ${items.map((e) => html`
-    <li class="c-card c-gfig" data-fact="${e.id}">
-      <p class="c-gfig__value${isWordValue(e.value) ? ' is-word' : ''}">${e.value}</p>
-      <p class="c-gfig__text">${e.text}${ctx.mark(e)}</p>
-    </li>`)}
-  </ul>`;
-}
-
-function ledger(items, ctx, tone) {
-  if (!items.length) return '';
-  return html`
-  <ol class="c-ledger c-ledger--${tone}" role="list">
-    ${items.map((e) => html`
-    <li class="c-ledger__row" data-fact="${e.id}">
-      <p class="c-ledger__value${isWordValue(e.value) ? ' is-word' : ''}">${e.value}</p>
-      <p class="c-ledger__text">${e.text}${ctx.mark(e)}</p>
-    </li>`)}
-  </ol>`;
-}
-
-function contaminationCards(items, ctx) {
+/** A value-first fact line: "21  FDA warning letters that mention retatrutide …". */
+function factList(items, ctx, tone = '') {
   if (!items?.length) return '';
   return html`
-  <ul class="c-gcards" role="list">
-    ${items.map((c) => html`
-    <li class="c-card c-gcard" data-fact="${c.id}">
-      <h4 class="c-gcard__title">${c.title}</h4>
-      <p class="c-gcard__text">${c.text}${ctx.mark(c)}</p>
+  <ul class="c-facts-list${tone ? ` c-facts-list--${tone}` : ''}" role="list">
+    ${items.map((e) => html`
+    <li class="c-fact" data-fact="${e.id}">
+      <p class="c-fact__value${isWordValue(e.value) ? ' is-word' : ''}">${e.value}</p>
+      <p class="c-fact__text">${e.text}${ctx.mark(e)}</p>
     </li>`)}
   </ul>`;
 }
 
-function block({ kicker, title, sub, body, cls = '' }) {
-  if (!body || !String(body).trim()) return '';
-  const id = uid('gsec');
-  return html`
-  <section class="c-gsec ${cls}" aria-labelledby="${id}">
-    <header class="c-gsec__head">
-      ${kicker ? html`<p class="c-kicker">${kicker}</p>` : ''}
-      <h3 class="c-h3" id="${id}">${title}</h3>
-      ${sub ? html`<p class="c-sub">${sub}</p>` : ''}
-    </header>
-    ${body}
-  </section>`;
+function contaminationRows(items, ctx) {
+  if (!items?.length) return '';
+  return html`<div class="c-rows">${items.map((c) => more(
+    html`<span class="c-row__name">${c.title}</span>`,
+    html`<p>${c.text}${ctx.mark(c)}</p>`,
+    { attrs: html` data-fact="${c.id}"` },
+  ))}</div>`;
 }
 
 // ---------------------------------------------------------------------------
 
-export function renderGrayMarket(gray, ctx) {
-  if (!gray) return html`<p class="c-note">Vial test data is not available yet.</p>`;
+/**
+ * All the vial tests and lab figures here are of vials sold as RETATRUTIDE. For any other peptide the
+ * panel says so first (accuracy review: a reader must never think its own peptide was tested).
+ */
+export function renderGrayMarket(gray, ctx, { peptide = null } = {}) {
+  if (!gray) return '';
   const { lab, harm, enforcement } = groupEnforcement(gray.enforcement);
+  const other = peptide && peptide.id && peptide.id !== 'retatrutide' ? peptide : null;
+  const sum = graySummary(gray, other ? { lead: `In the ${plural((gray.vialTests || []).length, 'vial')} sold as retatrutide that labs tested` } : {});
+  const testSources = [...new Set((gray.vialTests || []).flatMap((t) => t.sources || []))];
 
   return html`
-  <div class="c-gray">
-    <div class="c-gray__lead">
-      <p class="c-gray__headline">${gray.headline}</p>
-      ${gray.intro ? html`<p class="c-prose c-intro">${gray.intro}${ctx.cite(gray.sources)}</p>` : ''}
-    </div>
-
-    ${block({
-      kicker: 'Independent lab tests',
-      title: 'What labs found inside the vials',
-      sub: 'Each vial is drawn to scale. The fill shows how much of the labeled drug the lab found; the fine line marks the amount the label claims.',
-      body: html`${vialFigure(gray, ctx)}${figureCards(lab, ctx)}`,
-      cls: 'c-gsec--lab',
+  <div class="c-panel c-panel--gray">
+    ${other ? html`<p class="c-notice c-notice--info" role="note">${icon('info', { size: 20 })}<span><strong>No lab tests of ${other.name} vials are shown yet.</strong> The tests on this page are of vials sold as retatrutide, and they show the same problem: you can’t know what is inside a vial sold online.</span></p>` : ''}
+    ${summary(html`${gray.headline}${sum.sentence ? html` ${sum.sentence}` : ''}${ctx.cite(testSources)}`)}
+    ${group({
+      title: 'What labs found inside vials sold as retatrutide',
+      sub: 'Each vial is drawn to scale. The fill shows how much of the labeled drug the lab found; the thin line marks what the label promised.',
+      id: uid('gvials'),
+      body: vialFigure(gray, ctx),
     })}
-
-    ${block({
-      kicker: 'Contamination and sterility',
-      title: 'Germs, toxins and other contaminants',
-      body: contaminationCards(gray.contamination, ctx),
-    })}
-
-    ${block({
-      kicker: 'Reports of harm',
-      title: 'Reported harms',
-      body: ledger(harm, ctx, 'harm'),
-    })}
-
-    ${block({
-      kicker: 'Enforcement',
-      title: 'Regulators, watchdogs and lawsuits',
-      body: ledger(enforcement, ctx, 'enf'),
-    })}
-
-    ${gray.takeaway ? html`<p class="c-gray__takeaway">${icon('alert', { size: 20 })}<span>${gray.takeaway}${ctx.cite(gray.sources)}</span></p>` : ''}
+    ${gray.intro ? group({ title: other ? 'How retatrutide vials are sold' : 'How these vials are sold', id: uid('gintro'), body: html`<p>${gray.intro}${ctx.cite(gray.sources)}</p>` }) : ''}
+    ${group({ title: other ? 'More lab results (retatrutide vials)' : 'More lab results', id: uid('glab'), body: factList(lab, ctx) })}
+    ${group({ title: 'Germs, toxins and other contaminants', id: uid('gcont'), body: contaminationRows(gray.contamination, ctx) })}
+    ${group({ title: 'People who got hurt', id: uid('gharm'), tone: 'danger', body: factList(harm, ctx, 'danger') })}
+    ${group({ title: 'What regulators are doing', id: uid('genf'), body: factList(enforcement, ctx) })}
+    ${gray.takeaway ? html`<p class="c-callout c-callout--warn">${icon('alert', { size: 22 })}<span>${gray.takeaway}${ctx.cite(gray.sources)}</span></p>` : ''}
   </div>`;
 }

@@ -1,54 +1,48 @@
-// PeptideScope: 3D stage (body3d).
-// Renderer, camera, orbit controls, environment lighting, post-processing, render loop.
+// PeptideScope: 3D stage (body).
+// Renderer, camera, orbit controls, lights, and an ON-DEMAND render loop.
 //
-//   const stage = await createStage(host /* #stage-host */, { reducedMotion, theme });
-//   stage.onFrame((dt, t) => { ... }) → off
+//   const stage = await createStage(host /* #stage-host */, { reducedMotion, theme, quality });
+//   stage.onFrame((dt, t) => { ...; return busy }) → off
+//       A frame callback returns true while it is still animating (a tween, the sequence, particles);
+//       the loop keeps drawing while anything is busy and stops when the picture is still.
+//   stage.invalidate(frames = 1) — something changed: draw (at least) one more frame
 //   stage.flyTo({ target:[x,y,z], distance, azimuth, elevation, duration }) → Promise
 //   stage.pick(clientX, clientY, objects) → intersection | null
 //   stage.project([x,y,z] | Vector3, out?) → { x, y, visible }   (CSS px relative to host)
 //   stage.setTheme('dark'|'light'); stage.resize(); stage.dispose()
 // Extras (additive): stage.onTheme(fn) → off; stage.setReducedMotion(bool); stage.homeView(opts);
 //   stage.zoom(factor); stage.getView(); stage.fitDistance(halfH, halfW); stage.homeDistance;
-//   stage.onContextChange(fn(lost)) → off; stage.contextLost;
-//   stage.setBodyFrame(heightM, scaleRatio) — the editable body's height: the home framing grows for
-//     tall bodies (shorter ones keep the default frame, so they read as shorter); a camera at home
-//     follows, one framing something else keeps it centred as the body scales; stage.homeTarget
-//   stage.advance(seconds, step) — dev/test hook: deterministic time steps + one frame
-//   (with stage.timeScale = 0 the real-time loop keeps drawing but scene time stands still).
-//   stage.lights { key, rim, fill, hemi }; stage.quality ('high' | 'low'); stage.setBloom(bool)
+//   stage.onContextChange(fn(lost)) → off; stage.contextLost; stage.setBodyFrame(heightM, scaleRatio);
+//   stage.homeTarget; stage.advance(seconds, step) (dev/test: deterministic steps + one frame);
+//   stage.lights { key, rim, fill, hemi }; stage.quality ('high' | 'low'); stage.stats { frames, running };
+//   stage.focusPoint(point, { distance, duration }); stage.minDistance; stage.zoomed; stage.surfacePicker
+//   stage.setBloom() is kept for compatibility and does nothing: v4 has no post-processing.
 //
-// Deep zoom (v3): the mouse wheel and a pinch zoom toward the point under the cursor. Before each zoom
-// step the orbit pivot moves (along the current view axis, so the picture does not jump) to the depth
-// of the surface under the cursor, found by stage.surfacePicker(clientX, clientY) → Vector3 | null
-// (index.js supplies it from the visible layers); the camera can then come to within MIN_DIST of that
-// surface but never through it. The near plane follows the distance (down to 1 mm), panning is on
-// while zoomed in (right-drag, Shift/⌘-drag, two fingers), the pivot stays inside the body's bounds,
-// and pulling back out drifts the pivot home so the whole body is centred again.
-//   stage.focusPoint(point, { distance, duration }) — fly so `point` is the pivot (double-click focus)
-//   stage.minDistance; stage.zoomed (closer than ~70 % of the home distance)
+// Performance (v4, the owner found v3 laggy): nothing is drawn while the picture is still. The loop runs
+// only while the camera moves or damps, a camera flight or the sequence plays, a tween or the timeline
+// changes something; otherwise requestAnimationFrame is released entirely. The canvas is drawn directly
+// (no composer, no bloom, no HDR target): device pixel ratio ≤ 1.25 on desktop and 1 on phones and
+// low-end devices, stepped down further while frames are slow; MSAA from the default framebuffer. The
+// loop also stops when the stage is off-screen, the tab is hidden or the WebGL context is lost.
 //
-// Budget: pixel ratio capped at 1.75 (1.5 on phones and low-end devices) and stepped down when frames
-// are slow; bloom runs at half resolution (UnrealBloomPass) and is skipped on phones and low-end
-// devices, or switched off when frames stay slow at the lowest pixel ratio; the loop stops when the
-// stage is off-screen, the tab is hidden or the WebGL context is lost (a status note shows, and the
-// prefiltered environment is rebuilt on restore).
+// Deep zoom: the mouse wheel and a pinch zoom toward the point under the cursor. Before each zoom step the
+// orbit pivot moves (along the current view axis, so the picture does not jump) to the depth of the
+// surface under the cursor, found by stage.surfacePicker(clientX, clientY) → Vector3 | null (index.js
+// supplies it); the camera can then come to within MIN_DIST of that surface but never through it. The
+// near plane follows the distance (down to 1 mm), panning is on while zoomed in, the pivot stays inside
+// the body's bounds, and pulling back out drifts the pivot home so the whole body is centred again.
 //
-// Conventions (docs/ARCHITECTURE.md, "3D world contract"): meters, Y up, feet at y = 0, the body
-// faces +Z, the person's left is +X. flyTo angles are DEGREES: azimuth 0 = camera in front of the
-// body (+Z), positive azimuth swings toward the person's left (+X); elevation 0 = level, positive =
-// looking down from above. duration is in milliseconds (values ≤ 10 are read as seconds).
+// Conventions (docs/ARCHITECTURE.md, "3D world contract"): meters, Y up, feet at y = 0, the body faces
+// +Z, the person's left is +X. flyTo angles are DEGREES: azimuth 0 = camera in front of the body (+Z),
+// positive azimuth swings toward the person's left (+X); elevation 0 = level, positive = looking down.
+// duration is in milliseconds (values ≤ 10 are read as seconds).
 //
-// The canvas is transparent: the stage frame's CSS background (--stage-bg, the warm vignette in
-// stage.css, the HUD) shows through, so the scene sits seamlessly in both themes. Bloom is composited
-// as additive light (alpha is left untouched) and kept restrained: luminous over obsidian, nearly
-// absent over ivory. Luxury palette (v2): warm key light, champagne rim, champagne floor hairlines.
+// The canvas is transparent: the stage's CSS background (stage.css: soft #F7F6FB with a faint vignette,
+// or the dark variant) shows through. Custom shaders end with three's tone-mapping and colour-space
+// chunks because they draw straight to the sRGB canvas.
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
-import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
-import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
-import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
-import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 
 const DEG = Math.PI / 180;
 const FOV = 30;
@@ -63,9 +57,12 @@ const NEAR_MIN = 0.001;      // m: the near plane at the closest zoom
 const NEAR_MAX = 0.05;
 // Bounds the orbit pivot may wander within while panning (model frame at scale 1, metres).
 const PIVOT_BOX = { x: 0.62, y0: 0.0, y1: 1.98, z: 0.42 };
+// Pixel-ratio caps (v4 budget).
+const PR_HIGH = 1.25;
+const PR_LOW = 1;
 
-// Phones, tablets and low-end machines get a lighter pipeline (no bloom, a lower pixel-ratio cap,
-// fewer particles). `quality` may force it ('high' | 'low'); 'auto' decides from the device.
+// Phones, tablets and low-end machines get a lighter pipeline (pixel ratio 1, fewer particles, the light
+// skin shader, no detail asset by default). `quality` may force it ('high' | 'low'); 'auto' decides.
 export function detectQuality(pref = 'auto') {
   if (pref === 'high' || pref === 'low') return pref;
   try {
@@ -76,20 +73,20 @@ export function detectQuality(pref = 'auto') {
   } catch { return 'high'; }
 }
 
+// v4 light-first palette (docs/ARCHITECTURE.md, "v4"): soft daylight, a faint violet rim, a soft contact
+// shadow under the feet.
 export const STAGE_THEMES = {
-  dark: {
-    bloomStrength: 0.42, bloomRadius: 0.42, bloomThreshold: 0.8,
-    exposure: 1.0,
-    key: 1.1, rim: 1.25, fill: 0.28, env: 0.4,
-    rimColor: 0xe6d3a3, keyColor: 0xfff3e2, hemiSky: 0xf1e6d2, hemiGround: 0x120e0a,
-    floor: 0xc8a96a, floorAlpha: 0.44, floorGlow: 0x4a3a20,
-  },
   light: {
-    bloomStrength: 0.12, bloomRadius: 0.3, bloomThreshold: 0.95,
     exposure: 1.0,
-    key: 2.0, rim: 0.6, fill: 0.7, env: 0.75,
-    rimColor: 0xf3e6c8, keyColor: 0xfffaf0, hemiSky: 0xfffdf8, hemiGround: 0xcfc3ad,
-    floor: 0x2e2920, floorAlpha: 0.42, floorGlow: 0xd9c9a6,
+    key: 1.55, rim: 0.7, fill: 0.5, hemi: 0.6, env: 0.32,
+    keyColor: 0xffffff, rimColor: 0xd9d2ff, fillColor: 0xf3f1ff, hemiSky: 0xffffff, hemiGround: 0xd6d2e6,
+    floor: 0x2a2550, floorAlpha: 0.13,
+  },
+  dark: {
+    exposure: 1.0,
+    key: 1.4, rim: 1.1, fill: 0.42, hemi: 0.5, env: 0.36,
+    keyColor: 0xffffff, rimColor: 0xb3a4ff, fillColor: 0xe6e3ff, hemiSky: 0xe8e6ff, hemiGround: 0x0f0e17,
+    floor: 0x000000, floorAlpha: 0.42,
   },
 };
 
@@ -114,85 +111,70 @@ export function easeCamera(t) {
   return EASE_LUT[i] + (EASE_LUT[i + 1] - EASE_LUT[i]) * f;
 }
 
+// Shader tail for custom materials drawn straight to the canvas (tone mapping + sRGB output).
+export const OUTPUT_CHUNK = '#include <tonemapping_fragment>\n#include <colorspace_fragment>';
+
+// A soft contact shadow under the feet (one quad, one draw call, no shadow maps).
 function makeFloor() {
-  const geo = new THREE.CircleGeometry(1.15, 96);
+  const geo = new THREE.PlaneGeometry(1.3, 1.3);
   geo.rotateX(-Math.PI / 2);
   const mat = new THREE.ShaderMaterial({
-    uniforms: {
-      uColor: { value: new THREE.Color() },
-      uGlow: { value: new THREE.Color() },
-      uAlpha: { value: 0.5 },
-      uTime: { value: 0 },
-    },
+    uniforms: { uColor: { value: new THREE.Color() }, uAlpha: { value: 0.12 } },
     vertexShader: /* glsl */`
       varying vec2 vXZ;
       void main() {
-        vec4 wp = modelMatrix * vec4(position, 1.0);
-        vXZ = wp.xz;
-        gl_Position = projectionMatrix * viewMatrix * wp;
+        vXZ = position.xz;
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
       }`,
     fragmentShader: /* glsl */`
-      uniform vec3 uColor; uniform vec3 uGlow; uniform float uAlpha; uniform float uTime;
+      uniform vec3 uColor; uniform float uAlpha;
       varying vec2 vXZ;
-      float ringLine(float r, float radius, float w) {
-        float d = abs(r - radius);
-        float fw = max(fwidth(r), 1e-4);
-        return 1.0 - smoothstep(w, w + fw * 1.5, d);
-      }
       void main() {
-        float r = length(vXZ);
-        float a = 0.0;
-        // a watch-dial floor: three hairline rings, sixty minute ticks and twelve longer indices on the
-        // middle ring, and very faint concentric lines near the feet
-        a += ringLine(r, 0.34, 0.0004) * 0.5;
-        a += ringLine(r, 0.62, 0.0005) * 0.42;
-        a += ringLine(r, 0.92, 0.0004) * 0.2;
-        float f = r / 0.05;
-        float g = abs(fract(f - 0.5) - 0.5) / max(fwidth(f), 1e-4);
-        a += (1.0 - min(g, 1.0)) * 0.06 * (1.0 - smoothstep(0.1, 0.55, r));
-        float ang = atan(vXZ.y, vXZ.x);
-        float tk = abs(fract(ang / 6.2831853 * 60.0) - 0.5);
-        float tickMask = step(0.6, r) * (1.0 - step(0.635, r));
-        a += (1.0 - smoothstep(0.05, 0.1, tk * 2.0 * r * 2.0)) * tickMask * 0.3;
-        float hk = abs(fract(ang / 6.2831853 * 12.0) - 0.5);
-        float hourMask = step(0.6, r) * (1.0 - step(0.675, r));
-        a += (1.0 - smoothstep(0.03, 0.06, hk * 2.0 * r * 2.0)) * hourMask * 0.3;
-        // soft pool of light under the figure
-        float pool = exp(-r * r * 9.0);
-        vec3 col = uColor * a + uGlow * pool * 0.5;
-        float alpha = (a + pool * 0.3) * uAlpha * (1.0 - smoothstep(0.75, 1.15, r));
-        gl_FragColor = vec4(col, alpha);
+        vec2 p = vXZ / vec2(0.36, 0.24);
+        float r2 = dot(p, p);
+        float a = exp(-r2 * 2.2) * 0.85 + exp(-r2 * 9.0) * 0.35;
+        gl_FragColor = vec4(uColor * a * uAlpha, a * uAlpha);
+        ${OUTPUT_CHUNK}
       }`,
     transparent: true,
     depthWrite: false,
+    // premultiplied: a shadow over the light page, nothing added in the dark theme
+    blending: THREE.CustomBlending,
+    blendSrc: THREE.OneFactor, blendDst: THREE.OneMinusSrcAlphaFactor,
+    blendSrcAlpha: THREE.OneFactor, blendDstAlpha: THREE.OneMinusSrcAlphaFactor,
+    toneMapped: false,
   });
   const mesh = new THREE.Mesh(geo, mat);
-  mesh.name = 'floor';
+  mesh.name = 'floor-shadow';
   mesh.renderOrder = -5;
   mesh.position.y = 0.0005;
   return mesh;
 }
 
-export async function createStage(host, { reducedMotion = false, theme = 'dark', quality = 'auto' } = {}) {
+export async function createStage(host, { reducedMotion = false, theme = 'light', quality = 'auto' } = {}) {
   if (!host) throw new Error('createStage: host element required');
   const canvasHost = host.querySelector('#stage-canvas-host') || host;
+  const tier = detectQuality(quality);
 
   const renderer = new THREE.WebGLRenderer({
-    antialias: true, alpha: true, premultipliedAlpha: true, powerPreference: 'high-performance', stencil: false,
+    antialias: true, alpha: true, premultipliedAlpha: true, powerPreference: 'default', stencil: false,
   });
   renderer.setClearColor(0x000000, 0);
-  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMapping = THREE.NeutralToneMapping;
   renderer.outputColorSpace = THREE.SRGBColorSpace;
+  renderer.shadowMap.enabled = false;
   const canvas = renderer.domElement;
   canvas.setAttribute('tabindex', '0');
-  canvas.setAttribute('role', 'img');
-  canvas.setAttribute('aria-label', '3D body. Arrow keys rotate, plus and minus zoom, Home resets the view.');
+  // role=application so screen readers pass the arrow, plus and minus keys through to the canvas (a
+  // focusable role=img keeps them in browse mode, a11y review)
+  canvas.setAttribute('role', 'application');
+  canvas.setAttribute('aria-roledescription', '3D body viewer');
+  canvas.setAttribute('aria-label', '3D body. Arrow keys turn it, plus and minus zoom, Home resets the view.');
   canvas.classList.add('stage-canvas');
   canvasHost.appendChild(canvas);
 
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(FOV, 1, NEAR_MAX, 40);
-  const tier = detectQuality(quality);
   const tanHalf = Math.tan((FOV * DEG) / 2);
 
   // ---- environment + lights
@@ -209,12 +191,12 @@ export async function createStage(host, { reducedMotion = false, theme = 'dark',
   let envRT = buildEnv();
   scene.environment = envRT.texture;
 
-  const hemi = new THREE.HemisphereLight(0xf1e6d2, 0x120e0a, 0.4);
-  const key = new THREE.DirectionalLight(0xfff3e2, 1.5);
+  const hemi = new THREE.HemisphereLight(0xffffff, 0xd6d2e6, 1);
+  const key = new THREE.DirectionalLight(0xffffff, 2);
   key.position.set(1.6, 3.2, 2.6);
-  const rim = new THREE.DirectionalLight(0xe6d3a3, 1.4);
+  const rim = new THREE.DirectionalLight(0xd9d2ff, 1);
   rim.position.set(-2.2, 1.8, -2.6);
-  const fill = new THREE.DirectionalLight(0xffffff, 0.35);
+  const fill = new THREE.DirectionalLight(0xffffff, 0.8);
   fill.position.set(-2.4, 0.6, 1.8);
   scene.add(hemi, key, rim, fill);
 
@@ -224,13 +206,12 @@ export async function createStage(host, { reducedMotion = false, theme = 'dark',
   // ---- controls
   const controls = new OrbitControls(camera, canvas);
   controls.enableDamping = !reducedMotion;
-  controls.dampingFactor = 0.075;
+  controls.dampingFactor = 0.09;
   controls.enablePan = false;
-  controls.rotateSpeed = 0.55;
+  controls.rotateSpeed = 0.6;
   controls.zoomSpeed = 1.1; // deep zoom spans ~3.6 m to 2.4 cm: about 80 wheel notches, or a few double-clicks
   controls.minDistance = MIN_DIST;
   controls.maxDistance = 6;
-  // zoom toward the cursor (the pivot is first moved to the surface under it; see onWheelCapture)
   controls.zoomToCursor = true;
   controls.screenSpacePanning = true;
   controls.panSpeed = 0.8;
@@ -240,96 +221,105 @@ export async function createStage(host, { reducedMotion = false, theme = 'dark',
   // One-finger vertical swipes keep scrolling the page; horizontal drags rotate; pinch zooms.
   canvas.style.touchAction = 'pan-y';
 
-  // ---- post-processing
+  // ---- sizing state
   const size = { width: 1, height: 1 };
   const dpr = window.devicePixelRatio || 1;
-  const prMax = Math.min(dpr, tier === 'low' ? 1.5 : 1.75);
-  const prMin = Math.min(tier === 'low' ? 0.85 : 1, prMax);
+  const prMax = Math.min(dpr, tier === 'low' ? PR_LOW : PR_HIGH);
+  const prMin = Math.min(tier === 'low' ? 0.75 : 0.85, prMax);
   let pr = prMax;
-  // MSAA on the HDR target; high-density screens need fewer samples for the same smoothness
-  const rt = new THREE.WebGLRenderTarget(2, 2, { type: THREE.HalfFloatType, samples: dpr > 1.5 || tier === 'low' ? 2 : 4 });
-  const composer = new EffectComposer(renderer, rt);
-  const renderPass = new RenderPass(scene, camera);
-  // UnrealBloomPass already extracts and blurs at half resolution internally.
-  const bloom = new UnrealBloomPass(new THREE.Vector2(2, 2), 0.8, 0.5, 0.5);
-  // Composite bloom as additive light and leave alpha untouched (transparent canvas).
-  {
-    const bm = bloom.blendMaterial;
-    if (bm) {
-      bm.blending = THREE.CustomBlending;
-      bm.blendEquation = THREE.AddEquation;
-      bm.blendSrc = THREE.SrcAlphaFactor;
-      bm.blendDst = THREE.OneFactor;
-      bm.blendEquationAlpha = THREE.AddEquation;
-      bm.blendSrcAlpha = THREE.ZeroFactor;
-      bm.blendDstAlpha = THREE.OneFactor;
-      bm.needsUpdate = true;
-    }
-  }
-  const outputPass = new OutputPass();
-  composer.addPass(renderPass);
-  composer.addPass(bloom);
-  composer.addPass(outputPass);
-  let bloomWanted = tier !== 'low';
-  bloom.enabled = bloomWanted;
 
   // ---- state
   const frameFns = [];
   const themeFns = [];
   let disposed = false;
-  let running = false;
+  let running = false;       // requestAnimationFrame loop attached
   let contextLost = false;
   let inView = true;
   let last = 0;
   let time = 0;
+  let pending = 2;           // frames still owed after an invalidate()
   let homeDistance = 3.6;
   const homeTarget = new THREE.Vector3(...HOME_TARGET);
   const prevHomeTarget = new THREE.Vector3();
   let bodyHalfH = BODY_HALF_H;
-  let bodyH = 1.75;           // current body height (m), for the pivot bounds
+  let bodyH = 1.75;
   const raycaster = new THREE.Raycaster();
   const ndc = new THREE.Vector2();
   const hits = [];
   const tmpV = new THREE.Vector3();
   const offset = new THREE.Vector3();
   const sph = new THREE.Spherical();
+  const stats = { frames: 0, get running() { return running; } };
 
   const stage = {
-    scene, camera, renderer, controls, composer, bloom, canvas, host,
+    scene, camera, renderer, controls, canvas, host,
+    composer: null, bloom: null,
     envMap: envRT.texture,
     size,
-    theme: theme === 'light' ? 'light' : 'dark',
+    theme: theme === 'dark' ? 'dark' : 'light',
     reducedMotion: !!reducedMotion,
     timeScale: 1,
     quality: tier,
     lights: { key, rim, fill, hemi },
     minDistance: MIN_DIST,
     surfacePicker: null,      // (clientX, clientY) → Vector3 | null, set by index.js
+    stats,
     get time() { return time; },
     get flying() { return flight.active; },
     get homeDistance() { return homeDistance; },
     get homeTarget() { return homeTarget; },
     get zoomed() { return camera.position.distanceTo(controls.target) < homeDistance * 0.7; },
+    get running() { return running; },
   };
-  stage.setBloom = (on) => { bloomWanted = !!on; bloom.enabled = bloomWanted; };
+  stage.setBloom = () => {}; // v4: no post-processing
+
+  // ---------------------------------------------------------------- on-demand loop
+  function canRun() { return !disposed && !contextLost && inView && !document.hidden; }
+  // Our own requestAnimationFrame loop, not renderer.setAnimationLoop(): three.js's loop always
+  // schedules its next frame after the callback returns, so stopping it from inside a frame (which is
+  // where this loop decides it is idle) left an empty requestAnimationFrame running 60 times a second.
+  let rafId = 0;
+  function frame(now) {
+    rafId = 0;
+    if (!running) return;
+    loop(now);
+    if (running && !rafId) rafId = requestAnimationFrame(frame);
+  }
+  function startLoop() {
+    if (running || !canRun()) return;
+    running = true;
+    last = 0;
+    if (!rafId) rafId = requestAnimationFrame(frame);
+  }
+  function stopLoop() {
+    if (!running) return;
+    running = false;
+    if (rafId) { cancelAnimationFrame(rafId); rafId = 0; }
+    perfAcc = 0; perfFrames = 0;
+  }
+  function invalidate(frames = 1) {
+    if (disposed) return;
+    pending = Math.max(pending, frames | 0 || 1);
+    startLoop();
+  }
+  stage.invalidate = invalidate;
+  stage.requestRender = invalidate;
 
   // ---------------------------------------------------------------- theme
   function setTheme(next) {
-    stage.theme = next === 'light' ? 'light' : 'dark';
+    stage.theme = next === 'dark' ? 'dark' : 'light';
     const T = STAGE_THEMES[stage.theme];
-    bloom.strength = T.bloomStrength;
-    bloom.radius = T.bloomRadius;
-    bloom.threshold = T.bloomThreshold;
     renderer.toneMappingExposure = T.exposure;
     key.intensity = T.key; key.color.setHex(T.keyColor);
     rim.intensity = T.rim; rim.color.setHex(T.rimColor);
-    fill.intensity = T.fill;
+    fill.intensity = T.fill; fill.color.setHex(T.fillColor);
+    hemi.intensity = T.hemi;
     hemi.color.setHex(T.hemiSky); hemi.groundColor.setHex(T.hemiGround);
     scene.environmentIntensity = T.env;
     floor.material.uniforms.uColor.value.setHex(T.floor);
-    floor.material.uniforms.uGlow.value.setHex(T.floorGlow);
     floor.material.uniforms.uAlpha.value = T.floorAlpha;
     for (const fn of themeFns.slice()) { try { fn(stage.theme); } catch (e) { console.error('[stage] theme listener failed', e); } }
+    invalidate(2);
   }
   stage.setTheme = setTheme;
   stage.onTheme = (fn) => { themeFns.push(fn); return () => { const i = themeFns.indexOf(fn); if (i >= 0) themeFns.splice(i, 1); }; };
@@ -337,6 +327,7 @@ export async function createStage(host, { reducedMotion = false, theme = 'dark',
   stage.setReducedMotion = (on) => {
     stage.reducedMotion = !!on;
     controls.enableDamping = !on;
+    invalidate();
   };
 
   // ---------------------------------------------------------------- sizing
@@ -353,9 +344,8 @@ export async function createStage(host, { reducedMotion = false, theme = 'dark',
     size.width = w; size.height = h;
     renderer.setPixelRatio(pr);
     renderer.setSize(w, h, false);
-    composer.setPixelRatio(pr);
-    composer.setSize(w, h);
     camera.aspect = w / h;
+    applyFrameInset();
     camera.updateProjectionMatrix();
     const prevHome = homeDistance;
     homeDistance = computeHome();
@@ -368,8 +358,27 @@ export async function createStage(host, { reducedMotion = false, theme = 'dark',
     }
     stage.pixelRatio = pr;
     stage.viewScale = (h * pr) / (2 * tanHalf); // world size → device px at distance 1
+    invalidate(2);
   }
   stage.resize = applySize;
+  // Frame the body in the part of the stage a side panel leaves free (teen-ux review: the Body panel
+  // must not hide the body it edits): the projection is shifted, so the body is centred in the free
+  // area; picking and label projection use the same camera, so they follow. setFrameInset({}) clears it.
+  const frameInset = { right: 0, bottom: 0 };
+  function applyFrameInset() {
+    const w = size.width, h = size.height;
+    if (frameInset.right || frameInset.bottom) camera.setViewOffset(w, h, frameInset.right / 2, frameInset.bottom / 2, w, h);
+    else if (camera.view) camera.clearViewOffset();
+  }
+  stage.setFrameInset = ({ right = 0, bottom = 0 } = {}) => {
+    const r = Math.max(0, Math.min(size.width * 0.7, Number(right) || 0));
+    const b = Math.max(0, Math.min(size.height * 0.7, Number(bottom) || 0));
+    if (r === frameInset.right && b === frameInset.bottom) return;
+    frameInset.right = r; frameInset.bottom = b;
+    applyFrameInset();
+    camera.updateProjectionMatrix();
+    invalidate(2);
+  };
   let resizeRaf = 0;
   const ro = new ResizeObserver(() => {
     if (resizeRaf) return;
@@ -377,17 +386,16 @@ export async function createStage(host, { reducedMotion = false, theme = 'dark',
   });
   ro.observe(canvasHost);
 
-  // Adaptive resolution: step the pixel ratio down when frames are slow, back up when there is headroom.
+  // Adaptive resolution: only judged over runs of continuous frames (the loop is idle otherwise).
   let perfAcc = 0, perfFrames = 0, perfCool = 0;
   function adapt(dt) {
     perfAcc += dt; perfFrames++;
-    if (perfAcc < 1.25) return;
+    if (perfAcc < 1.5) return;
     const fps = perfFrames / perfAcc;
     perfAcc = 0; perfFrames = 0;
     if (perfCool > 0) { perfCool--; return; }
-    if (fps < 48 && pr > prMin + 0.01) { pr = Math.max(prMin, pr - 0.25); applySize(); perfCool = 1; }
-    else if (fps < 30 && bloom.enabled) { bloom.enabled = false; perfCool = 2; } // still slow at the lowest ratio
-    else if (fps > 58 && pr < prMax - 0.01) { pr = Math.min(prMax, pr + 0.125); applySize(); perfCool = 3; }
+    if (fps < 45 && pr > prMin + 0.01) { pr = Math.max(prMin, pr - 0.15); applySize(); perfCool = 1; }
+    else if (fps > 58 && pr < prMax - 0.01) { pr = Math.min(prMax, pr + 0.1); applySize(); perfCool = 3; }
   }
 
   // ---------------------------------------------------------------- camera flights
@@ -424,6 +432,7 @@ export async function createStage(host, { reducedMotion = false, theme = 'dark',
     clearControlInertia();
     controls.update();
     const r = flight.resolve; flight.resolve = null;
+    invalidate();
     r?.();
   }
   stage.flyTo = ({ target, distance, azimuth, elevation, duration = 1400 } = {}) => {
@@ -445,6 +454,7 @@ export async function createStage(host, { reducedMotion = false, theme = 'dark',
       placeCamera(toTarget, toR, cur.az + dAz, toEl);
       clearControlInertia();
       controls.update();
+      invalidate(2);
       return Promise.resolve();
     }
     flight.fromTarget.copy(controls.target);
@@ -456,6 +466,7 @@ export async function createStage(host, { reducedMotion = false, theme = 'dark',
     flight.active = true;
     controls.enabled = false;
     clearControlInertia();
+    invalidate();
     return new Promise((res) => { flight.resolve = res; });
   };
   const flyTarget = new THREE.Vector3();
@@ -474,9 +485,9 @@ export async function createStage(host, { reducedMotion = false, theme = 'dark',
     target: homeTarget.toArray(), distance: homeDistance, azimuth: HOME_AZ, elevation: HOME_EL, duration: 1300, ...opts,
   });
   // Editable body (appearance only): bodies up to the default height keep the default frame (so a
-  // shorter body reads as shorter against the floor rings); taller ones widen it so the head stays in
-  // view. A camera at home follows the new home; any other view stays centred on what it frames as
-  // the body scales about the feet. Called on every tween step; no allocation.
+  // shorter body reads as shorter); taller ones widen it so the head stays in view. A camera at home
+  // follows the new home; any other view stays centred on what it frames as the body scales about the
+  // feet. Called on every tween step; no allocation.
   stage.setBodyFrame = (heightM = 1.75, scaleRatio = 1) => {
     bodyH = heightM > 0.5 ? heightM : 1.75;
     prevHomeTarget.copy(homeTarget);
@@ -485,6 +496,7 @@ export async function createStage(host, { reducedMotion = false, theme = 'dark',
     homeTarget.set(0, bodyHalfH - 0.03, 0);
     homeDistance = computeHome();
     controls.maxDistance = homeDistance * 1.35;
+    invalidate();
     if (flight.active) return;
     offset.copy(camera.position).sub(controls.target);
     const d = offset.length();
@@ -512,9 +524,6 @@ export async function createStage(host, { reducedMotion = false, theme = 'dark',
   };
 
   // ---------------------------------------------------------------- deep zoom helpers
-  // Move the orbit pivot along the current view axis to the depth of the surface under the cursor, so a
-  // zoom step heads for that surface and stops MIN_DIST short of it (the picture does not move: the
-  // pivot stays on the line the camera already looks along). Picks are throttled while wheeling.
   const fwd = new THREE.Vector3();
   const rel = new THREE.Vector3();
   let lastPickT = -1e9, lastPickX = -1e4, lastPickY = -1e4;
@@ -536,6 +545,7 @@ export async function createStage(host, { reducedMotion = false, theme = 'dark',
   let touchZoomed = false;
   stage.autoCenter = true; // pulling back out drifts the pivot home (index.js pauses it during the sequence)
   // After the controls move the camera: near plane, panning, pivot bounds and the drift home.
+  // Returns true when it moved the camera (so the loop keeps going while the drift settles).
   function afterControls(dt) {
     offset.subVectors(camera.position, controls.target);
     const r = offset.length();
@@ -543,9 +553,8 @@ export async function createStage(host, { reducedMotion = false, theme = 'dark',
     if (Math.abs(near - camera.near) > camera.near * 0.04) { camera.near = near; camera.updateProjectionMatrix(); }
     const zoomedIn = r < homeDistance * 0.7;
     controls.enablePan = !flight.active && zoomedIn;
-    // zoomed in, one-finger drags turn the body instead of scrolling the page
     if (zoomedIn !== touchZoomed) { touchZoomed = zoomedIn; canvas.style.touchAction = zoomedIn ? 'none' : 'pan-y'; }
-    if (flight.active) return;
+    if (flight.active) return false;
     const k = bodyH / 1.75;
     const t = controls.target;
     let tx = THREE.MathUtils.clamp(t.x, -PIVOT_BOX.x * k, PIVOT_BOX.x * k);
@@ -557,10 +566,12 @@ export async function createStage(host, { reducedMotion = false, theme = 'dark',
       tx += (homeTarget.x - tx) * e; ty += (homeTarget.y - ty) * e; tz += (homeTarget.z - tz) * e;
     }
     const dx = tx - t.x, dy = ty - t.y, dz = tz - t.z;
-    if (Math.abs(dx) + Math.abs(dy) + Math.abs(dz) > 1e-7) {
+    if (Math.abs(dx) + Math.abs(dy) + Math.abs(dz) > 2e-6) {
       t.set(tx, ty, tz);
       camera.position.x += dx; camera.position.y += dy; camera.position.z += dz;
+      return true;
     }
+    return false;
   }
 
   // ---------------------------------------------------------------- picking + projection
@@ -585,11 +596,15 @@ export async function createStage(host, { reducedMotion = false, theme = 'dark',
     return out;
   };
 
-  stage.onFrame = (fn) => { frameFns.push(fn); return () => { const i = frameFns.indexOf(fn); if (i >= 0) frameFns.splice(i, 1); }; };
+  stage.onFrame = (fn) => {
+    frameFns.push(fn);
+    invalidate();
+    return () => { const i = frameFns.indexOf(fn); if (i >= 0) frameFns.splice(i, 1); };
+  };
 
   // ---------------------------------------------------------------- input niceties
-  // Wheel zoom only after the visitor engages with the stage (click/drag) or holds Ctrl/⌘
-  // (trackpad pinch sends ctrlKey). Otherwise the page keeps scrolling: no scroll trap.
+  // Wheel zoom only after the visitor engages with the stage (click/drag) or holds Ctrl/⌘ (trackpad
+  // pinch sends ctrlKey). Otherwise the page keeps scrolling: no scroll trap.
   let engaged = false;
   let hintEl = null, hintTimer = 0;
   function showHint(text) {
@@ -612,14 +627,13 @@ export async function createStage(host, { reducedMotion = false, theme = 'dark',
       showHint('Click the body first, or hold Ctrl, to zoom');
       return;
     }
-    // zoom in toward the surface under the cursor; zoom out straight back along the view axis
     controls.zoomToCursor = e.deltaY < 0;
     if (e.deltaY < 0) pivotToSurface(e.clientX, e.clientY);
+    invalidate();
   };
-  // two fingers down: the pinch heads for the surface between them
   const touches = new Map();
   const onPointerDown = (e) => {
-    if (e.target === canvas) engaged = true;
+    if (e.target === canvas) { engaged = true; invalidate(); }
     if (flight.active && e.target === canvas) endFlight();
     if (e.pointerType === 'touch' && e.target === canvas) {
       touches.set(e.pointerId, e);
@@ -638,6 +652,10 @@ export async function createStage(host, { reducedMotion = false, theme = 'dark',
   host.addEventListener('pointerleave', onPointerLeave);
   window.addEventListener('pointerup', onPointerEnd);
   window.addEventListener('pointercancel', onPointerEnd);
+  // any camera change from the controls (drag, wheel, keys) draws again; damping keeps the loop busy
+  const onControlsChange = () => invalidate();
+  controls.addEventListener('change', onControlsChange);
+  controls.addEventListener('start', onControlsChange);
 
   const onKey = (e) => {
     if (e.altKey || e.ctrlKey || e.metaKey) return;
@@ -648,12 +666,13 @@ export async function createStage(host, { reducedMotion = false, theme = 'dark',
       case 'ArrowRight': controls.rotateLeft?.(step); break;
       case 'ArrowUp': controls.rotateUp?.(-step * 0.6); break;
       case 'ArrowDown': controls.rotateUp?.(step * 0.6); break;
-      case '+': case '=': pivotToCentre(); controls.dollyIn?.(1.18); break;
-      case '-': case '_': controls.dollyOut?.(1.18); break;
+      // OrbitControls: dollyOut(s > 1) divides the orbit radius (closer); dollyIn(s > 1) multiplies it
+      case '+': case '=': pivotToCentre(); controls.dollyOut?.(1.18); break;
+      case '-': case '_': controls.dollyIn?.(1.18); break;
       case 'Home': case '0': stage.homeView(); break;
       default: handled = false;
     }
-    if (handled) { e.preventDefault(); if (flight.active && e.key !== 'Home' && e.key !== '0') endFlight(); }
+    if (handled) { e.preventDefault(); if (flight.active && e.key !== 'Home' && e.key !== '0') endFlight(); invalidate(); }
   };
   canvas.addEventListener('keydown', onKey);
   // Buttons and keys zoom toward the surface at the middle of the view (not into the body's centre).
@@ -663,42 +682,52 @@ export async function createStage(host, { reducedMotion = false, theme = 'dark',
   }
   stage.zoom = (factor) => {
     if (flight.active) endFlight();
-    if (factor > 1) { pivotToCentre(); controls.dollyIn?.(factor); } else controls.dollyOut?.(1 / factor);
+    // factor > 1 zooms in (the camera moves closer): OrbitControls.dollyOut(s) divides the radius by s
+    if (factor > 1) { pivotToCentre(); controls.dollyOut?.(factor); } else controls.dollyIn?.(1 / factor);
+    invalidate();
   };
 
   // ---------------------------------------------------------------- loop
+  // One step of scene time. Returns true while anything still moves.
   function tick(dt) {
     time += dt;
-    if (flight.active) stepFlight(dt);
-    else controls.update(dt);
-    afterControls(dt);
+    let busy = false;
+    if (flight.active) { stepFlight(dt); busy = true; }
+    else if (controls.update(dt)) busy = true;
+    if (afterControls(dt)) busy = true;
     camera.updateMatrixWorld();
     for (let i = 0; i < frameFns.length; i++) {
-      try { frameFns[i](dt, time); } catch (e) { console.error('[stage] frame callback failed', e); frameFns.splice(i--, 1); }
+      try { if (frameFns[i](dt, time) === true) busy = true; } catch (e) { console.error('[stage] frame callback failed', e); frameFns.splice(i--, 1); }
     }
+    return busy;
+  }
+  function draw() {
+    renderer.render(scene, camera);
+    stats.frames++;
   }
   function loop(now) {
-    if (disposed || contextLost) return;
+    if (!canRun()) { stopLoop(); return; }
     const rdt = last ? Math.min(0.1, Math.max(0, (now - last) / 1000)) : 1 / 60;
     const dt = rdt * stage.timeScale; // timeScale is a dev/test hook (default 1)
+    const continuous = last > 0;
     last = now;
-    tick(dt);
-    composer.render(dt);
-    if (stage.timeScale > 0) adapt(rdt);
+    const busy = tick(dt);
+    draw();
+    if (continuous && stage.timeScale > 0) adapt(rdt);
+    if (busy) pending = Math.max(pending, 1);
+    else if (pending > 0) pending--;
+    if (!busy && pending <= 0) stopLoop();
   }
   // Dev/test hook: advance scene time deterministically in fixed steps, then draw one frame.
   // Pair with `stage.timeScale = 0` to freeze real time (headless SwiftShader renders at a few fps).
   stage.advance = (seconds = 0, step = 1 / 30) => {
     let s = Math.max(0, seconds);
     while (s > 1e-6) { const d = Math.min(step, s); s -= d; tick(d); }
-    if (!disposed && !contextLost) { camera.updateMatrixWorld(); composer.render(0); }
+    if (!disposed && !contextLost) { camera.updateMatrixWorld(); draw(); }
   };
+  stage.renderOnce = () => { camera.updateMatrixWorld(); draw(); };
   function updateRunning() {
-    const should = !disposed && !contextLost && inView && !document.hidden;
-    if (should === running) return;
-    running = should;
-    last = 0;
-    renderer.setAnimationLoop(should ? loop : null);
+    if (canRun()) invalidate(2); else stopLoop();
   }
   const io = new IntersectionObserver((entries) => {
     for (const en of entries) inView = en.isIntersecting;
@@ -707,7 +736,6 @@ export async function createStage(host, { reducedMotion = false, theme = 'dark',
   io.observe(host);
   const onVis = () => updateRunning();
   document.addEventListener('visibilitychange', onVis);
-  stage.renderOnce = () => { camera.updateMatrixWorld(); composer.render(0); };
 
   // ---------------------------------------------------------------- WebGL context loss
   // three.js re-creates its GL state on restore and re-uploads buffers and textures lazily; only the
@@ -732,7 +760,7 @@ export async function createStage(host, { reducedMotion = false, theme = 'dark',
     if (disposed) return;
     contextLost = true;
     endFlight();
-    updateRunning();
+    stopLoop();
     host.classList.add('is-context-lost');
     showLost(true, 'The 3D view paused because the graphics processor reset. Restoring…');
     clearTimeout(lostTimer);
@@ -771,7 +799,7 @@ export async function createStage(host, { reducedMotion = false, theme = 'dark',
   stage.dispose = () => {
     if (disposed) return;
     disposed = true;
-    renderer.setAnimationLoop(null);
+    stopLoop();
     ro.disconnect(); io.disconnect();
     cancelAnimationFrame(resizeRaf);
     clearTimeout(hintTimer);
@@ -783,6 +811,8 @@ export async function createStage(host, { reducedMotion = false, theme = 'dark',
     window.removeEventListener('pointerup', onPointerEnd);
     window.removeEventListener('pointercancel', onPointerEnd);
     canvas.removeEventListener('keydown', onKey);
+    controls.removeEventListener('change', onControlsChange);
+    controls.removeEventListener('start', onControlsChange);
     hintEl?.remove();
     lostEl?.remove();
     lostFns.length = 0;
@@ -798,10 +828,6 @@ export async function createStage(host, { reducedMotion = false, theme = 'dark',
       }
     });
     envRT.dispose();
-    composer.dispose?.();
-    rt.dispose();
-    bloom.dispose?.();
-    outputPass.dispose?.();
     renderer.dispose();
     canvas.removeEventListener('webglcontextlost', onContextLost, false);
     canvas.removeEventListener('webglcontextrestored', onContextRestored, false);

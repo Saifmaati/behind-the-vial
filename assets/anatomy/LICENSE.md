@@ -10,6 +10,7 @@ license, CC BY 4.0. No non-commercial, no-derivatives or login-gated material is
 | `body.glb`, `landmarks.json` | `node tools/build-anatomy.mjs` | Visible Human Male, 1.75 m | 1, 2, 3 |
 | `body-female.glb`, `landmarks-female.json` | `node tools/build-anatomy.mjs --sex female` | Visible Human Female, 1.62 m | 4, 2, 3 (and 1 as the registration reference) |
 | `detail-male.glb`, `atlas-male.json` | `node tools/build-anatomy-detail.mjs` | Visible Human Male, 1.75 m (same frame as `body.glb`) | 1, 2, 3 |
+| `detail-female.glb`, `atlas-female.json` | `node tools/build-anatomy-detail.mjs --sex female` | Visible Human Female, 1.62 m (same frame as `body-female.glb`) | 4, 2, 3 (and 1 as the registration reference) |
 
 ## Attribution line (site footer)
 
@@ -73,3 +74,10 @@ license, CC BY 4.0. No non-commercial, no-derivatives or login-gated material is
 - `muscle_<slug>`: BodyParts3D muscles warped into the HRA body with the same thin-plate spline as `body.glb`, then moved by a smooth local offset field (BodyParts3D skin to HRA skin, BodyParts3D bones to the bones shown in `body.glb`) and kept at least 3 mm under the skin; SIO abdominal wall, iliopsoas, diaphragm and pelvic floor meshed from the label slices and aligned with the same similarity transform as `body.glb`. Merged left and right, simplified.
 - `skeleton_hi`: the `body.glb` skeleton recipe at a higher triangle budget.
 - `atlas-male.json`: names, plain-language descriptions, body systems and centres written for this project.
+
+### Close-up layer, female (`detail-female.glb`, `atlas-female.json`)
+- The same recipe as the male close-up layer, on the HRA United Female v1.10 body (source 4) in the `body-female.glb` frame (1.62 m).
+- `skin_hi`: the full-resolution HRA female skin (266,696 triangles), kept at full resolution.
+- `muscle_<slug>`: BodyParts3D muscles (source 3) warped into the female body with the female build's thin-plate spline; SIO abdominal wall, iliopsoas and diaphragm (source 2) mapped in through the HRA male body as described under source 4. No pelvic floor (the SIO pelvic diaphragm is a male one) and no `eyes` (the female eye meshes were not fetched).
+- `skeleton_hi`: the `body-female.glb` skeleton recipe at a higher triangle budget.
+- `atlas-female.json`: names, plain-language descriptions, body systems and centres written for this project; it carries its own attribution line (HRA 3D Reference Organs, United Female; VOXEL-MAN SIO; BodyParts3D), which the footer line above also covers.

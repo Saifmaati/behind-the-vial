@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Intro photos preview</title>
+<!-- Dev-only contact sheet for assets/img/intro-*.webp on the v4 light and dark backgrounds.
+     Open via the dev server: http://127.0.0.1:<port>/tools/img/preview.html -->
+<style>
+  :root { --bg: #F7F6FB; --text: #17142B; --line: #E4E1F0; }
+  body { margin: 0; font: 14px/1.4 system-ui, sans-serif; background: var(--bg); color: var(--text); }
+  .theme { padding: 16px; }
+  .theme.dark { --bg: #0F0E17; --text: #F3F2FA; --line: #2C2A45; background: var(--bg); color: var(--text); }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 16px; }
+  figure { margin: 0; border: 1px solid var(--line); border-radius: 16px; overflow: hidden; }
+  figure img { display: block; width: 100%; height: auto; }
+  figcaption { padding: 8px 12px; font-size: 12px; }
+  .cut img { padding: 24px 16px; box-sizing: border-box; }
+</style>
+</head>
+<body>
+<script type="module">
+  const pics = ['vial', 'vial-caps', 'syringe', 'blood'];
+  const sets = [
+    ...pics.map(p => ({ src: `intro-${p}-1600.webp`, srcset: `intro-${p}-800.webp 800w, intro-${p}-1600.webp 1600w`, w: 1600, h: 900 })),
+    ...pics.map(p => ({ src: `intro-${p}-4x5-1280.webp`, srcset: `intro-${p}-4x5-640.webp 640w, intro-${p}-4x5-1280.webp 1280w`, w: 1280, h: 1600 })),
+    { src: 'intro-syringe-cutout-1600.webp', srcset: 'intro-syringe-cutout-800.webp 800w, intro-syringe-cutout-1600.webp 1600w', w: 1600, h: 300, cut: true },
+  ];
+  for (const theme of ['light', 'dark']) {
+    const sec = document.createElement('section');
+    sec.className = `theme ${theme}`;
+    sec.innerHTML = `<h2>${theme}</h2><div class="grid"></div>`;
+    for (const s of sets) {
+      const f = document.createElement('figure');
+      if (s.cut) f.className = 'cut';
+      f.innerHTML = `<img src="../../assets/img/${s.src}" srcset="${s.srcset.replace(/intro-/g, '../../assets/img/intro-')}" sizes="(min-width: 700px) 33vw, 100vw" width="${s.w}" height="${s.h}" alt=""><figcaption>${s.src}</figcaption>`;
+      sec.querySelector('.grid').append(f);
+    }
+    document.body.append(sec);
+  }
+  Promise.all([...document.images].map(i => i.decode().then(() => ({ ok: true, src: i.currentSrc.split('/').pop(), w: i.naturalWidth, h: i.naturalHeight }), () => ({ ok: false, src: i.src }))))
+    .then(r => { window.__photos = r; document.body.dataset.ready = '1'; });
+</script>
+</body>
+</html>

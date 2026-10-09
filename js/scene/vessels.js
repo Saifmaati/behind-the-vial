@@ -1,27 +1,30 @@
-// PeptideScope: circulation (body3d).
-// Flow routes from anatomy.landmarks.paths (Catmull-Rom curves), faint glowing flow lines, blood
-// cells animated entirely on the GPU (pulsatile ~1 Hz in arteries, slow and steady in veins), and
-// luminous drug particles that travel site → heart → lungs → heart → aorta → target organs.
+// PeptideScope: circulation (body).
+// Flow routes from anatomy.landmarks.paths (Catmull-Rom curves along the real vessels), one merged mesh of
+// faint flow lines, blood cells animated entirely on the GPU (pulsatile ~1 Hz in arteries, slow and steady
+// in veins), and drug particles that travel site → heart → lungs → heart → aorta → target organs.
 //
 //   const vessels = createVessels(stage, anatomy);
-//   vessels.setBloodFlow(true | false)
+//   vessels.setBloodFlow(true | false)   ambient blood cells (v4: on only while the sequence plays)
 //   vessels.release({ site, targets: [organIds], count, onArrive(organId), timing }) → handle
 //       handle = { promise, cancel(), finish(), setOpacity(a) }  (timing in seconds:
 //       { emit, venous, pulmonary, arterial }; under reduced motion the route is shown as a still
 //       trace and every onArrive fires at once)
 //   vessels.trace({ site, targets, segments: [0 venous, 1 lungs, 2 arterial], opacity }) → handle
-//   vessels.setDrugLevel(0..1)    drug glow in the blood, the flow lines and the target organs
-//   vessels.setDrugTargets([organIds])
-// The group lives inside the anatomy group, so routes and particles are in the anatomy's model space
-// and follow the editable body's scale. When the skin is offset (weight), drug particles leave from the
+//   vessels.setDrugLevel(0..1)    drug tint in the flow lines and the target organs (timeline-driven)
+//   vessels.setDrugTargets([organIds]); vessels.setDim(k); vessels.particleBudget
+// The group lives inside the anatomy group, so routes and particles are in the anatomy's model space and
+// follow the editable body's scale. When the skin is offset (weight), drug particles leave from the
 // displaced skin point and merge into the vein within the first few centimetres of the route.
-// Luxury palette: oxblood arterial blood, wine venous blood, the drug as luminous champagne light.
-// The ambient blood cells and flow lines follow the anatomy's Vessels layer (anatomy.layerFade.vessels);
-// the drug stream always shows. Phones and low-end devices (stage.quality 'low') get half the cells and
-// fewer drug particles.
+//
+// v4 (performance + look): every point sprite in the scene stays within 1,500 on desktop and 600 on phones
+// (blood cells ≤ 800 / 300, drug particles 160 × 3 / 70 × 2; the tissue close-up uses the rest); all flow
+// lines are ONE draw call; nothing here asks for frames unless particles move or something fades. Arterial
+// blood #E5484D, venous blood #3E63DD, the drug violet #6246EA (light) / #B3A4FF (dark).
 import * as THREE from 'three';
+import { OUTPUT_CHUNK } from './stage.js';
 
 const S = 256; // samples per route in the path texture
+const MAX_ROUTES = 64;
 const ORGAN_PATH = {
   brain: 'to_brain', eyes: 'to_brain', thyroid: 'to_thyroid', heart: 'to_heart_muscle', liver: 'to_liver',
   gallbladder: 'to_gallbladder', stomach: 'to_stomach', pancreas: 'to_pancreas', spleen: 'to_spleen',
@@ -31,10 +34,11 @@ const ORGAN_PATH = {
 const MIRRORED = ['abdomen_to_heart', 'thigh_to_heart', 'arm_to_heart', 'heart_to_lungs', 'lungs_to_heart',
   'to_kidneys', 'to_muscle', 'to_fat', 'to_skin'];
 const COLORS = {
-  dark: { oxy: 0xc4524a, deoxy: 0x8a2f45, drug: 0xf1dda8, organDrug: 0xe2be72, lineArt: 0xc4524a, lineVein: 0x5b7db8, lineDrug: 0xf1dda8, cellAlpha: 0.9, additive: true },
-  light: { oxy: 0xa83a33, deoxy: 0x7a2a40, drug: 0x8f6c2c, organDrug: 0x8f6c2c, lineArt: 0x9c2f2a, lineVein: 0x2f4f86, lineDrug: 0x8f6c2c, cellAlpha: 0.72, additive: false },
+  light: { oxy: 0xe5484d, deoxy: 0x3e63dd, drug: 0x6246ea, organDrug: 0x6246ea, lineArt: 0xe5484d, lineVein: 0x3e63dd, lineDrug: 0x6246ea, cellAlpha: 0.8, additive: false },
+  dark: { oxy: 0xff6369, deoxy: 0x7b93ff, drug: 0xb3a4ff, organDrug: 0xb3a4ff, lineArt: 0xff6369, lineVein: 0x7b93ff, lineDrug: 0xb3a4ff, cellAlpha: 0.85, additive: true },
 };
 const LEAD_IN = 0.07; // m along the venous route over which the skin offset blends into the vein
+export const PARTICLE_BUDGET = { high: { cells: 800, drug: 160, trail: 3 }, low: { cells: 300, drug: 70, trail: 2 } };
 
 // Arterial velocity waveform: a sharp systolic surge then a slow diastolic run-off, mean ≈ 1.
 function pulseWave(t) {
@@ -44,10 +48,10 @@ function pulseWave(t) {
 
 const BLOOD_VERT = /* glsl */`
   uniform sampler2D uPaths;
-  uniform float uRows; uniform float uArt; uniform float uVen; uniform float uScale; uniform float uDrugLevel;
+  uniform float uArt; uniform float uVen; uniform float uScale;
   attribute float aRow; attribute float aOffset; attribute float aInvLen; attribute float aPulse; attribute float aOxy;
-  attribute float aDrug; attribute vec3 aJit;
-  varying float vAlpha; varying float vOxy; varying float vDrug;
+  attribute vec3 aJit;
+  varying float vAlpha; varying float vOxy;
   vec3 pathAt(float row, float u) {
     float x = u * ${S - 1}.0;
     float i0 = floor(x);
@@ -63,53 +67,53 @@ const BLOOD_VERT = /* glsl */`
     vec3 p = pathAt(aRow, u) + aJit * 0.0022;
     vec4 mv = modelViewMatrix * vec4(p, 1.0);
     gl_Position = projectionMatrix * mv;
-    float edge = smoothstep(0.0, 0.03, u) * (1.0 - smoothstep(0.97, 1.0, u));
-    vOxy = aOxy; vDrug = aDrug;
-    vAlpha = edge * (aDrug > 0.5 ? smoothstep(0.0, 0.08, uDrugLevel) * (0.35 + 0.65 * uDrugLevel) : 1.0);
-    float size = aDrug > 0.5 ? 0.005 : 0.0033;
-    gl_PointSize = clamp(size * uScale / -mv.z, 1.0, aDrug > 0.5 ? 13.0 : 10.0);
+    vAlpha = smoothstep(0.0, 0.03, u) * (1.0 - smoothstep(0.97, 1.0, u));
+    vOxy = aOxy;
+    gl_PointSize = clamp(0.0036 * uScale / -mv.z, 1.0, 10.0);
   }`;
 const BLOOD_FRAG = /* glsl */`
-  uniform vec3 uOxy; uniform vec3 uDeoxy; uniform vec3 uDrug; uniform float uOpacity; uniform float uCellAlpha;
-  varying float vAlpha; varying float vOxy; varying float vDrug;
+  uniform vec3 uOxy; uniform vec3 uDeoxy; uniform float uOpacity; uniform float uCellAlpha;
+  varying float vAlpha; varying float vOxy;
   void main() {
     vec2 c = gl_PointCoord * 2.0 - 1.0;
     float r2 = dot(c, c);
     if (r2 > 1.0) discard;
     float soft = 1.0 - smoothstep(0.55, 1.0, r2);
-    vec3 col;
-    if (vDrug > 0.5) col = uDrug * (1.6 - r2);
-    else {
-      // red cell: brighter rim, slightly darker centre (biconcave disc)
-      float rim = smoothstep(0.05, 0.75, r2);
-      vec3 base = vOxy > 0.5 ? uOxy : uDeoxy;
-      col = base * (0.72 + 0.5 * rim);
-    }
-    gl_FragColor = vec4(col, soft * vAlpha * uOpacity * (vDrug > 0.5 ? 1.0 : uCellAlpha));
+    // red cell: brighter rim, slightly darker centre (biconcave disc)
+    float rim = smoothstep(0.05, 0.75, r2);
+    vec3 base = vOxy > 0.5 ? uOxy : uDeoxy;
+    gl_FragColor = vec4(base * (0.72 + 0.5 * rim), soft * vAlpha * uOpacity * uCellAlpha);
+    ${OUTPUT_CHUNK}
   }`;
 
+// All flow lines in one mesh: per-vertex route index and arc length; per-route activity in a uniform array.
 const LINE_VERT = /* glsl */`
-  varying float vU; varying vec3 vN; varying vec3 vW;
+  uniform float uActive[${MAX_ROUTES}];
+  attribute float aRoute; attribute float aS; attribute float aOxy; attribute float aPulse;
+  varying float vS; varying float vActive; varying float vOxy; varying float vPulse; varying vec3 vN; varying vec3 vW;
   void main() {
-    vU = uv.x;
+    vS = aS; vOxy = aOxy; vPulse = aPulse;
+    vActive = uActive[int(aRoute + 0.5)];
     vec4 wp = modelMatrix * vec4(position, 1.0);
     vW = wp.xyz;
     vN = normalize(mat3(modelMatrix) * normal);
     gl_Position = projectionMatrix * viewMatrix * wp;
   }`;
 const LINE_FRAG = /* glsl */`
-  uniform vec3 uColor; uniform vec3 uDrugColor; uniform float uAlpha; uniform float uActive; uniform float uDrug;
-  uniform float uLen; uniform float uPhase; uniform float uOpacity; uniform float uAnim;
-  varying float vU; varying vec3 vN; varying vec3 vW;
+  uniform vec3 uArtColor; uniform vec3 uVenColor; uniform vec3 uDrugColor; uniform float uAlpha; uniform float uDrug;
+  uniform float uArt; uniform float uVen; uniform float uOpacity; uniform float uAnim; uniform float uBase;
+  varying float vS; varying float vActive; varying float vOxy; varying float vPulse; varying vec3 vN; varying vec3 vW;
   void main() {
-    float s = vU * uLen;
-    float wave = pow(0.5 + 0.5 * sin((s - uPhase) * 42.0), 8.0) * uAnim;
+    float ph = vPulse > 0.5 ? uArt : uVen;
+    float wave = pow(0.5 + 0.5 * sin((vS - ph) * 42.0), 8.0) * uAnim;
     vec3 v = normalize(cameraPosition - vW);
     float core = abs(dot(normalize(vN), v));
-    float drug = clamp(uDrug + uActive, 0.0, 1.0);
-    vec3 col = mix(uColor, uDrugColor, drug);
-    float a = uAlpha * (0.4 + 0.6 * core) * (0.55 + 0.45 * wave) + uActive * (0.16 + 0.24 * wave) * core + uDrug * 0.22 * core;
-    gl_FragColor = vec4(col * (1.0 + uActive * 0.25 + wave * 0.3), clamp(a, 0.0, 1.0) * uOpacity);
+    float drug = clamp(uDrug + vActive, 0.0, 1.0);
+    vec3 col = mix(vOxy > 0.5 ? uArtColor : uVenColor, uDrugColor, drug);
+    float a = uAlpha * uBase * (0.4 + 0.6 * core) * (0.55 + 0.45 * wave) + vActive * (0.2 + 0.3 * wave) * core + uDrug * 0.25 * core;
+    if (a < 0.003) discard;
+    gl_FragColor = vec4(col * (1.0 + vActive * 0.2), clamp(a, 0.0, 1.0) * uOpacity);
+    ${OUTPUT_CHUNK}
   }`;
 
 const DRUG_VERT = /* glsl */`
@@ -130,17 +134,20 @@ const DRUG_FRAG = /* glsl */`
     float r2 = dot(c, c);
     if (r2 > 1.0) discard;
     float glow = exp(-r2 * 3.5);
-    vec3 col = uColor * (0.75 + uCore * exp(-r2 * 14.0));
+    vec3 col = uColor * (0.8 + uCore * exp(-r2 * 14.0));
     gl_FragColor = vec4(col, min(1.0, glow * vAlpha * uOpacity * uAlphaK));
+    ${OUTPUT_CHUNK}
   }`;
 
 export function createVessels(stage, anatomy) {
-  const { scene } = stage;
   const L = anatomy.landmarks || {};
   const P = L.paths || {};
+  const inv = () => stage.invalidate?.();
   const group = new THREE.Group();
   group.name = 'vessels';
-  (anatomy.root || scene).add(group);
+  (anatomy.root || stage.scene).add(group);
+  const low = stage.quality === 'low';
+  const BUDGET = PARTICLE_BUDGET[low ? 'low' : 'high'];
 
   // ---------------------------------------------------------------- routes
   const routes = [];
@@ -148,7 +155,7 @@ export function createVessels(stage, anatomy) {
   const isVenousName = (n) => /_to_heart(_r)?$/.test(n);
   const isDeoxy = (n) => isVenousName(n) || /^heart_to_lungs/.test(n);
   function addRoute(name, pts) {
-    if (!Array.isArray(pts) || pts.length < 2) return;
+    if (routes.length >= MAX_ROUTES || !Array.isArray(pts) || pts.length < 2) return;
     const v = pts.map((p) => new THREE.Vector3(p[0], p[1], p[2]));
     const curve = new THREE.CatmullRomCurve3(v, false, 'centripetal', 0.5);
     const length = curve.getLength();
@@ -159,7 +166,7 @@ export function createVessels(stage, anatomy) {
     sp.forEach((p, i) => { samples[i * 3] = p.x; samples[i * 3 + 1] = p.y; samples[i * 3 + 2] = p.z; });
     const r = {
       name, curve, length, samples, n, row: routes.length,
-      pulse: !isVenousName(name), oxy: !isDeoxy(name), active: 0, activeTarget: 0, mat: null,
+      pulse: !isVenousName(name), oxy: !isDeoxy(name), active: 0, activeTarget: 0,
     };
     routes.push(r);
     byName[name] = r;
@@ -194,84 +201,115 @@ export function createVessels(stage, anatomy) {
   const uArt = { value: 0 };
   const uVen = { value: 0 };
   const uScale = { value: 500 };
-  const uDrugLevel = { value: 0 };
   const uAnim = { value: stage.reducedMotion ? 0 : 1 };
 
-  // ---------------------------------------------------------------- flow lines
-  const lineGroup = new THREE.Group();
-  lineGroup.name = 'flow-lines';
-  group.add(lineGroup);
-  const lineProto = new THREE.ShaderMaterial({
+  // ---------------------------------------------------------------- flow lines (one merged mesh)
+  const activeArr = new Float32Array(MAX_ROUTES);
+  let lineMesh = null;
+  const lineMat = new THREE.ShaderMaterial({
     uniforms: {
-      uColor: { value: new THREE.Color() }, uDrugColor: { value: new THREE.Color() }, uAlpha: { value: 0.09 },
-      uActive: { value: 0 }, uDrug: { value: 0 }, uLen: { value: 1 }, uPhase: uArt, uOpacity: { value: 1 }, uAnim,
+      uArtColor: { value: new THREE.Color() }, uVenColor: { value: new THREE.Color() }, uDrugColor: { value: new THREE.Color() },
+      uAlpha: { value: 0.1 }, uDrug: { value: 0 }, uArt, uVen, uOpacity: { value: 1 }, uAnim, uBase: { value: 0 },
+      uActive: { value: activeArr },
     },
     vertexShader: LINE_VERT, fragmentShader: LINE_FRAG, transparent: true, depthWrite: false,
   });
-  for (const r of routes) {
-    const geo = new THREE.TubeGeometry(r.curve, Math.min(400, Math.max(24, Math.ceil(r.length / 0.006))), 0.0014, 6, false);
-    const mat = lineProto.clone();
-    mat.uniforms.uPhase = r.pulse ? uArt : uVen;
-    mat.uniforms.uAnim = uAnim;
-    mat.uniforms.uLen.value = r.length;
-    const mesh = new THREE.Mesh(geo, mat);
-    mesh.renderOrder = 3;
-    mesh.name = `flow:${r.name}`;
-    r.mat = mat;
-    lineGroup.add(mesh);
+  // built on first use (the injection or the timeline), not with the scene
+  let linesTried = false;
+  function buildLines() {
+    if (lineMesh || linesTried) return;
+    linesTried = true;
+    const parts = [];
+    let vCount = 0, iCount = 0;
+    for (const r of routes) {
+      const g = new THREE.TubeGeometry(r.curve, Math.min(300, Math.max(24, Math.ceil(r.length / 0.008))), 0.0014, 5, false);
+      parts.push([r, g]);
+      vCount += g.attributes.position.count; iCount += g.index.count;
+    }
+    const pos = new Float32Array(vCount * 3), nor = new Float32Array(vCount * 3);
+    const aRoute = new Float32Array(vCount), aS = new Float32Array(vCount), aOx = new Float32Array(vCount), aPu = new Float32Array(vCount);
+    const idx = new Uint32Array(iCount);
+    let vo = 0, io = 0;
+    for (const [r, g] of parts) {
+      const n = g.attributes.position.count;
+      pos.set(g.attributes.position.array, vo * 3);
+      nor.set(g.attributes.normal.array, vo * 3);
+      const uv = g.attributes.uv;
+      for (let i = 0; i < n; i++) { aRoute[vo + i] = r.row; aS[vo + i] = uv.getX(i) * r.length; aOx[vo + i] = r.oxy ? 1 : 0; aPu[vo + i] = r.pulse ? 1 : 0; }
+      const gi = g.index.array;
+      for (let i = 0; i < gi.length; i++) idx[io + i] = gi[i] + vo;
+      vo += n; io += gi.length;
+      g.dispose();
+    }
+    if (vCount) {
+      const geo = new THREE.BufferGeometry();
+      geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+      geo.setAttribute('normal', new THREE.BufferAttribute(nor, 3));
+      geo.setAttribute('aRoute', new THREE.BufferAttribute(aRoute, 1));
+      geo.setAttribute('aS', new THREE.BufferAttribute(aS, 1));
+      geo.setAttribute('aOxy', new THREE.BufferAttribute(aOx, 1));
+      geo.setAttribute('aPulse', new THREE.BufferAttribute(aPu, 1));
+      geo.setIndex(new THREE.BufferAttribute(idx, 1));
+      lineMesh = new THREE.Mesh(geo, lineMat);
+      lineMesh.name = 'flow-lines';
+      lineMesh.renderOrder = 3;
+      lineMesh.frustumCulled = false;
+      lineMesh.visible = false;
+      group.add(lineMesh);
+    }
   }
-  lineProto.dispose();
 
   // ---------------------------------------------------------------- blood cells (GPU)
-  const low = stage.quality === 'low';
+  // Spread over the routes by length, capped by the particle budget.
+  const totalLen = routes.reduce((a, r) => a + r.length * (r.pulse ? 1.25 : 1), 0) || 1;
+  const perM = BUDGET.cells / totalLen;
   const cells = [];
   for (const r of routes) {
-    const density = (r.pulse ? 150 : 115) * (low ? 0.5 : 1);
-    const count = Math.max(6, Math.round(r.length * density));
-    for (let i = 0; i < count; i++) cells.push(r);
+    const count = Math.max(3, Math.floor(r.length * perM * (r.pulse ? 1.25 : 1)));
+    for (let i = 0; i < count && cells.length < BUDGET.cells; i++) cells.push(r);
   }
   const NC = cells.length;
   const cGeo = new THREE.BufferGeometry();
-  const cPos = new Float32Array(NC * 3); // unused, positions come from the texture
   const aRow = new Float32Array(NC), aOffset = new Float32Array(NC), aInvLen = new Float32Array(NC);
-  const aPulse = new Float32Array(NC), aOxy = new Float32Array(NC), aDrug = new Float32Array(NC), aJit = new Float32Array(NC * 3);
+  const aPulse = new Float32Array(NC), aOxy = new Float32Array(NC), aJit = new Float32Array(NC * 3);
   for (let i = 0; i < NC; i++) {
     const r = cells[i];
     aRow[i] = r.row; aOffset[i] = Math.random(); aInvLen[i] = 1 / r.length;
-    aPulse[i] = r.pulse ? 1 : 0; aOxy[i] = r.oxy ? 1 : 0; aDrug[i] = Math.random() < 0.2 ? 1 : 0;
+    aPulse[i] = r.pulse ? 1 : 0; aOxy[i] = r.oxy ? 1 : 0;
     let x, y, z;
     do { x = Math.random() * 2 - 1; y = Math.random() * 2 - 1; z = Math.random() * 2 - 1; } while (x * x + y * y + z * z > 1);
     aJit[i * 3] = x; aJit[i * 3 + 1] = y; aJit[i * 3 + 2] = z;
   }
-  cGeo.setAttribute('position', new THREE.BufferAttribute(cPos, 3));
+  cGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(NC * 3), 3)); // positions come from the texture
   cGeo.setAttribute('aRow', new THREE.BufferAttribute(aRow, 1));
   cGeo.setAttribute('aOffset', new THREE.BufferAttribute(aOffset, 1));
   cGeo.setAttribute('aInvLen', new THREE.BufferAttribute(aInvLen, 1));
   cGeo.setAttribute('aPulse', new THREE.BufferAttribute(aPulse, 1));
   cGeo.setAttribute('aOxy', new THREE.BufferAttribute(aOxy, 1));
-  cGeo.setAttribute('aDrug', new THREE.BufferAttribute(aDrug, 1));
   cGeo.setAttribute('aJit', new THREE.BufferAttribute(aJit, 3));
   const cMat = new THREE.ShaderMaterial({
     uniforms: {
-      uPaths: { value: pathTex }, uRows: { value: rows }, uArt, uVen, uScale, uDrugLevel,
-      uOxy: { value: new THREE.Color() }, uDeoxy: { value: new THREE.Color() }, uDrug: { value: new THREE.Color() },
-      uOpacity: { value: 1 }, uCellAlpha: { value: 0.95 },
+      uPaths: { value: pathTex }, uArt, uVen, uScale,
+      uOxy: { value: new THREE.Color() }, uDeoxy: { value: new THREE.Color() },
+      uOpacity: { value: 0 }, uCellAlpha: { value: 0.9 },
     },
-    vertexShader: BLOOD_VERT, fragmentShader: BLOOD_FRAG, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
+    vertexShader: BLOOD_VERT, fragmentShader: BLOOD_FRAG, transparent: true, depthWrite: false,
   });
   const cellPoints = new THREE.Points(cGeo, cMat);
   cellPoints.frustumCulled = false;
   cellPoints.renderOrder = 4;
   cellPoints.name = 'blood-cells';
+  cellPoints.visible = false;
   group.add(cellPoints);
 
   // ---------------------------------------------------------------- drug stream (CPU)
-  const MAXP = low ? 150 : 240, TRAIL = 4, NP = MAXP * TRAIL;
+  const MAXP = BUDGET.drug, TRAIL = BUDGET.trail, NP = MAXP * TRAIL;
   const dGeo = new THREE.BufferGeometry();
   const dPos = new Float32Array(NP * 3);
   const dAlpha = new Float32Array(NP);
   const dSize = new Float32Array(NP);
-  for (let i = 0; i < MAXP; i++) for (let k = 0; k < TRAIL; k++) dSize[i * TRAIL + k] = [0.0058, 0.0046, 0.0037, 0.003][k];
+  const SIZES = [0.0058, 0.0044, 0.0034];
+  for (let i = 0; i < MAXP; i++) for (let k = 0; k < TRAIL; k++) dSize[i * TRAIL + k] = SIZES[k];
   dGeo.setAttribute('position', new THREE.BufferAttribute(dPos, 3).setUsage(THREE.DynamicDrawUsage));
   dGeo.setAttribute('aAlpha', new THREE.BufferAttribute(dAlpha, 1).setUsage(THREE.DynamicDrawUsage));
   dGeo.setAttribute('aSize', new THREE.BufferAttribute(dSize, 1));
@@ -284,6 +322,7 @@ export function createVessels(stage, anatomy) {
   drugPoints.frustumCulled = false;
   drugPoints.renderOrder = 14;
   drugPoints.name = 'drug-stream';
+  drugPoints.visible = false;
   group.add(drugPoints);
 
   // particle state (preallocated, no per-frame allocation)
@@ -337,7 +376,9 @@ export function createVessels(stage, anatomy) {
     for (const p of ps) p.live = false;
     dAlpha.fill(0);
     dGeo.attributes.aAlpha.needsUpdate = true;
+    drugPoints.visible = false;
     stream = null;
+    inv();
   }
 
   function startStream({ site = 'abdomen', targets = [], count = 150, onArrive, timing = {}, mode = 'flow', segments = [0, 1, 2], opacity = 1 }) {
@@ -360,9 +401,10 @@ export function createVessels(stage, anatomy) {
         for (const o of tg) if (!arrived.has(o)) { arrived.add(o); try { onArrive?.(o); } catch (e) { console.error(e); } }
         s.cancel();
       },
-      setOpacity(a) { s.opacity = a; },
+      setOpacity(a) { s.opacity = a; inv(); },
     };
     stream = s;
+    drugPoints.visible = true;
     for (let i = 0; i < MAXP; i++) {
       const p = ps[i];
       p.live = i < n;
@@ -393,15 +435,17 @@ export function createVessels(stage, anatomy) {
     }
     if (mode !== 'flow') resolve();
     s.promise = promise;
+    inv();
     return s;
   }
 
+  // → true while particles still move
   function updateStream(dt, t) {
     segActiveCount.fill(0);
     const s = stream;
-    if (!s) return;
+    if (!s) return false;
     const pw = pulseWave(t);
-    let alive = 0;
+    let alive = 0, moving = false;
     for (let i = 0; i < MAXP; i++) {
       const p = ps[i];
       const base = i * TRAIL;
@@ -412,12 +456,13 @@ export function createVessels(stage, anatomy) {
         const sg = jr.segs[p.seg];
         sampleSeg(sg, p.f, _p, s.lead);
         dPos[base * 3] = _p.x + p.jx; dPos[base * 3 + 1] = _p.y + p.jy; dPos[base * 3 + 2] = _p.z + p.jz;
-        dAlpha[base] = 0.5 * s.opacity;
+        dAlpha[base] = 0.6 * s.opacity;
         for (let k = 1; k < TRAIL; k++) dAlpha[base + k] = 0;
         segActiveCount[sg.r.row] += 1;
         alive++;
         continue;
       }
+      moving = true;
       if (p.delay > 0) { p.delay -= dt; for (let k = 0; k < TRAIL; k++) dAlpha[base + k] = 0; alive++; continue; }
       if (p.linger < 0) {
         const sg = jr.segs[p.seg];
@@ -456,32 +501,34 @@ export function createVessels(stage, anatomy) {
       dPos[base * 3] = _p.x + p.jx; dPos[base * 3 + 1] = _p.y + p.jy; dPos[base * 3 + 2] = _p.z + p.jz;
       const fadeIn = Math.min(1, (p.seg === 0 ? p.f * 8 : 1));
       dAlpha[base] = fadeIn * s.opacity;
-      const step = 0.009 / Math.max(0.05, sg.r.length);
+      const step = 0.011 / Math.max(0.05, sg.r.length);
       for (let k = 1; k < TRAIL; k++) {
         sampleSeg(sg, p.f - step * k, _p, s.lead);
         const o = (base + k) * 3;
         dPos[o] = _p.x + p.jx; dPos[o + 1] = _p.y + p.jy; dPos[o + 2] = _p.z + p.jz;
-        dAlpha[base + k] = fadeIn * s.opacity * (0.55 - k * 0.14);
+        dAlpha[base + k] = fadeIn * s.opacity * (0.55 - k * 0.18);
       }
       segActiveCount[sg.r.row] += 1;
       alive++;
     }
     dGeo.attributes.position.needsUpdate = true;
     dGeo.attributes.aAlpha.needsUpdate = true;
-    if (!alive && s.mode === 'flow' && !s.done) { s.done = true; stream = null; s.resolve(); }
+    if (!alive && s.mode === 'flow' && !s.done) { s.done = true; stream = null; drugPoints.visible = false; s.resolve(); }
+    return moving;
   }
 
   // ---------------------------------------------------------------- drug level
   let drugLevel = 0;
   let drugTargets = [];
-  let C = COLORS[stage.theme] || COLORS.dark;
+  let C = COLORS[stage.theme] || COLORS.light;
   function setDrugLevel(level) {
-    drugLevel = Math.min(1, Math.max(0, Number(level) || 0));
-    uDrugLevel.value = drugLevel;
+    const next = Math.min(1, Math.max(0, Number(level) || 0));
+    drugLevel = next;
     for (const id of drugTargets) {
       if (drugLevel > 0.01) anatomy.highlight(id, { channel: 'drug', color: C.organDrug, intensity: 0.12 + 0.5 * drugLevel });
       else anatomy.unhighlight(id, { channel: 'drug' });
     }
+    inv();
   }
   function setDrugTargets(ids) {
     for (const id of drugTargets) anatomy.unhighlight(id, { channel: 'drug' });
@@ -491,67 +538,80 @@ export function createVessels(stage, anatomy) {
 
   // ---------------------------------------------------------------- theme
   function applyTheme(theme) {
-    C = COLORS[theme] || COLORS.dark;
+    C = COLORS[theme] || COLORS.light;
     const blending = C.additive ? THREE.AdditiveBlending : THREE.NormalBlending;
     cMat.uniforms.uOxy.value.setHex(C.oxy);
     cMat.uniforms.uDeoxy.value.setHex(C.deoxy);
-    cMat.uniforms.uDrug.value.setHex(C.drug);
     cMat.uniforms.uCellAlpha.value = C.cellAlpha;
     cMat.blending = blending; cMat.needsUpdate = true;
     dMat.uniforms.uColor.value.setHex(C.drug);
-    dMat.uniforms.uCore.value = C.additive ? 0.55 : 0.0;
-    // on the pale theme the drug is a dark teal ink: larger and denser so it reads over the vessels
-    dMat.uniforms.uAlphaK.value = C.additive ? 0.55 : 1.6;
-    dMat.uniforms.uSizeK.value = C.additive ? 1 : 1.35;
+    dMat.uniforms.uCore.value = C.additive ? 0.6 : 0.0;
+    // on the light stage the drug is a violet ink: larger and denser so it reads over the vessels
+    dMat.uniforms.uAlphaK.value = C.additive ? 0.6 : 1.5;
+    dMat.uniforms.uSizeK.value = C.additive ? 1 : 1.3;
     dMat.blending = blending; dMat.needsUpdate = true;
-    for (const r of routes) {
-      r.mat.uniforms.uColor.value.setHex(r.oxy ? C.lineArt : C.lineVein);
-      r.mat.uniforms.uDrugColor.value.setHex(C.lineDrug);
-      r.mat.uniforms.uAlpha.value = C.additive ? 0.1 : 0.14;
-      r.mat.blending = blending; r.mat.needsUpdate = true;
-    }
+    lineMat.uniforms.uArtColor.value.setHex(C.lineArt);
+    lineMat.uniforms.uVenColor.value.setHex(C.lineVein);
+    lineMat.uniforms.uDrugColor.value.setHex(C.lineDrug);
+    lineMat.uniforms.uAlpha.value = C.additive ? 0.12 : 0.16;
+    lineMat.blending = blending; lineMat.needsUpdate = true;
     setDrugLevel(drugLevel);
   }
   const offTheme = stage.onTheme(applyTheme);
   applyTheme(stage.theme);
 
   // ---------------------------------------------------------------- frame
-  let flowOn = true;
-  let flowVis = 1;
+  let flowOn = false;
+  let flowVis = 0;
   let dimTarget = 1, dim = 1;
   const vArt = 0.2, vVen = 0.065;
   function update(dt, t) {
     const rm = stage.reducedMotion;
     uAnim.value = rm ? 0 : 1;
-    if (flowOn && !rm) {
+    let busy = false;
+    const fv = flowOn ? 1 : 0;
+    if (Math.abs(flowVis - fv) > 2e-3) { flowVis += (fv - flowVis) * (rm ? 1 : 1 - Math.exp(-dt * 4)); busy = true; } else flowVis = fv;
+    if (Math.abs(dim - dimTarget) > 2e-3) { dim += (dimTarget - dim) * (rm ? 1 : 1 - Math.exp(-dt * 6)); busy = true; } else dim = dimTarget;
+    const vis = dim * (anatomy.layerFade?.vessels ?? 1) * (anatomy.layerFade?.inside ?? 1);
+    const cellsOn = flowVis * vis > 0.01;
+    cMat.uniforms.uOpacity.value = flowVis * vis;
+    cellPoints.visible = cellsOn;
+    // the blood only flows while it is on screen (and never under reduced motion)
+    if (cellsOn && !rm) {
       uArt.value += dt * vArt * pulseWave(t);
       uVen.value += dt * vVen;
+      busy = true;
     }
-    flowVis += ((flowOn ? 1 : 0) - flowVis) * (rm ? 1 : 1 - Math.exp(-dt * 4));
-    dim += (dimTarget - dim) * (rm ? 1 : 1 - Math.exp(-dt * 6));
-    const vis = dim * (anatomy.layerFade?.vessels ?? 1) * (anatomy.layerFade?.inside ?? 1);
-    cMat.uniforms.uOpacity.value = flowVis * vis;
-    cellPoints.visible = flowVis * vis > 0.01;
-    lineGroup.visible = dim > 0.01; // routes the drug is on stay lit even with the layer off
     uScale.value = stage.viewScale || 500;
-    updateStream(dt, t);
+    if (updateStream(dt, t)) busy = true;
     const k = rm ? 1 : 1 - Math.exp(-dt * 5);
+    let anyActive = false;
     for (const r of routes) {
       r.activeTarget = segActiveCount[r.row] > 0 ? 1 : 0;
-      r.active += (r.activeTarget - r.active) * k;
-      r.mat.uniforms.uActive.value = r.active;
-      r.mat.uniforms.uDrug.value = drugLevel * 0.55;
-      r.mat.uniforms.uOpacity.value = Math.max(vis, r.active * dim);
+      if (Math.abs(r.active - r.activeTarget) > 2e-3) { r.active += (r.activeTarget - r.active) * k; busy = true; } else r.active = r.activeTarget;
+      activeArr[r.row] = r.active * dim;
+      if (r.active > 0.01) anyActive = true;
     }
+    // faint route lines only while blood is shown; routes the drug is on stay lit; the timeline's drug
+    // level tints them
+    lineMat.uniforms.uDrug.value = drugLevel * 0.55 * vis;
+    lineMat.uniforms.uBase.value = flowVis;
+    lineMat.uniforms.uOpacity.value = Math.max(vis, dim * 0.9);
+    const linesWanted = dim > 0.01 && (anyActive || flowVis > 0.01 || drugLevel * vis > 0.01);
+    if (linesWanted && !linesTried) buildLines();
+    if (lineMesh) lineMesh.visible = linesWanted;
+    return busy;
   }
   const offFrame = stage.onFrame(update);
 
   return {
     group,
     routes: byName,
-    setBloodFlow(on) { flowOn = !!on; },
+    get particleCount() { return NC + NP; },
+    particleBudget: { cells: NC, drug: NP },
+    setBloodFlow(on) { if (flowOn !== !!on) { flowOn = !!on; inv(); } },
     // 0..1 visibility of the ambient blood cells and flow lines (the drug stream is unaffected)
-    setDim(k) { dimTarget = Math.min(1, Math.max(0, k)); },
+    setDim(k) { dimTarget = Math.min(1, Math.max(0, k)); inv(); },
     release(opts = {}) {
       return startStream({ ...opts, mode: stage.reducedMotion ? 'still' : 'flow', segments: [0, 1, 2] });
     },
@@ -566,7 +626,8 @@ export function createVessels(stage, anatomy) {
     dispose() {
       offFrame(); offTheme();
       stream?.cancel();
-      group.traverse((o) => { o.geometry?.dispose?.(); o.material?.dispose?.(); });
+      group.traverse((o) => { o.geometry?.dispose?.(); });
+      cMat.dispose(); dMat.dispose(); lineMat.dispose();
       pathTex.dispose();
       group.removeFromParent();
     },

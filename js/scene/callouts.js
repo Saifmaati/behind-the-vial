@@ -1,4 +1,4 @@
-// PeptideScope: screen-space callouts anchored to 3D points (body3d).
+// PeptideScope: screen-space callouts anchored to 3D points (body).
 // Labels live in #callout-layer as real HTML (focusable buttons for organs), positioned every frame
 // with stage.project, hidden when their anchor is off-screen, with a thin elbow leader line to a
 // small anchor dot, and a simple per-side vertical relaxation so labels never pile up.
@@ -6,29 +6,36 @@
 //   const callouts = createCallouts(stage, layerEl, { onSelect(organId, item) {} });
 //   callouts.set(id, { anchor: Vector3 | [x,y,z] | () => Vector3, title, text, tone, organ, group,
 //                      interactive = true, side = 'auto' | 'left' | 'right' | 'below' | 'above',
-//                      normal?: Vector3, facing = 0.05, onClick?, ariaLabel?, priority? })
+//                      normal?: Vector3, facing = 0.05, onClick?, ariaLabel?, priority?, keep? })
 // 'left' / 'right' labels stack in a column beside their anchors; 'below' / 'above' labels form one
 // row under (over) all their anchors with vertical leaders (used for the tissue cross-section).
 // `normal` marks a surface anchor: the label hides while that surface faces away from the camera
 // (cosine between the normal and the direction to the camera below `facing`), for example the skin
 // of the cheek seen from behind the head.
 // Labels that point at the same organ are de-duplicated (highest priority wins: hover > tissue > risk >
-// effects > arrival > focus > sites); a narrow stage (< 560 px) shows at most five.
+// effects > arrival > focus > sites). v4 fix (teen-ux review, "bunched up"): how many full labels show
+// depends on the stage width (3 under 600 px, 5 under 900 px, else 6), the most important first
+// (serious > the injection site > organs); a label marked `keep` is never dropped for space. Interactive
+// labels that do not fit become small tappable dots at their anchor ("ps-callout-mini"): a tap opens
+// that label (it then outranks the others until another dot is tapped).
+// Hover labels only move HTML, so they lay out on their own without asking the 3D stage for a frame.
 //   callouts.remove(id); callouts.clear(group?); callouts.setGroupVisible(group, bool);
 //   callouts.setInsets({ top, right, bottom, left }) (extra px kept clear, e.g. under the skip button); callouts.dispose()
 // tone: 'info' | 'warn' | 'danger' | 'drug' | 'tissue' | 'site'
+// v4: labels are placed during the stage's frames, which only run while something changes, so every
+// change here asks the stage for a frame (stage.invalidate).
 const SVG_NS = 'http://www.w3.org/2000/svg';
 
 export function createCallouts(stage, layer, { onSelect } = {}) {
   if (!layer) throw new Error('createCallouts: layer element required');
-  layer.classList.add('bv-callouts');
+  layer.classList.add('ps-callouts');
   const svg = document.createElementNS(SVG_NS, 'svg');
-  svg.setAttribute('class', 'bv-callout-leaders');
+  svg.setAttribute('class', 'ps-callout-leaders');
   svg.setAttribute('aria-hidden', 'true');
   svg.setAttribute('focusable', 'false');
   layer.appendChild(svg);
   const list = document.createElement('div');
-  list.className = 'bv-callout-list';
+  list.className = 'ps-callout-list';
   layer.appendChild(list);
 
   const items = new Map();
@@ -37,7 +44,8 @@ export function createCallouts(stage, layer, { onSelect } = {}) {
   const GROUP_PRIORITY = { hover: 9, tissue: 8, risk: 7, effects: 5, arrival: 4, focus: 3, sites: 2 };
   const visible = [];
   const bestByOrgan = new Map();
-  const byPriority = (a, b) => b.prio - a.prio;
+  const rank = (it) => (it.expanded ? 100 + it.expanded / 1e6 : 0) + it.prio;
+  const byRank = (a, b) => rank(b) - rank(a);
   const left = [];
   const right = [];
   const below = [];
@@ -48,6 +56,15 @@ export function createCallouts(stage, layer, { onSelect } = {}) {
   const byX = (a, b) => a.x - b.x;
   const byY = (a, b) => a.wantY - b.wantY;
   let disposed = false;
+  const inv = () => stage.invalidate?.();
+  // layout without a 3D frame (hover labels): positions come from stage.project, which needs no render
+  let layoutRaf = 0;
+  const layoutOnly = () => {
+    if (layoutRaf || disposed) return;
+    layoutRaf = requestAnimationFrame(() => { layoutRaf = 0; update(); });
+  };
+  const changed = (it) => (it && it.group === 'hover' ? layoutOnly() : inv());
+  let expandSeq = 0;
 
   function anchorOf(it) {
     const a = it.anchor;
@@ -68,9 +85,9 @@ export function createCallouts(stage, layer, { onSelect } = {}) {
       el.setAttribute('role', 'note');
     }
     const title = document.createElement('span');
-    title.className = 'bv-callout__title';
+    title.className = 'ps-callout__title';
     const text = document.createElement('span');
-    text.className = 'bv-callout__text';
+    text.className = 'ps-callout__text';
     el.append(title, text);
     const dot = document.createElement('span');
     dot.setAttribute('aria-hidden', 'true');
@@ -81,6 +98,16 @@ export function createCallouts(stage, layer, { onSelect } = {}) {
     list.appendChild(el);
     layer.insertBefore(dot, list);
     svg.appendChild(line);
+    // the small tappable dot this label folds into when there is no room for it
+    if (it.interactive) {
+      const mini = document.createElement('button');
+      mini.type = 'button';
+      mini.className = 'ps-callout-mini';
+      mini.hidden = true;
+      mini.addEventListener('click', () => { it.expanded = ++expandSeq; inv(); layoutOnly(); });
+      it.mini = mini;
+      list.appendChild(mini);
+    }
   }
 
   function set(id, opts = {}) {
@@ -102,14 +129,15 @@ export function createCallouts(stage, layer, { onSelect } = {}) {
     it.normal = opts.normal ?? it.normal ?? null;
     it.facing = Number.isFinite(opts.facing) ? opts.facing : it.facing ?? 0.05;
     it.prio = opts.priority ?? ((GROUP_PRIORITY[it.group] ?? 1) + ((opts.tone ?? it.tone) === 'danger' ? 0.5 : 0));
+    it.keep = opts.keep ?? it.keep ?? false;
     const tone = opts.tone ?? it.tone ?? 'info';
     const title = opts.title ?? it.title ?? '';
     const text = opts.text ?? it.text ?? '';
     if (tone !== it.tone || title !== it.title || text !== it.text) {
       it.tone = tone; it.title = title; it.text = text;
-      it.el.className = `bv-callout bv-callout--${tone}${it.interactive ? ' bv-callout--interactive' : ''}`;
-      it.dot.className = `bv-callout-dot bv-callout-dot--${tone}`;
-      it.line.setAttribute('class', `bv-callout-line bv-callout-line--${tone}`);
+      it.el.className = `ps-callout ps-callout--${tone}${it.interactive ? ' ps-callout--interactive' : ''}`;
+      it.dot.className = `ps-callout-dot ps-callout-dot--${tone}`;
+      it.line.setAttribute('class', `ps-callout-line ps-callout-line--${tone}`);
       it.titleEl.textContent = title;
       it.textEl.textContent = text;
       it.textEl.hidden = !text;
@@ -117,25 +145,34 @@ export function createCallouts(stage, layer, { onSelect } = {}) {
       if (it.interactive) {
         it.el.setAttribute('aria-label', it.ariaLabel || `${title}${text ? `: ${text}` : ''}. Show on the body.`);
       }
+      if (it.mini) {
+        it.mini.className = `ps-callout-mini ps-callout-mini--${tone}`;
+        it.mini.setAttribute('aria-label', `${title}${text ? `: ${text}` : ''}. Show this label.`);
+      }
       it.measured = false;
     }
+    changed(it);
     return it;
   }
 
   function remove(id) {
     const it = items.get(id);
     if (!it) return;
-    it.el.remove(); it.dot.remove(); it.line.remove();
+    it.el.remove(); it.dot.remove(); it.line.remove(); it.mini?.remove();
     items.delete(id);
+    changed(it);
   }
   function clear(group) {
     for (const [id, it] of [...items]) if (!group || it.group === group) remove(id);
   }
   function setGroupVisible(group, visible) {
+    if (visible === !hiddenGroups.has(group)) return;
     if (visible) hiddenGroups.delete(group); else hiddenGroups.add(group);
+    inv();
   }
   function setInsets(next = {}) {
     for (const k of ['top', 'right', 'bottom', 'left']) if (Number.isFinite(next[k])) insets[k] = next[k];
+    inv();
   }
 
   function show(it, on) {
@@ -145,6 +182,17 @@ export function createCallouts(stage, layer, { onSelect } = {}) {
     it.dot.hidden = !on;
     it.line.style.display = on ? '' : 'none';
     if (on) it.measured = false;
+  }
+  function showMini(it, on) {
+    if (!it.mini) return;
+    if (on) {
+      if (Math.abs(it.x - (it.mx ?? -1)) > 0.3 || Math.abs(it.y - (it.my ?? -1)) > 0.3) {
+        it.mx = it.x; it.my = it.y;
+        it.mini.style.transform = `translate3d(${it.x.toFixed(1)}px, ${it.y.toFixed(1)}px, 0)`;
+      }
+    }
+    if (it.mini.hidden === !on) return;
+    it.mini.hidden = !on;
   }
 
   function measure(it) {
@@ -170,14 +218,17 @@ export function createCallouts(stage, layer, { onSelect } = {}) {
     if (disposed) return;
     const W = stage.size.width, H = stage.size.height;
     const compact = W < 560;
+    // how many full labels fit (teen-ux review)
+    const maxLabels = W < 600 ? 3 : W < 900 ? 5 : 6;
     const offX = compact ? 18 : 34;
     const margin = (compact ? 8 : 14) + insets.left;
     // keep clear of the stage HUD labels, the colour key (under the phase label when narrow) and the
     // Layers / Body buttons in the top-right corner (icon-only and higher up on the narrowest stages)
-    const top = (W <= 430 ? 56 : 86) + insets.top;
-    const bottom = (W <= 430 ? 40 : compact ? 54 : 58) + insets.bottom;  // the hint row and the credit
-    const gap = compact ? 4 : 6;
-    const reserveR = (compact ? 50 : 56) + insets.right; // the zoom / reset buttons sit on the right edge
+    // keep clear of the "Body" button (top right), the zoom buttons (bottom right) and the credit line
+    const top = (W <= 430 ? 58 : 66) + insets.top;
+    const bottom = (W <= 430 ? 44 : 52) + insets.bottom;
+    const gap = compact ? 6 : 8;
+    const reserveR = (compact ? 14 : 20) + insets.right;
     left.length = 0; right.length = 0; below.length = 0; above.length = 0; visible.length = 0;
     bestByOrgan.clear();
     for (const it of items.values()) {
@@ -195,13 +246,20 @@ export function createCallouts(stage, layer, { onSelect } = {}) {
         if (!b || it.prio > b.prio) { if (b) b.cand = false; bestByOrgan.set(it.organ, it); } else it.cand = false;
       }
     }
-    for (const it of items.values()) if (it.cand) visible.push(it);
-    if (compact && visible.length > 5) {
-      visible.sort(byPriority);
-      for (let i = 5; i < visible.length; i++) visible[i].cand = false;
+    for (const it of items.values()) { it.folded = false; if (it.cand) visible.push(it); }
+    // the most important labels win the room; a label the visitor opened from its dot comes first,
+    // and a `keep` label (the injection site) is never dropped
+    let room = maxLabels - visible.filter((it) => it.keep).length;
+    visible.sort(byRank);
+    for (const it of visible) {
+      if (it.keep) continue;
+      if (room > 0) { room--; continue; }
+      it.cand = false;
+      it.folded = true;
     }
     for (const it of items.values()) {
       show(it, !!it.cand);
+      showMini(it, !!it.folded);
       if (!it.cand) continue;
       if (!it.measured) measure(it);
       let side = it.sidePref;
@@ -345,7 +403,7 @@ export function createCallouts(stage, layer, { onSelect } = {}) {
   }
 
   const offFrame = stage.onFrame(update);
-  const ro = new ResizeObserver(() => { for (const it of items.values()) it.measured = false; });
+  const ro = new ResizeObserver(() => { for (const it of items.values()) it.measured = false; inv(); });
   ro.observe(layer);
 
   return {
@@ -356,9 +414,10 @@ export function createCallouts(stage, layer, { onSelect } = {}) {
       disposed = true;
       offFrame();
       ro.disconnect();
+      cancelAnimationFrame(layoutRaf);
       clear();
       svg.remove(); list.remove();
-      layer.classList.remove('bv-callouts');
+      layer.classList.remove('ps-callouts');
     },
   };
 }

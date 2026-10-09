@@ -31,7 +31,7 @@ One line each: decision, then why. Files: `js/scene/{stage,anatomy,vessels,injec
 ## Robustness and budget
 21. **WebGL context loss**: the loop stops, the canvas and labels hide, a status note shows; on restore the GPU-only prefiltered environment is rebuilt and re-assigned to every material that used it; after 6 s without a restore the note says to reload.
 22. **MSAA 2× on screens above 1.5 dppx, 4× otherwise; pixel ratio capped at 1.75 and stepped down under 48 fps; bloom at half resolution**. Measured in headless Chrome: all scene JS per frame (callouts, anatomy, vessels, injection) ≈ 0.04 ms mean, 0.1 ms p95, no measurable heap growth over 1,200 ticks.
-23. **`stage.advance(seconds)` and `host.__btvBody`** are dev/test hooks (deterministic stepping in headless checks; no global variables).
+23. **`stage.advance(seconds)` and `host.__psBody`** are dev/test hooks (deterministic stepping in headless checks; no global variables).
 
 ## Contract requests (for ARCHITECTURE.md)
 - `injection.fadeArrivals()`, `injection.phase` (additive).

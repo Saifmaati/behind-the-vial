@@ -1,12 +1,12 @@
-// PeptideScope: #dose-facts: FIXED, cited results from the studied trial
-// groups, as static tables only. No charts, and deliberately no control of any
-// kind (no sliders, toggles, tabs or inputs): nothing here can be adjusted.
+// PeptideScope: "The trials" (v4): FIXED, cited results from the studied trial groups, as
+// simple tables only. No charts, and deliberately no control of any kind (no sliders, toggles,
+// tabs or inputs): nothing here can be adjusted.
 //
-// Tables are laid out the way journals print them: one row per measured
-// outcome, one column per study group, so a reader can follow an outcome
-// across the groups. The placebo column is set in a quieter tone.
-import { html, uid } from './util.js';
+// Tables are laid out the way journals print them: one row per measured outcome, one column
+// per study group. On phones each outcome becomes a small card with one labelled line per group.
+import { html, uid, sentences } from './util.js';
 import { icon } from './icons.js';
+import { summary, more } from './blocks.js';
 
 const NOT_INSTRUCTIONS = 'Fixed results from a trial run under medical supervision, as published. Not instructions.';
 const COMPARATOR = /placebo|comparator|control/i;
@@ -27,14 +27,12 @@ function trialTable(t, ctx) {
   if (!groups.length || !measures.length) return '';
   const capId = uid('cap');
   return html`
-  <div class="c-table-wrap c-table-wrap--trial" tabindex="0" role="region" aria-labelledby="${capId}">
+  <div class="c-table-wrap" tabindex="0" role="region" aria-labelledby="${capId}">
     <table class="c-table c-ttable" style="--groups: ${groups.length}">
-      <caption id="${capId}" class="c-ttable__cap">
-        <span class="c-sr">${t.name}${t.timepoint ? html`, ${t.timepoint}` : ''}. </span>${NOT_INSTRUCTIONS}${ctx.cite(t.sources)}
-      </caption>
+      <caption id="${capId}" class="c-ttable__cap"><span class="c-sr">${t.name}${t.timepoint ? html`, ${t.timepoint}` : ''}. </span>${NOT_INSTRUCTIONS}${ctx.cite(t.sources)}</caption>
       <thead>
         <tr>
-          <th scope="col" class="c-ttable__corner">Outcome</th>
+          <th scope="col" class="c-ttable__corner">What was measured</th>
           ${groups.map((g) => html`<th scope="col" class="${g.comparator ? 'is-comparator' : ''}">${g.name}</th>`)}
         </tr>
       </thead>
@@ -52,24 +50,23 @@ function trialTable(t, ctx) {
 export function renderDoseFacts(entry, ctx) {
   const df = entry.doseFacts || {};
   const trials = df.trials || [];
+  const cav = sentences(df.caveat);
+  const lead = cav.length > 1 ? `${cav[0]} ${cav[cav.length - 1]}` : (cav[0] || NOT_INSTRUCTIONS);
+  const middle = cav.slice(1, -1).join(' ');
   return html`
-  <div class="c-dose">
-    ${df.intro ? html`<p class="c-prose c-intro">${df.intro}${ctx.cite(df.sources)}</p>` : ''}
-    <p class="c-callout c-callout--caveat" role="note">
-      <span class="c-callout__icon">${icon('info', { size: 20 })}</span>
-      <span><strong>Not instructions.</strong> ${df.caveat || NOT_INSTRUCTIONS}</span>
-    </p>
-    ${trials.map((t) => {
-      const tid = uid('trial');
-      return html`
-    <article class="c-card c-trial" aria-labelledby="${tid}">
-      <header class="c-trial__head">
-        ${t.timepoint ? html`<p class="c-kicker c-trial__kicker">${t.timepoint}</p>` : ''}
-        <h3 class="c-h3 c-trial__name" id="${tid}">${t.name}${ctx.cite(t.sources, { unverified: !!t.unverified })}${ctx.chips(t)}</h3>
-        ${t.design ? html`<p class="c-trial__design">${t.design}</p>` : ''}
-      </header>
-      ${trialTable(t, ctx)}
-    </article>`;
-    })}
+  <div class="c-panel c-panel--trials">
+    <p class="c-badge c-badge--info">${icon('info', { size: 16 })}Not instructions</p>
+    ${summary(html`${lead}${ctx.cite(df.sources)}`)}
+    ${middle ? html`<p class="c-note">${middle}</p>` : ''}
+    ${df.intro ? html`<p class="c-lead">${df.intro}${ctx.cite(df.sources)}</p>` : ''}
+    <div class="c-rows c-rows--trials">
+      ${trials.map((t, i) => more(
+        html`<span class="c-row__name">${t.name}</span>${t.timepoint ? html`<span class="c-row__meta">${t.timepoint}</span>` : ''}`,
+        html`
+        ${t.design ? html`<p>${t.design}${ctx.cite(t.sources, { unverified: !!t.unverified })}${ctx.chips(t)}</p>` : ''}
+        ${trialTable(t, ctx)}`,
+        { cls: 'c-more--trial', attrs: i === 0 ? html` open` : '' },
+      ))}
+    </div>
   </div>`;
 }

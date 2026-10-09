@@ -1,86 +1,74 @@
-/* PeptideScope: design tokens (foundation; v2 luxury palette, theme agent).
-   Obsidian, ivory and champagne gold; oxblood arteries, sapphire veins. Never neon, never green.
-   Dark is the default. prefers-color-scheme: light switches unless <html data-theme="dark">.
-   <html data-theme="light|dark"> always wins. `.force-dark` pins a subtree to the dark set (the intro,
-   the preloader). Motion: prefers-reduced-motion or <html data-motion="reduce"> collapse durations;
+/* PeptideScope: design tokens (v4, "simpler, faster, for teens").
+   ui-ux-pro-max "Minimalism & Swiss": spacious, light-first, one violet accent, amber and red only
+   for warnings. Never green, never neon. Fonts: Nunito (headings, rounded) + DM Sans (body/UI).
+   Light is the default; prefers-color-scheme: dark switches unless <html data-theme="light">, and
+   <html data-theme="light|dark"> always wins. `.force-dark` / `.force-light` pin a subtree.
+   Motion: prefers-reduced-motion or <html data-motion="reduce"> collapse durations;
    <html data-motion="full"> is the visitor explicitly opting back in.
-   Contrast (WCAG 2.x, text tokens on every background token): dark lowest is --muted 5.9:1;
-   light lowest is --muted 4.65:1 and --accent 4.86:1 on --surface-3. --accent-2 and --drug in the
-   light theme (about 3:1) are for lines and fills only, never body text. */
 
+   The colour table in docs/ARCHITECTURE.md (v4) is used verbatim. Every other colour token below is
+   mixed only from those values (the derived block at the end), so nothing off-palette creeps in.
+   Older token names (--accent, --accent-2, --gold-fill …) stay as aliases so every module keeps
+   working without edits. */
+
+/* Nunito (OFL 1.1, Vernon Adams / The Nunito Project Authors): wght 600–900, Latin subset. */
 @font-face {
-  font-family: "Inter";
+  font-family: "Nunito";
   font-style: normal;
-  font-weight: 100 900;
+  font-weight: 600 900;
   font-display: swap;
-  src: url("../assets/fonts/InterVariable-latin.woff2") format("woff2-variations"),
-       url("../assets/fonts/InterVariable-latin.woff2") format("woff2");
+  src: url("../assets/fonts/Nunito-latin.woff2") format("woff2-variations"),
+       url("../assets/fonts/Nunito-latin.woff2") format("woff2");
 }
+/* DM Sans (OFL 1.1, The DM Sans Project Authors): wght 400–700 at the 14 pt optical size, Latin subset. */
 @font-face {
-  font-family: "Inter";
-  font-style: italic;
-  font-weight: 100 900;
-  font-display: swap;
-  src: url("../assets/fonts/InterVariable-Italic-latin.woff2") format("woff2-variations"),
-       url("../assets/fonts/InterVariable-Italic-latin.woff2") format("woff2");
-}
-/* Newsreader (Production Type, OFL 1.1): display serif for headlines, large figures and the wordmark. */
-@font-face {
-  font-family: "Newsreader";
+  font-family: "DM Sans";
   font-style: normal;
-  font-weight: 200 800;
+  font-weight: 400 700;
   font-display: swap;
-  src: url("../assets/fonts/NewsreaderVariable-latin.woff2") format("woff2-variations"),
-       url("../assets/fonts/NewsreaderVariable-latin.woff2") format("woff2");
-}
-@font-face {
-  font-family: "Newsreader";
-  font-style: italic;
-  font-weight: 200 800;
-  font-display: swap;
-  src: url("../assets/fonts/NewsreaderVariable-Italic-latin.woff2") format("woff2-variations"),
-       url("../assets/fonts/NewsreaderVariable-Italic-latin.woff2") format("woff2");
+  src: url("../assets/fonts/DMSans-latin.woff2") format("woff2-variations"),
+       url("../assets/fonts/DMSans-latin.woff2") format("woff2");
 }
 
 :root {
   /* ---------- type ---------- */
-  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-  --font-display: "Newsreader", "Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", Georgia, serif;
-  /* v2: labels, HUD text and figures are Inter small caps / tabular numerals, never a monospace look.
-     `--font-mono` keeps its name for the modules that already use it; `--font-code` is real monospace. */
+  --font-sans: "DM Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+  --font-display: "Nunito", ui-rounded, "SF Pro Rounded", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  /* `--font-mono` and `--font-label` keep their names for the modules that use them: plain DM Sans. */
   --font-mono: var(--font-sans);
   --font-label: var(--font-sans);
   --font-code: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
-  --font-features: "calt", "kern";
-  --label-features: "case", "tnum", "kern";
+  --font-features: "kern", "calt";
+  --label-features: "kern", "tnum";
 
-  /* fluid scale, 360 px → 1440 px */
-  --step--2: clamp(0.72rem, 0.70rem + 0.10vw, 0.78rem);
-  --step--1: clamp(0.84rem, 0.82rem + 0.12vw, 0.92rem);
-  --step-0: clamp(1rem, 0.97rem + 0.15vw, 1.0625rem);
-  --step-1: clamp(1.125rem, 1.07rem + 0.30vw, 1.3rem);
-  --step-2: clamp(1.35rem, 1.22rem + 0.62vw, 1.8rem);
-  --step-3: clamp(1.7rem, 1.42rem + 1.30vw, 2.6rem);
-  --step-4: clamp(2.2rem, 1.62rem + 2.70vw, 4rem);
-  --step-5: clamp(2.9rem, 1.85rem + 4.80vw, 6.6rem);
+  /* base 17 px; fixed steps for body sizes, fluid only for headings */
+  --step--2: 0.8125rem;                                   /* 13 */
+  --step--1: 0.9375rem;                                   /* 15 */
+  --step-0: 1.0625rem;                                    /* 17 */
+  --step-1: 1.25rem;                                      /* 20 */
+  --step-2: clamp(1.5rem, 1.38rem + 0.5vw, 1.75rem);      /* 24 → 28 */
+  --step-3: clamp(1.875rem, 1.6rem + 1.1vw, 2.5rem);      /* 30 → 40 */
+  --step-4: clamp(2.25rem, 1.8rem + 1.9vw, 3.25rem);      /* 36 → 52 */
+  --step-5: clamp(2.75rem, 2rem + 3.2vw, 4.5rem);         /* 44 → 72 */
 
-  --leading-tight: 1.04;
-  --leading-snug: 1.22;
-  --leading: 1.6;
-  --leading-loose: 1.72;
-  --tracking-tight: -0.018em;
-  --tracking-display: -0.014em;
-  --tracking-caps: 0.18em;
-  --tracking-label: 0.14em;
-  --measure: 64ch;
+  --leading-tight: 1.1;
+  --leading-snug: 1.25;
+  --leading: 1.55;
+  --leading-loose: 1.7;
+  --tracking-tight: -0.02em;
+  --tracking-display: -0.015em;
+  --tracking-caps: 0.08em;
+  --tracking-label: 0.04em;
+  --measure: 62ch;
 
   --weight-regular: 400;
   --weight-medium: 500;
   --weight-semibold: 600;
-  --weight-bold: 680;
-  --weight-display: 380;
+  --weight-bold: 700;
+  --weight-display: 800;
+  --weight-black: 900;
 
-  /* ---------- space ---------- */
+  /* ---------- space (spacious scale: 8 · 12 · 16 · 24 · 32 · 48 · 64 · 96) ---------- */
   --space-3xs: 0.25rem;  /* 4 */
   --space-2xs: 0.5rem;   /* 8 */
   --space-xs: 0.75rem;   /* 12 */
@@ -90,20 +78,22 @@
   --space-xl: 3rem;      /* 48 */
   --space-2xl: 4rem;     /* 64 */
   --space-3xl: 6rem;     /* 96 */
-  --space-fluid-s: clamp(1rem, 0.7rem + 1.4vw, 1.75rem);
-  --space-fluid-m: clamp(1.5rem, 1rem + 2.4vw, 3rem);
-  --section-pad: clamp(4.5rem, 2.8rem + 7vw, 9rem);
-  --gutter: clamp(1rem, 0.55rem + 2vw, 2.5rem);
+  --space-fluid-s: clamp(1rem, 0.75rem + 1vw, 1.5rem);
+  --space-fluid-m: clamp(1.5rem, 1rem + 2vw, 3rem);
+  --section-pad: clamp(4rem, 2.5rem + 5vw, 6rem);
+  --gutter: clamp(1rem, 0.4rem + 2.6vw, 2.5rem);           /* 16 px on phones */
   --container: 1200px;
-  --container-wide: 1680px;
+  --container-wide: 1360px;
 
-  /* ---------- shape ---------- */
-  --radius-xs: 3px;
-  --radius-s: 5px;
-  --radius-m: 8px;
-  --radius-l: 12px;
-  --radius-xl: 16px;
+  /* ---------- shape (16 / 24, pill buttons) ---------- */
+  --radius-xs: 8px;
+  --radius-s: 12px;
+  --radius-m: 16px;
+  --radius-l: 24px;
+  --radius-xl: 24px;
   --radius-pill: 999px;
+  --radius-card: 24px;
+  --radius-control: 16px;
   --hairline-w: 1px;
 
   /* ---------- layers ---------- */
@@ -121,247 +111,193 @@
   --z-disclaimer-top: 110;
   --z-toast: 120;
 
-  /* ---------- motion (quiet, never bouncy) ---------- */
-  --ease: cubic-bezier(.2, .7, .1, 1);
+  /* ---------- motion (subtle: 150–400 ms, no bounce) ---------- */
+  --ease: cubic-bezier(.2, .7, .2, 1);
   --ease-out: cubic-bezier(.16, 1, .3, 1);
   --ease-in-out: cubic-bezier(.65, 0, .35, 1);
   --ease-in: cubic-bezier(.4, 0, 1, 1);
-  --dur-1: 200ms;
-  --dur-2: 400ms;
-  --dur-3: 700ms;
-  --dur-4: 1200ms;
-  --dur-fade: 220ms;
+  --dur-1: 150ms;
+  --dur-2: 250ms;
+  --dur-3: 400ms;
+  --dur-4: 600ms;
+  --dur-fade: 200ms;
 
-  /* ---------- layout metrics (JS refines these) ---------- */
-  --header-h: 64px;
-  --disclaimer-h: 36px;
-  --stage-h: min(78vh, 820px);
+  /* ---------- layout metrics (main.js refines these from the real header and bar) ---------- */
+  --header-h: 72px;
+  --disclaimer-h: 40px;
+  --stage-h: min(70vh, 760px);
 
-  /* ---------- colour: dark (default) ---------- */
-  color-scheme: dark;
-  --bg: #0A0A0B;
-  --bg-2: #111012;
-  --surface: #151417;
-  --surface-2: #1C1A1E;
-  --surface-3: #232026;
-  --surface-glass: rgba(12, 11, 13, 0.78);
-  --line: rgba(232, 220, 196, 0.12);
-  --line-strong: rgba(232, 220, 196, 0.24);
-  --line-faint: rgba(232, 220, 196, 0.06);
-  --text: #F3EEE6;
-  --text-2: #D9D2C5;
-  --muted: #A39C8F;
-  --accent: #C8A96A;
-  --accent-2: #E6D3A3;
-  --accent-ink: #1A1408;
-  --accent-soft: rgba(200, 169, 106, 0.09);
-  --accent-line: rgba(200, 169, 106, 0.42);
-  --artery: #C4524A;
-  --vein: #5B7DB8;
-  --drug: #F1DDA8;
-  --warn: #D9A05B;
-  --warn-soft: rgba(217, 160, 91, 0.09);
-  --warn-line: rgba(217, 160, 91, 0.40);
-  --danger: #E06A5F;
-  --danger-soft: rgba(224, 106, 95, 0.09);
-  --danger-line: rgba(224, 106, 95, 0.45);
-  --neutral: #CFC7B8;
-  --neutral-soft: rgba(207, 199, 184, 0.07);
-  --neutral-line: rgba(207, 199, 184, 0.28);
-  --focus: #E6D3A3;
-  --focus-halo: rgba(230, 211, 163, 0.20);
-
-  /* metallic champagne for primary actions; hairline gold for rules */
-  --gold-fill: linear-gradient(180deg, #E9D7AA 0%, #CDB073 46%, #B39150 100%);
-  --gold-fill-hover: linear-gradient(180deg, #F1E1B9 0%, #D6BB80 46%, #BD9B59 100%);
-  --gold-rule: linear-gradient(90deg, transparent 0%, rgba(200, 169, 106, 0.55) 50%, transparent 100%);
-  --sheen: rgba(255, 248, 230, 0.34);
-
-  /* status (never green): approved = champagne, in trials = pale champagne outline, research only = bronze amber */
-  --status-approved: var(--accent);
-  --status-approved-soft: var(--accent-soft);
-  --status-approved-line: var(--accent-line);
-  --status-trials: var(--accent-2);
-  --status-trials-soft: transparent;
-  --status-trials-line: rgba(230, 211, 163, 0.55);
-  --status-research: var(--warn);
-  --status-research-soft: var(--warn-soft);
-  --status-research-line: var(--warn-line);
-
-  /* light and shadow: restrained, warm, no neon glow */
-  --glow-accent: 0 0 0 1px rgba(200, 169, 106, 0.28), 0 10px 30px -14px rgba(200, 169, 106, 0.40);
-  --glow-soft: 0 18px 44px -26px rgba(200, 169, 106, 0.32);
-  --glow-text: none;
-  --shadow-1: 0 1px 0 rgba(255, 244, 222, 0.035) inset, 0 1px 2px rgba(0, 0, 0, 0.45);
-  --shadow-2: 0 1px 0 rgba(255, 244, 222, 0.04) inset, 0 16px 36px -18px rgba(0, 0, 0, 0.75);
-  --shadow-3: 0 1px 0 rgba(255, 244, 222, 0.05) inset, 0 34px 80px -30px rgba(0, 0, 0, 0.9);
-  --stage-bg:
-    radial-gradient(85% 70% at 50% 40%, rgba(200, 169, 106, 0.075) 0%, rgba(10, 10, 11, 0) 64%),
-    radial-gradient(120% 80% at 50% 115%, rgba(0, 0, 0, 0.55) 0%, rgba(0, 0, 0, 0) 60%),
-    linear-gradient(180deg, #131215 0%, #0A0A0B 100%);
-  --grid-line: rgba(232, 220, 196, 0.03);
-  --skeleton-a: rgba(232, 220, 196, 0.05);
-  --skeleton-b: rgba(232, 220, 196, 0.10);
-  --scrim: rgba(6, 6, 7, 0.74);
+  /* ---------- colour: light (default) — ARCHITECTURE.md v4 table ---------- */
+  color-scheme: light;
+  --bg: #F7F6FB;
+  --surface: #FFFFFF;
+  --surface-2: #F0EEF8;
+  --line: #E4E1F0;
+  --text: #17142B;
+  --muted: #5B5873;
+  --primary: #6246EA;
+  --on-primary: #FFFFFF;
+  --primary-soft: #ECE8FF;
+  --info: #2563EB;
+  --warn: #B45309;
+  --warn-bg: #FFF4E5;
+  --danger: #D92D20;
+  --danger-bg: #FDECEA;
+  --artery: #E5484D;
+  --vein: #3E63DD;
+  --drug: #6246EA;
+  --focus: #6246EA;
+  /* shadows: soft, ink-tinted, never glowing */
+  --shadow-ink: 23 20 43;
+  --shadow-1: 0 1px 2px rgb(var(--shadow-ink) / 0.06);
+  --shadow-2: 0 1px 2px rgb(var(--shadow-ink) / 0.05), 0 8px 24px -12px rgb(var(--shadow-ink) / 0.16);
+  --shadow-3: 0 2px 4px rgb(var(--shadow-ink) / 0.05), 0 24px 56px -24px rgb(var(--shadow-ink) / 0.28);
+  --scrim: rgb(23 20 43 / 0.48);
 }
 
-/* ---------- colour: light (ivory, ink, antique gold) ---------- */
-@media (prefers-color-scheme: light) {
-  :root:not([data-theme="dark"]) {
-    color-scheme: light;
-    --bg: #F6F2EA;
-    --bg-2: #EFE9DE;
-    --surface: #FFFDF8;
-    --surface-2: #F3EEE4;
-    --surface-3: #EAE3D6;
-    --surface-glass: rgba(250, 247, 241, 0.84);
-    --line: rgba(40, 32, 20, 0.12);
-    --line-strong: rgba(40, 32, 20, 0.24);
-    --line-faint: rgba(40, 32, 20, 0.06);
-    --text: #17140F;
-    --text-2: #2E2920;
-    --muted: #6B6355;
-    --accent: #7A5C28;
-    --accent-2: #A88645;
-    --accent-ink: #FFFDF8;
-    --accent-soft: rgba(122, 92, 40, 0.07);
-    --accent-line: rgba(122, 92, 40, 0.38);
-    --artery: #9C2F2A;
-    --vein: #2F4F86;
-    --drug: #A88645;
-    --warn: #8F5410;
-    --warn-soft: rgba(143, 84, 16, 0.07);
-    --warn-line: rgba(143, 84, 16, 0.38);
-    --danger: #B3261E;
-    --danger-soft: rgba(179, 38, 30, 0.06);
-    --danger-line: rgba(179, 38, 30, 0.38);
-    --neutral: #4A4337;
-    --neutral-soft: rgba(74, 67, 55, 0.06);
-    --neutral-line: rgba(74, 67, 55, 0.30);
-    --focus: #7A5C28;
-    --focus-halo: rgba(122, 92, 40, 0.18);
-    --gold-fill: linear-gradient(180deg, #8E6D35 0%, #7A5C28 52%, #664A1C 100%);
-    --gold-fill-hover: linear-gradient(180deg, #9A7A40 0%, #84652F 52%, #6E5121 100%);
-    --gold-rule: linear-gradient(90deg, transparent 0%, rgba(122, 92, 40, 0.45) 50%, transparent 100%);
-    --sheen: rgba(255, 250, 238, 0.30);
-    --status-trials-line: rgba(122, 92, 40, 0.50);
-    --glow-accent: 0 0 0 1px rgba(122, 92, 40, 0.24), 0 10px 24px -14px rgba(90, 64, 20, 0.35);
-    --glow-soft: 0 16px 40px -26px rgba(90, 64, 20, 0.30);
-    --glow-text: none;
-    --shadow-1: 0 1px 2px rgba(40, 30, 15, 0.06);
-    --shadow-2: 0 1px 2px rgba(40, 30, 15, 0.05), 0 16px 36px -22px rgba(40, 30, 15, 0.22);
-    --shadow-3: 0 1px 2px rgba(40, 30, 15, 0.06), 0 34px 70px -34px rgba(40, 30, 15, 0.32);
-    --stage-bg:
-      radial-gradient(85% 70% at 50% 40%, #FFFDF8 0%, rgba(255, 253, 248, 0) 66%),
-      linear-gradient(180deg, #F4EFE6 0%, #E9E2D4 100%);
-    --grid-line: rgba(40, 32, 20, 0.035);
-    --skeleton-a: rgba(40, 32, 20, 0.05);
-    --skeleton-b: rgba(40, 32, 20, 0.09);
-    --scrim: rgba(246, 242, 234, 0.84);
+/* ---------- colour: dark ---------- */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --bg: #0F0E17;
+    --surface: #17162A;
+    --surface-2: #1F1D35;
+    --line: #2C2A45;
+    --text: #F3F2FA;
+    --muted: #A9A6C4;
+    --primary: #9D8CFF;
+    --on-primary: #17142B;
+    --primary-soft: #2A2550;
+    --info: #7AA2FF;
+    --warn: #F5B454;
+    --warn-bg: #3A2A12;
+    --danger: #FF7A70;
+    --danger-bg: #3D1714;
+    --artery: #FF6369;
+    --vein: #7B93FF;
+    --drug: #B3A4FF;
+    --focus: #B3A4FF;
+    --shadow-ink: 0 0 0;
+    --shadow-1: 0 1px 2px rgb(0 0 0 / 0.4);
+    --shadow-2: 0 1px 2px rgb(0 0 0 / 0.35), 0 10px 28px -14px rgb(0 0 0 / 0.6);
+    --shadow-3: 0 2px 4px rgb(0 0 0 / 0.35), 0 28px 64px -28px rgb(0 0 0 / 0.75);
+    --scrim: rgb(5 4 10 / 0.66);
   }
 }
-:root[data-theme="light"] {
-  color-scheme: light;
-  --bg: #F6F2EA;
-  --bg-2: #EFE9DE;
-  --surface: #FFFDF8;
-  --surface-2: #F3EEE4;
-  --surface-3: #EAE3D6;
-  --surface-glass: rgba(250, 247, 241, 0.84);
-  --line: rgba(40, 32, 20, 0.12);
-  --line-strong: rgba(40, 32, 20, 0.24);
-  --line-faint: rgba(40, 32, 20, 0.06);
-  --text: #17140F;
-  --text-2: #2E2920;
-  --muted: #6B6355;
-  --accent: #7A5C28;
-  --accent-2: #A88645;
-  --accent-ink: #FFFDF8;
-  --accent-soft: rgba(122, 92, 40, 0.07);
-  --accent-line: rgba(122, 92, 40, 0.38);
-  --artery: #9C2F2A;
-  --vein: #2F4F86;
-  --drug: #A88645;
-  --warn: #8F5410;
-  --warn-soft: rgba(143, 84, 16, 0.07);
-  --warn-line: rgba(143, 84, 16, 0.38);
-  --danger: #B3261E;
-  --danger-soft: rgba(179, 38, 30, 0.06);
-  --danger-line: rgba(179, 38, 30, 0.38);
-  --neutral: #4A4337;
-  --neutral-soft: rgba(74, 67, 55, 0.06);
-  --neutral-line: rgba(74, 67, 55, 0.30);
-  --focus: #7A5C28;
-  --focus-halo: rgba(122, 92, 40, 0.18);
-  --gold-fill: linear-gradient(180deg, #8E6D35 0%, #7A5C28 52%, #664A1C 100%);
-  --gold-fill-hover: linear-gradient(180deg, #9A7A40 0%, #84652F 52%, #6E5121 100%);
-  --gold-rule: linear-gradient(90deg, transparent 0%, rgba(122, 92, 40, 0.45) 50%, transparent 100%);
-  --sheen: rgba(255, 250, 238, 0.30);
-  --status-trials-line: rgba(122, 92, 40, 0.50);
-  --glow-accent: 0 0 0 1px rgba(122, 92, 40, 0.24), 0 10px 24px -14px rgba(90, 64, 20, 0.35);
-  --glow-soft: 0 16px 40px -26px rgba(90, 64, 20, 0.30);
-  --glow-text: none;
-  --shadow-1: 0 1px 2px rgba(40, 30, 15, 0.06);
-  --shadow-2: 0 1px 2px rgba(40, 30, 15, 0.05), 0 16px 36px -22px rgba(40, 30, 15, 0.22);
-  --shadow-3: 0 1px 2px rgba(40, 30, 15, 0.06), 0 34px 70px -34px rgba(40, 30, 15, 0.32);
-  --stage-bg:
-    radial-gradient(85% 70% at 50% 40%, #FFFDF8 0%, rgba(255, 253, 248, 0) 66%),
-    linear-gradient(180deg, #F4EFE6 0%, #E9E2D4 100%);
-  --grid-line: rgba(40, 32, 20, 0.035);
-  --skeleton-a: rgba(40, 32, 20, 0.05);
-  --skeleton-b: rgba(40, 32, 20, 0.09);
-  --scrim: rgba(246, 242, 234, 0.84);
-}
-
-/* Pin a subtree to the dark palette regardless of theme (the cinematic intro, the preloader). */
+:root[data-theme="dark"],
 .force-dark {
   color-scheme: dark;
-  --bg: #0A0A0B;
-  --bg-2: #111012;
-  --surface: #151417;
-  --surface-2: #1C1A1E;
-  --surface-3: #232026;
-  --surface-glass: rgba(12, 11, 13, 0.78);
-  --line: rgba(232, 220, 196, 0.12);
-  --line-strong: rgba(232, 220, 196, 0.24);
-  --line-faint: rgba(232, 220, 196, 0.06);
-  --text: #F3EEE6;
-  --text-2: #D9D2C5;
-  --muted: #A39C8F;
-  --accent: #C8A96A;
-  --accent-2: #E6D3A3;
-  --accent-ink: #1A1408;
-  --accent-soft: rgba(200, 169, 106, 0.09);
-  --accent-line: rgba(200, 169, 106, 0.42);
-  --artery: #C4524A;
-  --vein: #5B7DB8;
-  --drug: #F1DDA8;
-  --warn: #D9A05B;
-  --warn-soft: rgba(217, 160, 91, 0.09);
-  --warn-line: rgba(217, 160, 91, 0.40);
-  --danger: #E06A5F;
-  --danger-soft: rgba(224, 106, 95, 0.09);
-  --danger-line: rgba(224, 106, 95, 0.45);
-  --neutral: #CFC7B8;
-  --neutral-soft: rgba(207, 199, 184, 0.07);
-  --neutral-line: rgba(207, 199, 184, 0.28);
-  --focus: #E6D3A3;
-  --focus-halo: rgba(230, 211, 163, 0.20);
-  --gold-fill: linear-gradient(180deg, #E9D7AA 0%, #CDB073 46%, #B39150 100%);
-  --gold-fill-hover: linear-gradient(180deg, #F1E1B9 0%, #D6BB80 46%, #BD9B59 100%);
-  --gold-rule: linear-gradient(90deg, transparent 0%, rgba(200, 169, 106, 0.55) 50%, transparent 100%);
-  --sheen: rgba(255, 248, 230, 0.34);
-  --status-trials-line: rgba(230, 211, 163, 0.55);
-  --glow-accent: 0 0 0 1px rgba(200, 169, 106, 0.28), 0 10px 30px -14px rgba(200, 169, 106, 0.40);
-  --glow-soft: 0 18px 44px -26px rgba(200, 169, 106, 0.32);
+  --bg: #0F0E17;
+  --surface: #17162A;
+  --surface-2: #1F1D35;
+  --line: #2C2A45;
+  --text: #F3F2FA;
+  --muted: #A9A6C4;
+  --primary: #9D8CFF;
+  --on-primary: #17142B;
+  --primary-soft: #2A2550;
+  --info: #7AA2FF;
+  --warn: #F5B454;
+  --warn-bg: #3A2A12;
+  --danger: #FF7A70;
+  --danger-bg: #3D1714;
+  --artery: #FF6369;
+  --vein: #7B93FF;
+  --drug: #B3A4FF;
+  --focus: #B3A4FF;
+  --shadow-ink: 0 0 0;
+  --shadow-1: 0 1px 2px rgb(0 0 0 / 0.4);
+  --shadow-2: 0 1px 2px rgb(0 0 0 / 0.35), 0 10px 28px -14px rgb(0 0 0 / 0.6);
+  --shadow-3: 0 2px 4px rgb(0 0 0 / 0.35), 0 28px 64px -28px rgb(0 0 0 / 0.75);
+  --scrim: rgb(5 4 10 / 0.66);
+}
+.force-light {
+  color-scheme: light;
+  --bg: #F7F6FB;
+  --surface: #FFFFFF;
+  --surface-2: #F0EEF8;
+  --line: #E4E1F0;
+  --text: #17142B;
+  --muted: #5B5873;
+  --primary: #6246EA;
+  --on-primary: #FFFFFF;
+  --primary-soft: #ECE8FF;
+  --info: #2563EB;
+  --warn: #B45309;
+  --warn-bg: #FFF4E5;
+  --danger: #D92D20;
+  --danger-bg: #FDECEA;
+  --artery: #E5484D;
+  --vein: #3E63DD;
+  --drug: #6246EA;
+  --focus: #6246EA;
+  --shadow-ink: 23 20 43;
+  --shadow-1: 0 1px 2px rgb(var(--shadow-ink) / 0.06);
+  --shadow-2: 0 1px 2px rgb(var(--shadow-ink) / 0.05), 0 8px 24px -12px rgb(var(--shadow-ink) / 0.16);
+  --shadow-3: 0 2px 4px rgb(var(--shadow-ink) / 0.05), 0 24px 56px -24px rgb(var(--shadow-ink) / 0.28);
+  --scrim: rgb(23 20 43 / 0.48);
+}
+
+/* ---------- derived tokens and aliases (declared wherever a palette is, so subtrees pinned with
+   .force-dark / .force-light derive from their own base colours) ---------- */
+:root,
+.force-dark,
+.force-light {
+  --bg-2: var(--surface-2);
+  --surface-3: color-mix(in srgb, var(--surface-2) 55%, var(--line));
+  --surface-glass: color-mix(in srgb, var(--surface) 90%, transparent);
+  --line-strong: color-mix(in srgb, var(--line) 55%, var(--muted));
+  --line-faint: color-mix(in srgb, var(--line) 55%, transparent);
+  --text-2: color-mix(in srgb, var(--text) 80%, var(--muted));
+  --primary-hover: color-mix(in srgb, var(--primary) 88%, var(--text));
+  --primary-line: color-mix(in srgb, var(--primary) 38%, transparent);
+  --warn-soft: var(--warn-bg);
+  --warn-line: color-mix(in srgb, var(--warn) 40%, transparent);
+  --danger-soft: var(--danger-bg);
+  --danger-line: color-mix(in srgb, var(--danger) 40%, transparent);
+  --info-soft: color-mix(in srgb, var(--info) 12%, var(--surface));
+  --info-line: color-mix(in srgb, var(--info) 38%, transparent);
+  /* text-safe inks: in the light theme --danger (4.2:1 on --danger-bg) and --warn (4.4:1 on
+     --surface-2) are a touch light for small text, so small text uses these (≥ 5.2:1 everywhere). */
+  --danger-ink: color-mix(in srgb, var(--danger) 85%, var(--text));
+  --warn-ink: color-mix(in srgb, var(--warn) 85%, var(--text));
+  --info-ink: color-mix(in srgb, var(--info) 85%, var(--text));
+  --neutral: var(--muted);
+  --neutral-soft: var(--surface-2);
+  --neutral-line: var(--line);
+  --focus-halo: color-mix(in srgb, var(--focus) 24%, transparent);
+
+  /* aliases kept for modules written against the earlier palettes */
+  --accent: var(--primary);
+  --accent-2: color-mix(in srgb, var(--primary) 70%, var(--surface));
+  --accent-ink: var(--on-primary);
+  --accent-soft: var(--primary-soft);
+  --accent-line: var(--primary-line);
+  --gold-fill: var(--primary);
+  --gold-fill-hover: var(--primary-hover);
+  --gold-rule: linear-gradient(90deg, transparent, var(--line) 20%, var(--line) 80%, transparent);
+  --sheen: transparent;
+  --glow-accent: 0 0 0 1px var(--primary-line);
+  --glow-soft: var(--shadow-2);
   --glow-text: none;
-  --shadow-1: 0 1px 0 rgba(255, 244, 222, 0.035) inset, 0 1px 2px rgba(0, 0, 0, 0.45);
-  --shadow-2: 0 1px 0 rgba(255, 244, 222, 0.04) inset, 0 16px 36px -18px rgba(0, 0, 0, 0.75);
-  --shadow-3: 0 1px 0 rgba(255, 244, 222, 0.05) inset, 0 34px 80px -30px rgba(0, 0, 0, 0.9);
-  --grid-line: rgba(232, 220, 196, 0.03);
-  --skeleton-a: rgba(232, 220, 196, 0.05);
-  --skeleton-b: rgba(232, 220, 196, 0.10);
-  --scrim: rgba(6, 6, 7, 0.74);
+
+  /* status (never green): approved = calm blue, in trials = violet, research chemical = amber */
+  --status-approved: var(--info);
+  --status-approved-soft: var(--info-soft);
+  --status-approved-line: var(--info-line);
+  --status-trials: var(--primary);
+  --status-trials-soft: var(--primary-soft);
+  --status-trials-line: var(--primary-line);
+  --status-research: var(--warn);
+  --status-research-soft: var(--warn-bg);
+  --status-research-line: var(--warn-line);
+
+  --stage-bg:
+    radial-gradient(70% 60% at 50% 42%, var(--surface) 0%, transparent 72%),
+    linear-gradient(180deg, var(--surface-2) 0%, var(--bg) 100%);
+  --grid-line: var(--line-faint);
+  --skeleton-a: var(--surface-2);
+  --skeleton-b: color-mix(in srgb, var(--surface-2) 50%, var(--line));
 }
 
 /* ---------- reduced motion ---------- */
@@ -371,7 +307,7 @@
     --dur-2: 1ms;
     --dur-3: 1ms;
     --dur-4: 1ms;
-    --dur-fade: 120ms;
+    --dur-fade: 100ms;
   }
 }
 :root[data-motion="reduce"] {
@@ -379,10 +315,5 @@
   --dur-2: 1ms;
   --dur-3: 1ms;
   --dur-4: 1ms;
-  --dur-fade: 120ms;
-}
-
-/* Mobile and tablet stage height */
-@media (max-width: 1099.98px) {
-  :root { --stage-h: 62vh; }
+  --dur-fade: 100ms;
 }

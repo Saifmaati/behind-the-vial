@@ -101,42 +101,46 @@ tools/                     dev-only scripts (serve, shot, build-anatomy)
 tests/                     node --test suites
 ```
 
-## DOM contract (ids are stable; foundation creates them)
+## DOM contract (ids are stable; v4 as built)
 
 ```
-#intro                     full-screen intro overlay (role="dialog" aria-modal="false", aria-labelledby="intro-title")
-  #intro-canvas-host       container for intro WebGL canvas
-  #intro-title             h1 "PeptideScope"
-  #intro-enter             primary button → app
+#intro                     full-screen intro overlay (role="dialog" aria-modal="false", aria-labelledby="intro-title",
+                           aria-describedby="intro-safety"); static HTML chapters (.intro-ch[data-ch]), no WebGL
+  #intro-safety            "Education only · Not a seller · Nothing for sale" (top bar, every frame)
   #intro-skip              "Skip intro" button (visible from first frame)
+  #intro-title             h1 "PeptideScope" (end card, with the tagline)
+  #intro-enter             "Start exploring" → app
+  #intro-facts             "Read the facts" → Learn
 #disclaimer                persistent slim bar (always visible, role="note")
-#site-header               header: brand, nav, theme toggle (#theme-toggle)
+#site-header               header: brand + tagline, "Learn" link, theme toggle (#theme-toggle)
 #app (main)
-  #explorer                section: the interactive body
-    #peptide-picker        list of peptide chips (role="radiogroup")
+  #file-notice             shown only when opened as a file (html[data-file])
+  #explorer                section: the 3-step stepper + the 3D body; data-step="peptide|site|play"
+    #explorer-title        h1 "Follow one shot through the body" (focus target after the intro)
+    .stepper-btn[data-goto="peptide|site|play"]
+    #step-peptide / #step-site / #step-play   one step panel visible at a time (headings #step-*-label)
+    #peptide-picker        peptide cards (role="radiogroup"); #peptide-note for coming-soon peptides
     #site-picker           three buttons [data-site="abdomen|thigh|arm"] (role="radiogroup")
-    #play-sequence         "Inject" / "Replay" button
-    #stage-host            3D canvas container (position:relative)
+    #play-sequence         "Watch it happen" / "Watch again" button; #play-hint says why it is disabled
+    #stage-host            3D canvas container (position:relative; a size container named "stage")
       #stage-canvas-host   the <canvas> goes here
       #callout-layer       absolutely positioned HTML labels over the canvas
-      #stage-fallback      shown if WebGL unavailable (hidden otherwise)
-      #stage-loading       loading indicator
-    #narration             aria-live="polite" text: what is happening now
-    #timeline              timeline component host
-    #active-effects        list of side effects active at current time (aria-live="polite")
-  #overview                status, what it is, how it works
-  #pharmacology            onset / peak / clearance, absorption, sites
-  #side-effects            side effect cards grouped by organ
-  #red-flags               call 911 vs see a doctor today
-  #too-much                overdose / too much / unknowable gray-market doses
-  #dose-facts              fixed cited trial dose-arm facts
-  #evidence                evidence strength ladder
-  #claims                  creator claims vs evidence
-  #gray-market             independent vial tests + enforcement
-  #risk-check              warnings-only personal history check
-  #sources                 numbered source list (#src-<id> anchors)
-#site-footer               disclaimer, "Pharmacist review: pending", licenses link
+      #stage-fallback      no WebGL 2 / failed / file: notice plus assets/img/body-poster.webp
+      #stage-loading       loading indicator with real progress
+    #narration             aria-live="polite": one short sentence about what is happening now
+    #timeline              plain-text timeline (time since injection only)
+    #active-effects        side effects at the current time (aria-live="polite")
+  #learn                   Learn: a grid of cards (.learn-item[data-card]) that open native <dialog> panels
+    #dlg-<topic>           panel per card; topics: overview, evidence, pharmacology, side-effects, red-flags,
+                           too-much, gray-market, protect, real-vs-internet, claims, dose-facts, risk-check, sources
+      #overview #evidence #pharmacology #side-effects #red-flags #too-much #gray-market #protect
+      #real-vs-internet #claims #dose-facts #risk-check #sources   the sections inside the panels
+      (#src-<id> anchors in #sources; #protect-if-you-have-one, #protect-real-vs-internet)
+#site-footer               tagline, emergency line, disclaimer, "Pharmacist review: pending", links,
+                           Reduce-motion switch (#motion-toggle), anatomy and photo credits (#credits)
 ```
+
+A link or hash that points inside a panel (`#risk-check`, `#src-…`) opens that panel (main.js).
 
 Routing: `#intro` (default on first visit per session), `#app` and any section
 hash skip the intro. `?peptide=<id>&site=<abdomen|thigh|arm>` preselects.
@@ -272,6 +276,9 @@ stage.scene, stage.camera, stage.renderer, stage.controls
 stage.onFrame(fn(dt, t)) → off            // fn called every rendered frame
 stage.flyTo({ target:[x,y,z], distance, azimuth, elevation, duration })
 stage.setTheme('dark'|'light'); stage.resize(); stage.dispose()
+// v4 render on demand: stage.invalidate(frames = 1) asks for frames; onFrame callbacks return true while
+//   still animating; the loop (its own requestAnimationFrame, not renderer.setAnimationLoop) stops when
+//   nothing changes. stage.running, stage.stats.frames (dev/test); stage.setBloom() is a no-op (no post).
 stage.pick(clientX, clientY, objects) → intersection | null
 stage.project([x,y,z]) → { x, y, visible }   // CSS px relative to host
 // additive: stage.onTheme(fn) → off; stage.setReducedMotion(bool); stage.homeView(); stage.zoom(f);
@@ -324,9 +331,12 @@ export function mountEffects(host, entry) → effects   // listens to time:chang
 effects.dispose(); export function activeEffectIds(sideEffects, state)   // additive
 
 // js/scene/index.js — the only 3D entry point main.js uses
-export async function mountBody(host /* #stage-host */, { reducedMotion, theme, creditHref }) → { dispose() }
+export async function mountBody(host /* #stage-host */, { reducedMotion, theme, creditHref, glb }) → { dispose() }
 //   creditHref: where the in-stage CC BY anatomy credit links (main.js: ASSETS.md on GitHub, #anatomy)
-//   dev/test handle: host.__btvBody (stage, anatomy, vessels, injection, callouts, state)
+//   glb: the male body.glb bytes (ArrayBuffer, or a promise of them) main.js already streamed for its
+//        progress bar; the scene parses them instead of requesting the file a second time (null → it fetches)
+//   also: detailOnZoom (load the close-up model only after a deep zoom), bus, anatomy, assetBase, detail, quality
+//   dev/test handle: host.__psBody (stage, anatomy, vessels, injection, callouts, state)
 //   listens: site:select, sequence:start, time:change, effects:active, organ:focus, risk:change, theme:change, peptide:loaded, motion:change
 //   emits:   site:select (hotspot click), sequence:phase, sequence:done, stage:ready
 
@@ -342,7 +352,9 @@ export function mountRiskCheck(host /* #risk-check .section-body */, entry)     
 //   mounts the risk check; a later mountRiskCheck call replaces it and keeps the citation numbers.
 
 // js/intro.js
-export function mountIntro(host /* #intro */, { reducedMotion, onEnter, onFacts }) → { dispose() }
+export function mountIntro(host /* #intro */, { reducedMotion, onEnter, onFacts, onSkip }) → { dispose(), go(i) }
+//   v4: no WebGL. Turns the static chapters into a scroll-snapped story (one chapter per swipe, wheel step or
+//   key; quick repeated keys add up); reduced motion keeps the plain vertical story. Dev: host.__intro.
 //   dispose() frees every GPU resource, calls forceContextLoss() and removes the canvas, so the
 //   intro's WebGL context is gone before the 3D body mounts (main.js mounts the body after closing).
 ```
@@ -359,7 +371,7 @@ Section markup (foundation writes it; content fills `.section-body`):
 ## Visual language
 
 - Dark default (respects `prefers-color-scheme`, toggle persists in
-  localStorage `btv.theme`). The intro is always dark (cinematic).
+  localStorage `peptidescope.theme`). v4: light is the default and the intro follows the theme.
 - Tokens (`css/tokens.css`): `--bg, --bg-2, --surface, --surface-2, --line,
   --text, --text-2, --muted, --accent (clinical cyan), --accent-2,
   --artery (coral red), --vein (blue), --drug (luminous cyan-white),
@@ -610,3 +622,81 @@ recorded in ASSETS.md with author, source URL and licence; served as WebP
 ## Modesty (kids audience)
 Lifelike skin mode shows tasteful fitted shorts (and a top on the female body);
 glass mode frosts the pelvic region. Anatomy stays educational.
+
+### v4 data: protective sections (same for every peptide)
+`data/protect.js` → `export const PROTECT = {
+  ifYouHaveOne: { intro /* editorial */, steps: [{ title, text, sources, ledger }] },
+  realVsInternet: { intro /* editorial */, rows: [{ aspect, real, internet, sources, ledger }] },
+}` — shown for every peptide (ready or coming soon) by `js/ui/protect.js`.
+Steps never describe using, storing or handling the product; they cover: don't
+use it, tell a trusted adult, talk to a doctor/pharmacist (and when to call 911 /
+Poison Control), and safe disposal (FDA drug take-back, sharps guidance).
+
+---
+
+# v4 as built (integration, 2026-10-08 evening)
+
+Events are unchanged (see the table above, plus `body:change` from the body panel). Additions:
+
+- **3D (js/scene/*)**: render on demand (`stage.invalidate()`, `stage.running`, `stage.stats.frames`; frame
+  callbacks return `true` while animating). `anatomy.loadAtlas()`, `anatomy.detailLoading`,
+  `anatomy.detailLoaded`; `loadAnatomy(stage, { detail: false, glb })`. `vessels.particleCount`,
+  `injection.preload()` (the syringe loads once a site is picked). Side-effect labels appear only after the
+  visitor's own shot or timeline move for the current peptide (reset on `peptide:loaded`).
+- **Body panel (js/ui/bodyeditor.js)**: `mountBodyEditor(host, { view, … })` → panel with `.layers`
+  (replaces `mountLayersPanel`). Shape tab (sex, height, weight, age, skin tone; appearance only) and Layers
+  tab (skin, organs, vessels, skeleton, muscles; real skin ↔ see-through).
+- **Content (js/ui/*)**: a `[data-render]` host may carry `data-part` (`overview`: `what` | `status` | `how`;
+  `protect`: `have-one` | `compare`); a host left empty gets `data-empty="true"` and main.js hides its card.
+  Several citation numbers in a row are wrapped in `.cite-group` (never split across lines).
+  `js/ui/protect.js` renders `data/protect.js` for every peptide.
+- **Shell (js/main.js)**: the stepper (`#explorer[data-step]`), Learn `<dialog>` panels (focus returns to the
+  card), hash/citation links open the panel that holds their target, `?no3d` shows the poster fallback, the
+  3D body mounts only after the intro is gone, and `body.glb` is downloaded once (streamed for the progress
+  bar, then handed to the scene).
+- **Storage keys**: `peptidescope.theme`, `peptidescope.motion` (localStorage), `peptidescope.introSeen`
+  (sessionStorage). Dev/test handles: `#stage-host.__psBody`, `#intro.__intro`.
+
+---
+
+# v4 fix pass (review findings, 2026-10-08 night)
+
+Additive changes from the teen-UX, accessibility, safety, accuracy and performance reviews
+(decisions: docs/decisions/fix.md; assets: docs/assets/fix.md).
+
+- **Events (bus)**: `step:change { step }` (main → scene: the three injection-site markers and labels show
+  only on step 2; afterwards only the chosen site's marker), `intro:near-end {}` (intro → main: the 3D
+  downloads may start; still no WebGL), `stage:context { lost }` (scene → main: Watch waits while the GPU
+  context is lost), `sequence:cancel {}` (main's watchdog → scene drops a sequence that never started).
+  A replayed `peptide:loaded` (main.js re-sending state to the late-mounting scene) carries
+  `replay: true`; the timeline, the side-effect list and the narration ignore replays.
+- **Intro: zero WebGL.** No WebGL context, three.js, scene module or body.glb while `html[data-intro="show"]`;
+  the downloads start at `intro:near-end` or on close; the one WebGL probe runs in `maybeMountBody()`
+  after the intro and is passed on as `mountBody(host, { webgl2: true })` (the scene skips its own).
+  The Learn panels and the timeline render after the intro (`flushContent()`).
+- **Intro DOM**: a persistent `.intro-next` button (+ `#intro-keys` hint) on every chapter but the end card;
+  in the scrolly story only the active chapter's controls are in the Tab order; Enter leaves only on the
+  end card; very short viewports (< 320 px tall) use the plain story. Anatomy stills come per theme
+  (`.intro-pic--light` / `--dark`, switched by `html[data-theme]`); no blood vessels in any intro still.
+- **Explorer**: `.explorer-after` (timeline + side effects) is `hidden` until `sequence:done` for the
+  current peptide, or at once when there is no 3D (fallback). Phones (< 760 px): title, stage (≈ 50svh),
+  stepper, step card, then the rest. `#peptide-picker` is `role="group"`; its radios sit in two
+  radiogroups (ready / coming soon) and the "more peptides" toggle is a sibling button.
+- **Scene APIs (additive)**: `stage.setFrameInset({ right, bottom })` (camera view offset: the body is
+  framed in the part of the stage a side panel leaves free); `anatomy.setSiteMarkers('all'|'chosen'|'none')`,
+  `anatomy.warmVariants(renderer, camera)`, `clearAnatomyCache()` (parsed bodies cached per file);
+  `injection.warm(site)` (compileAsync of every sequence material, both opacity variants, once per site);
+  `callouts.set(id, { …, keep })` (never dropped for space). Labels shown at once: 3 below a 600 px stage,
+  5 below 900 px, else 6; the rest fold into tappable dots (`.ps-callout-mini`). The canvas is
+  `role="application"` with `aria-roledescription="3D body viewer"`. Zoom: `stage.zoom(f > 1)` zooms in.
+- **Body panel**: single-column layouts open it as a sheet under the body (the stage grows by
+  `--be-sheet-h`, capped so body + sheet fit between the header and the disclaimer, body ≥ 240 px; opening
+  scrolls the whole stage into view); the two-column layout keeps a side panel and frames the body beside it.
+- **Docs screenshots**: `node tools/docs-shots.mjs <dev-server-url>` regenerates `docs/screenshots/*.jpg`.
+- **Side effects (js/effects.js)**: compact rows (severity, organ, name, one line on timing, Show) with
+  "Learn more" for how often / why / what helps; the serious ones plus three others, then "Show all N";
+  effects of weeks of repeated use (`isRepeatedUse()` in js/ui/util.js) are not on the one-shot timeline.
+- **Data**: `data/riskitems.js` gains `under-18` (first) and `hintWhenMapped`; catalog entries may carry a
+  warnings-only `risk` map (melanotan II and I); risk warnings may carry `wholeBody: true` (no organ is lit);
+  `data/protect.js` comparison rows may carry `appliesTo: [peptide ids]`. `tools/source-overrides.mjs`
+  drops or patches records when `data/sources.js` is generated (seller pages never ship; `linkWithheld`).

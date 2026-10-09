@@ -55,12 +55,14 @@ export const organOrder = (id) => { const i = ORGANS.indexOf(id); return i < 0 ?
 export const STATUS = {
   approved: { label: 'Approved', tone: 'accent' },
   'approved-abroad': { label: 'Approved outside the US', tone: 'accent' },
+  'approved-narrow': { label: 'Approved for one narrow use', tone: 'accent' },
   'in-trials': { label: 'In trials', tone: 'accent-2' },
   'research-only': { label: 'Research chemical only', tone: 'warn' },
 };
 
 /**
- * Status key for the badge. An "approved" peptide whose status label never affirms a US (FDA)
+ * Status key for the badge. An "approved" peptide approved only for one narrow use shows "Approved for
+ * one narrow use". An "approved" peptide whose status label never affirms a US (FDA)
  * approval, e.g. "Registered as a medicine in Russia" or "Approved in some countries outside the
  * US ...; not FDA-approved", shows "Approved outside the US" instead of a bare "Approved".
  */
@@ -72,7 +74,10 @@ export function statusKey(level, statusLabel = '') {
     .replace(/\bnot\s+(?:been\s+)?(?:part of any\s+)?FDA[-\s]approved(?:\s+medicine)?/gi, '')
     .replace(/\bno\s+FDA[-\s]approved\b[^;,.]*/gi, '')
     .replace(/\bnever\s+FDA[-\s]approved\b/gi, '');
-  return /\bFDA[-\s]approved\b|\bapproved by the (?:US )?FDA\b/i.test(affirmed) ? 'approved' : 'approved-abroad';
+  if (!/\bFDA[-\s]approved\b|\bapproved by the (?:US )?FDA\b/i.test(affirmed)) return 'approved-abroad';
+  // "FDA-approved as Vyleesi, only for …": the badge says the approval is narrow (accuracy review),
+  // so a bare "Approved" never reads as approval of what is sold online
+  return /\bonly\b/i.test(label) ? 'approved-narrow' : 'approved';
 }
 export const SEVERITY = {
   common: { label: 'Common', tone: 'neutral', hint: 'Many people get this.' },
@@ -87,10 +92,24 @@ export const VERDICT = {
 };
 export const EVIDENCE_LEVELS = ['anecdote', 'animal', 'small-human', 'large-trial'];
 export const SITES = [
-  { id: 'abdomen', label: 'Abdomen' },
+  { id: 'abdomen', label: 'Belly', sub: 'Abdomen' },
   { id: 'thigh', label: 'Thigh' },
   { id: 'arm', label: 'Upper arm' },
 ];
+
+// ---- side effects tied to repeated use ----
+/**
+ * True for a side effect that comes with weeks to months of repeated use, not with any one shot
+ * (safety review): its timing window is cumulative and starts two weeks or more after the first shot,
+ * or the data marks it with timing.repeatedUse. These are left off the one-shot timeline under the
+ * body and listed in the Side effects panel as "with repeated use".
+ */
+export function isRepeatedUse(fx) {
+  const t = fx?.timing;
+  if (!t) return false;
+  if (typeof t.repeatedUse === 'boolean') return t.repeatedUse;
+  return !!t.cumulative && Number(t.fromDays) >= 14;
+}
 
 // ---- formatters ----
 /** Humanize a time in days for display ("about 18 hours", "about 5 days", "about 3 weeks"). */
@@ -128,4 +147,44 @@ export function fmtSourceDate(date, note) {
 }
 
 export const plural = (n, one, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
+
+// ---- plain-language helpers (v4: summaries are taken word for word from verified data) ----
+/**
+ * Split text into sentences. Splits after . ! ? when the next sentence starts with a capital,
+ * a digit or an opening quote/bracket; decimals ("42.4%") and "vs." never split.
+ */
+export function sentences(text) {
+  const s = String(text || '').trim();
+  if (!s) return [];
+  const out = [];
+  let start = 0;
+  const re = /[.!?]["”’)]?\s+(?=["“‘(]?[A-Z0-9])/g;
+  let m;
+  while ((m = re.exec(s))) {
+    const end = m.index + m[0].trimEnd().length;
+    const piece = s.slice(start, end).trim();
+    if (/\b(?:vs|e\.g|i\.e|approx|Dr|St|No)\.$/i.test(piece)) continue;
+    out.push(piece);
+    start = re.lastIndex;
+  }
+  const tail = s.slice(start).trim();
+  if (tail) out.push(tail);
+  return out;
+}
+
+/** The first n sentences of a verified text, unchanged. */
+export const firstSentences = (text, n = 1) => sentences(text).slice(0, n).join(' ');
+
+/** "Inflamed pancreas (pancreatitis)" → "inflamed pancreas": a short name for running text. */
+export function shortName(name) {
+  const s = String(name || '').replace(/\s*\([^)]*\)\s*/g, ' ').replace(/\s+/g, ' ').trim();
+  return /^[A-Z][a-z]/.test(s) && !/^[A-Z]{2,}/.test(s) ? s.charAt(0).toLowerCase() + s.slice(1) : s;
+}
+
+/** ['a', 'b', 'c'] → "a, b and c". */
+export function andList(items) {
+  const a = items.filter(Boolean).map(String);
+  if (a.length < 2) return a.join('');
+  return `${a.slice(0, -1).join(', ')} and ${a[a.length - 1]}`;
+}
 

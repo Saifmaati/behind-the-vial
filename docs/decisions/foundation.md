@@ -30,7 +30,7 @@ One line each: decision, then why.
 20. **Dark default palette is blue-black (`#05080c`) with clinical cyan (`#4fd8eb`)**; every text token was checked at ≥ 4.5:1 on all four background tokens in both themes (lowest: light `--artery` 4.81:1 on `--bg-2`).
 21. **Status colours: approved = neutral slate, in trials = cyan, research chemical = amber, danger = red; no green anywhere.** Approved is not an outcome verdict, so it stays neutral.
 22. **`.force-dark` re-declares the dark tokens** so the intro stays cinematic in light mode without duplicating component CSS.
-23. **Motion: `prefers-reduced-motion` or `html[data-motion="reduce"]` collapse durations and animations; `data-motion="full"` lets a visitor opt back in.** The header "Reduce motion" toggle persists in `localStorage btv.motion`.
+23. **Motion: `prefers-reduced-motion` or `html[data-motion="reduce"]` collapse durations and animations; `data-motion="full"` lets a visitor opt back in.** The header "Reduce motion" toggle persists in `localStorage peptidescope.motion`.
 24. **Inter is self-hosted as a Latin subset of the official variable woff2 (opsz + wght, all OpenType features kept)**: 129 KB roman, 142 KB italic (italic only downloads if used). Subset with fonttools in a throwaway venv.
 25. **The intro baseline in `app.css` uses single-class selectors and `stage`/`timeline` host rules use `:where()`**, so `intro.css`, `stage.css` and `timeline.css` override them without specificity fights.
 26. **The stage HUD (corner brackets, hairline rulers, mono labels) uses container queries on `#stage-host`**, so labels drop out based on the stage's own width rather than the viewport.

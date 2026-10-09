@@ -1,4 +1,4 @@
-// PeptideScope: the injection sequence (body3d).
+// PeptideScope: the injection sequence (body).
 // syringe → depot under the skin → slow absorption into capillaries → bloodstream → organs.
 //
 //   const injection = createInjection(stage, anatomy, vessels, { emit, callouts });
@@ -16,6 +16,8 @@
 // Normal motion: ~19 s. Reduced motion: no camera flights and no particle travel; it steps through
 // the end state of each phase with short cross-fades (~2.2 s per phase) and emits the same events.
 import * as THREE from 'three';
+import { OUTPUT_CHUNK } from './stage.js';
+import { PARTICLE_BUDGET } from './vessels.js';
 
 const PHASES = ['syringe', 'depot', 'absorption', 'bloodstream', 'distribution'];
 const DEFAULT_LABELS = {
@@ -33,10 +35,9 @@ const ORGAN_LABEL = {
   kidneys: 'Kidneys', bladder: 'Bladder', skin: 'Skin', fat: 'Fat tissue', injection_site: 'Injection site', muscle: 'Muscle',
   eyes: 'Eyes', blood: 'Bloodstream',
 };
-// Luxury palette: the drug is luminous champagne (dark) or a deep gold ink (light); on organ surfaces
-// a warmer gold so it still reads on pale tissue.
-const DRUG = { dark: 0xf1dda8, light: 0x8f6c2c };
-const ORGAN_DRUG = { dark: 0xe2be72, light: 0x8f6c2c };
+// v4 palette: the drug is violet (#6246EA on the light stage, #B3A4FF on the dark one), on organs too.
+const DRUG = { dark: 0xb3a4ff, light: 0x6246ea };
+const ORGAN_DRUG = { dark: 0xb3a4ff, light: 0x6246ea };
 
 // ------------------------------------------------------------------ tissue block shader
 const BLOCK_VERT = /* glsl */`
@@ -118,6 +119,7 @@ const BLOCK_FRAG = /* glsl */`
     col = mix(col, uDrug * 0.7, clamp(stain * 0.45 + halo * 0.14, 0.0, 0.7));
     col += uDrug * (stain * 0.07 + halo * 0.03) * uGlow;
     gl_FragColor = vec4(col, uOpacity);
+    ${OUTPUT_CHUNK}
   }`;
 
 const CAP_VERT = /* glsl */`
@@ -141,6 +143,7 @@ const CAP_FRAG = /* glsl */`
     vec3 col = base * (0.55 + 0.55 * ndv);
     col = mix(col, uDrug * (0.55 + 0.2 * uGlow), lit * 0.8);
     gl_FragColor = vec4(col, uOpacity);
+    ${OUTPUT_CHUNK}
   }`;
 
 const SEEP_VERT = /* glsl */`
@@ -160,6 +163,7 @@ const SEEP_FRAG = /* glsl */`
     vec2 c = gl_PointCoord * 2.0 - 1.0; float r2 = dot(c, c);
     if (r2 > 1.0) discard;
     gl_FragColor = vec4(uColor * (0.72 + 0.4 * uCore * exp(-r2 * 10.0)), exp(-r2 * 3.2) * vAlpha * 0.8);
+    ${OUTPUT_CHUNK}
   }`;
 
 const DEPOT_FRAG = /* glsl */`
@@ -171,6 +175,7 @@ const DEPOT_FRAG = /* glsl */`
     float shimmer = 0.9 + 0.1 * sin(uTime * 2.0 + vP.x * 900.0 + vP.y * 700.0) * uAnim;
     float a = (0.34 + 0.46 * fr) * uOpacity;
     gl_FragColor = vec4(uColor * (0.5 + 0.55 * fr) * shimmer, a);
+    ${OUTPUT_CHUNK}
   }`;
 const DEPOT_VERT = /* glsl */`
   varying vec3 vN; varying vec3 vV; varying vec3 vP;
@@ -346,7 +351,7 @@ export function createInjection(stage, anatomy, vessels, { emit, callouts } = {}
           syringe = s || standInSyringe(stage.envMap);
           syringe.setCapOn?.(false);
           // Clear-plastic look without transmission: the canvas is transparent, and transmission would
-          // only see opaque objects (it renders as a bright white blade under bloom).
+          // only see opaque objects (it renders as a bright white blade).
           const M = syringe.materials || {};
           for (const k of ['glass', 'hub', 'cap']) {
             const m = M[k];
@@ -359,10 +364,10 @@ export function createInjection(stage, anatomy, vessels, { emit, callouts } = {}
             m.envMapIntensity = 0.7;
             m.needsUpdate = true;
           }
-          // keep the white plastic below the bloom threshold so it reads as plastic, not light
-          if (M.plunger) { M.plunger.envMapIntensity = 0.35; M.plunger.color?.setHex?.(0x9a958c); }
-          if (M.glass) { M.glass.opacity = 0.12; M.glass.envMapIntensity = 0.45; M.glass.color?.setHex?.(0xd2cabb); }
-          if (M.hub) M.hub.color?.setHex?.(0xb4ad9f);
+          // clean white plastic and clear barrel on the light stage (v4)
+          if (M.plunger) { M.plunger.envMapIntensity = 0.5; M.plunger.color?.setHex?.(0xeeeef3); }
+          if (M.glass) { M.glass.opacity = 0.16; M.glass.envMapIntensity = 0.6; M.glass.color?.setHex?.(0xf4f3fa); }
+          if (M.hub) M.hub.color?.setHex?.(0xe2e0ec);
           syringePivot.add(syringe.group);
           // remember material states so the syringe can fade in and out
           syringe.group.traverse((o) => {
@@ -376,7 +381,7 @@ export function createInjection(stage, anatomy, vessels, { emit, callouts } = {}
     }
     return syringeLoad;
   }
-  loadSyringe();
+  // the syringe module loads on demand (first site chosen or first play), not with the scene
   function setSyringeOpacity(o) {
     if (!syringe) return;
     syringePivot.visible = o > 0.005;
@@ -417,8 +422,8 @@ export function createInjection(stage, anatomy, vessels, { emit, callouts } = {}
   const edgeMat = new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0, depthWrite: false });
   const capMat = new THREE.ShaderMaterial({
     uniforms: {
-      uCap: { value: new THREE.Color(0x9a3c48) }, uArt: { value: new THREE.Color(0xc4524a) }, uVen: { value: new THREE.Color(0x5b7db8) },
-      uLymph: { value: new THREE.Color(0xb8ad96) }, uDrug: { value: drugColor }, uFill: { value: 0 }, uOpacity: { value: 0 }, uGlow: { value: 1 },
+      uCap: { value: new THREE.Color(0xc9505a) }, uArt: { value: new THREE.Color(0xe5484d) }, uVen: { value: new THREE.Color(0x3e63dd) },
+      uLymph: { value: new THREE.Color(0xc9c2dc) }, uDrug: { value: drugColor }, uFill: { value: 0 }, uOpacity: { value: 0 }, uGlow: { value: 1 },
     },
     vertexShader: CAP_VERT, fragmentShader: CAP_FRAG, transparent: true,
   });
@@ -426,7 +431,9 @@ export function createInjection(stage, anatomy, vessels, { emit, callouts } = {}
     uniforms: { uColor: { value: drugColor }, uOpacity: { value: 0 }, uTime: { value: 0 }, uAnim: { value: 1 } },
     vertexShader: DEPOT_VERT, fragmentShader: DEPOT_FRAG, transparent: true, depthWrite: false,
   });
-  const SEEP_N = 120, SEEP_TRAIL = 3;
+  // seep particles share the scene's particle budget (vessels.js): 80 × 2 on desktop, 50 × 2 on phones
+  const SEEP_N = stage.quality === 'low' ? 50 : 80, SEEP_TRAIL = 2;
+  void PARTICLE_BUDGET;
   const seepGeo = new THREE.BufferGeometry();
   const seepPos = new Float32Array(SEEP_N * SEEP_TRAIL * 3);
   const seepAlpha = new Float32Array(SEEP_N * SEEP_TRAIL);
@@ -716,10 +723,10 @@ export function createInjection(stage, anatomy, vessels, { emit, callouts } = {}
       }
       const fade = Math.min(1, p.t * 6) * (1 - Math.max(0, (p.t - 0.85) / 0.15));
       for (let k = 0; k < SEEP_TRAIL; k++) {
-        samplePts(route.pts, p.t - k * 0.018, _sp);
+        samplePts(route.pts, p.t - k * 0.022, _sp);
         const o = (b + k) * 3;
         seepPos[o] = _sp.x + p.jx; seepPos[o + 1] = _sp.y + p.jy; seepPos[o + 2] = _sp.z;
-        seepAlpha[b + k] = (seepMode === 'still' ? (k === 0 ? 0.85 : 0) : fade * (1 - k * 0.32)) * seepOpacity;
+        seepAlpha[b + k] = (seepMode === 'still' ? (k === 0 ? 0.85 : 0) : fade * (1 - k * 0.4)) * seepOpacity;
       }
     }
     seepGeo.attributes.position.needsUpdate = true;
@@ -826,7 +833,9 @@ export function createInjection(stage, anatomy, vessels, { emit, callouts } = {}
     if (!on) { callouts.clear('tissue'); return; }
     callouts.set('tissue:skin', { anchor: worldAnchor('skin'), title: 'Skin', text: 'outer layers', tone: 'tissue', group: 'tissue', interactive: false, side: 'below' });
     callouts.set('tissue:fat', { anchor: worldAnchor('fat'), title: 'Fat layer', text: 'under the skin', tone: 'tissue', group: 'tissue', interactive: false, side: 'below' });
-    callouts.set('tissue:muscle', { anchor: worldAnchor('muscle'), title: 'Muscle', text: 'deeper layer', tone: 'tissue', group: 'tissue', interactive: false, side: 'below' });
+    // no "Muscle: deeper layer" label (safety review): the cross-section names only where the drug sits,
+    // never a depth to aim for
+    callouts.remove('tissue:muscle');
   }
   function depotLabel(on) {
     if (!callouts) return;
@@ -854,7 +863,10 @@ export function createInjection(stage, anatomy, vessels, { emit, callouts } = {}
     arrivalFades.push({ organ, start: clock, from: 1.6, to: ARRIVAL_REST, dur: 2.2 });
     if (callouts) {
       const t = peptide?.targets?.find?.((x) => x.organ === organ);
-      const rec = t?.receptors?.length ? `${t.receptors.join(' + ')} receptors` : 'drug arrives';
+      // the plain effect ("Eating less", "Slower emptying"): the first sentence of the cited target text;
+      // the receptor names stay in "How it works" (teen-ux review)
+      const lead = String(t?.effect || '').match(/^.*?[.!?](?=\s|$)/)?.[0]?.replace(/[.!?]$/, '');
+      const rec = lead || 'drug arrives';
       const out = arrivalAnchors[organ] || (arrivalAnchors[organ] = new THREE.Vector3());
       callouts.set(`arrival:${organ}`, {
         // a function, so the label follows the body if it is edited while the label still shows
@@ -919,6 +931,7 @@ export function createInjection(stage, anatomy, vessels, { emit, callouts } = {}
     const wasPlaying = playing;
     playing = false;
     current = null;
+    stage.invalidate?.();
     if (resolvePlay) { const r = resolvePlay; resolvePlay = null; r({ cancelled: wasPlaying }); }
   }
 
@@ -958,13 +971,13 @@ export function createInjection(stage, anatomy, vessels, { emit, callouts } = {}
     anatomy.setHotspotsVisible(false);
     const done = new Promise((res) => { resolvePlay = res; });
     tl = stage.reducedMotion ? buildReducedTimeline(current) : buildTimeline(current);
+    stage.invalidate?.();
     return done;
   }
 
   // ~19 s. Times in seconds.
   function buildTimeline({ site, peptide, copy, targets, hasLymph }) {
     const T = makeTimeline();
-    const { tip } = blockDims;
     syringe.setPlunger(0.34);
     syringe.setLiquid(0.34);
     placeSyringe(site, SYR_APPROACH + 0.012);
@@ -978,18 +991,15 @@ export function createInjection(stage, anatomy, vessels, { emit, callouts } = {}
     T.at(1.3, () => tissueLabels(true));
     // the syringe arrives along the skin normal, lined up with the section plane
     T.track(1.1, 1.8, (k) => { placeSyringe(site, SYR_APPROACH + 0.012 * (1 - easeOut(k))); setSyringeOpacity(easeOut(k)); });
-    // insertion: through the skin and the dermis, stopping in the fat
-    T.track(1.95, 3.0, (k) => placeSyringe(site, SYR_APPROACH - (SYR_APPROACH + tip) * easeInOut(k)));
-    // the plunger goes down and the depot grows at the needle tip
-    T.track(3.15, 4.6, (k) => {
-      const e = easeInOut(k);
-      syringe.setPlunger(0.34 * (1 - e));
-      setDepot(easeOut(k));
+    // safety review: the syringe moves toward the skin and FADES OUT as it reaches it; the needle is
+    // never shown in the tissue and no depth is shown. The depot then forms in the fat layer.
+    T.track(1.95, 2.7, (k) => {
+      placeSyringe(site, SYR_APPROACH * (1 - 0.85 * easeInOut(k)));
+      setSyringeOpacity(1 - easeInOut(k));
     });
+    T.at(2.75, () => { setSyringeOpacity(0); syringePivot.visible = false; });
+    T.track(3.15, 4.6, (k) => setDepot(easeOut(k)));
     T.at(4.7, () => { emitPhase('depot', copy, 2); depotLabel(true); });
-    // withdraw along the same line
-    T.track(5.0, 5.9, (k) => placeSyringe(site, -tip + (SYR_APPROACH + tip + 0.02) * easeInOut(k)));
-    T.track(5.45, 6.0, (k) => setSyringeOpacity(1 - k));
     T.at(6.3, () => {
       emitPhase('absorption', copy, 3);
       depotLabel(false);
@@ -1030,11 +1040,11 @@ export function createInjection(stage, anatomy, vessels, { emit, callouts } = {}
   // Reduced motion: no flights and no particle travel; each phase is its end state, cross-faded.
   function buildReducedTimeline({ site, peptide, copy, targets, hasLymph }) {
     const T = makeTimeline();
-    const { tip } = blockDims;
     const XF = 0.35;
     syringe.setPlunger(0.34);
     syringe.setLiquid(0.34);
-    placeSyringe(site, -tip);
+    // outside the skin only, then gone (safety review: never shown in the tissue)
+    placeSyringe(site, SYR_APPROACH + 0.012);
     setSyringeOpacity(0);
     T.at(0, () => {
       emitPhase('syringe', copy, 1);
@@ -1043,8 +1053,9 @@ export function createInjection(stage, anatomy, vessels, { emit, callouts } = {}
       tissueLabels(true);
     });
     T.track(0, XF, (k) => { setBlockOpacity(k); setSyringeOpacity(k); setCut(site, k); });
-    T.at(2.2, () => { emitPhase('depot', copy, 2); depotLabel(true); syringe.setPlunger(0); });
-    T.track(2.2, 2.2 + XF, (k) => { setDepot(k); setSyringeOpacity(1 - k); });
+    T.track(1.4, 1.4 + XF, (k) => setSyringeOpacity(1 - k));
+    T.at(2.2, () => { emitPhase('depot', copy, 2); depotLabel(true); syringePivot.visible = false; });
+    T.track(2.2, 2.2 + XF, (k) => setDepot(k));
     T.at(4.4, () => {
       emitPhase('absorption', copy, 3);
       depotLabel(false); capLabels(true, hasLymph);
@@ -1084,6 +1095,32 @@ export function createInjection(stage, anatomy, vessels, { emit, callouts } = {}
     return T;
   }
 
+  // Shader warm-up (performance review: programs compiled inside render() at each phase change made the
+  // sequence hitch). Once the syringe is in, the tissue block for the chosen site is built (hidden) and
+  // every material in the scene is compiled ahead with compileAsync (KHR_parallel_shader_compile where
+  // available, so it does not block). Runs once per site, never while the sequence plays.
+  let warmedFor = null;
+  let warming = null;
+  function warm(site = 'abdomen') {
+    const r = stage.renderer;
+    if (typeof r?.compileAsync !== 'function') return Promise.resolve();
+    if (warmedFor === site || warming) return warming || Promise.resolve();
+    warming = loadSyringe().then(() => {
+      if (playing) return null;
+      buildBlock(frameFor(site) ? site : 'abdomen', null);
+      // the syringe and the tissue block fade in and out, which switches their materials between an
+      // opaque and a transparent program: compile both. compile() runs synchronously inside
+      // compileAsync, so no frame ever shows these states.
+      const ps = [];
+      setSyringeOpacity(1); setBlockOpacity(1); ps.push(r.compileAsync(stage.scene, stage.camera));
+      setSyringeOpacity(0.5); setBlockOpacity(0.5); ps.push(r.compileAsync(stage.scene, stage.camera));
+      setSyringeOpacity(0); setBlockOpacity(0); syringePivot.visible = false;
+      return Promise.all(ps);
+    }).then(() => { warmedFor = site; }).catch((e) => { console.warn('[injection] shader warm-up failed', e); })
+      .finally(() => { warming = null; });
+    return warming;
+  }
+
   function skip() {
     if (!playing || !current) return;
     const { targets, peptide, copy } = current;
@@ -1096,7 +1133,10 @@ export function createInjection(stage, anatomy, vessels, { emit, callouts } = {}
   }
 
   // ---------------------------------------------------------------- frame
+  // → true while something here still moves (the sequence, seeping particles, arrival glows)
   function update(dt) {
+    const busy = playing || !!tl || seepMode === 'flow' || arrivalFades.length > 0;
+    if (!busy && seepMode === 'off') return false;
     clock += dt;
     if (tl) tl.update(dt);
     depotMat.uniforms.uTime.value = clock;
@@ -1116,6 +1156,7 @@ export function createInjection(stage, anatomy, vessels, { emit, callouts } = {}
       }
       if (k >= 1) arrivalFades.splice(i, 1);
     }
+    return busy;
   }
   const offFrame = stage.onFrame(update);
 
@@ -1127,7 +1168,8 @@ export function createInjection(stage, anatomy, vessels, { emit, callouts } = {}
     seepMat.uniforms.uCore.value = dark ? 1 : 0;
     seepMat.blending = dark ? THREE.AdditiveBlending : THREE.NormalBlending;
     seepMat.needsUpdate = true;
-    edgeMat.color.setHex(dark ? 0xe6d3a3 : 0x2e2920);
+    edgeMat.color.setHex(dark ? 0xb3a4ff : 0x6246ea);
+    stage.invalidate?.();
   }
   const offTheme = stage.onTheme((theme) => {
     applyTheme(theme);
@@ -1139,7 +1181,7 @@ export function createInjection(stage, anatomy, vessels, { emit, callouts } = {}
   applyTheme(stage.theme);
 
   return {
-    play, skip, reset, fadeArrivals,
+    play, skip, reset, fadeArrivals, preload: () => loadSyringe(), warm,
     get playing() { return playing; },
     get phase() { return current?.phase || null; },
     get phaseTime() { return tl ? tl.time : 0; },

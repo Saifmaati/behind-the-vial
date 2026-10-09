@@ -38,7 +38,6 @@ const EJPB = 'european-journal-2024-lymphatic-uptake-lipidated-non';
 const FRONT_LIRA = 'frontiers-endocrinology-2019-discovery-development-liragluti';
 const LILLY_FAQ = 'eli-lilly-2026-what-know-about-retatrutide';
 const LILLY_BLA = 'eli-lilly-2026-lilly-s-triple-agonist-2';
-const LILLY_PROTO_PH2 = 'eli-lilly-2022-protocol-j1i-mc-gzbf';
 const TGA = 'therapeutic-goods-2026-tga-tests-counterfeit-retatrutide';
 const FDA = 'u-s-2026-fda-s-concerns-unapproved';
 const CTG_ACCESS = 'clinicaltrials-gov-2026-clinicaltrials-gov-nct07629401-pre';
@@ -56,7 +55,8 @@ export default {
   name: 'Retatrutide',
   aka: ['LY3437943'],
   developer: 'Eli Lilly',
-  route: 'Weekly injection under the skin, in clinical trials',
+  // fix (safety review): no frequency here; the trial-context sentence in what[] carries the schedule fact.
+  route: 'A shot under the skin, in clinical trials',
 
   status: {
     level: 'in-trials',
@@ -164,8 +164,10 @@ export default {
       {
         id: 'onset',
         tDays: 2 / 24,
-        label: 'Onset',
-        display: 'Within hours',
+        // fix (accuracy review): the 2-hour figure shows only that the drug was found in the blood; the first
+        // measured effects were at about 24 hours (the text below), so this stop is "In the blood".
+        label: 'In the blood',
+        display: 'Within 2 hours (small study)',
         text: 'In a small study of 4 people who injected retatrutide they got on their own, it was found in everyone\'s blood 2 hours after the shot. Lilly\'s early studies already found effects 24 hours after the first shot: fasting insulin was at its highest, the body\'s own glucagon had dropped in the 4.5 mg and 6 mg groups, and the stomach emptied more slowly.',
         sources: [WILEY_USERS, CELL_SAD, BIOMOL, DOM_GE],
         ledger: ['pk-tmax-small-self-injection-study', G + 'sad-insulin-peak', 'pk-onset-glucagon-hormone-24h', 'pk-onset-gastric-emptying-first-dose'],
@@ -183,7 +185,8 @@ export default {
         id: 'halfLife',
         tDays: 7.3,
         label: 'Half-life',
-        display: 'About 6 days',
+        // half-life counts from the peak, not from the shot (ledger checker, claims-12-long-half-life)
+        display: 'About 6 days after the peak',
         text: 'Half-life is how long it takes for the amount in the blood to fall by half. In Lilly\'s first study it averaged about 6 days, and single people ranged from about 4 to 9 days. A 12-week study in people with type 2 diabetes also found about 6 days. A fatty-acid tail makes it stick to albumin, a common blood protein, which shields it from being cleared quickly.',
         sources: [CELL_SAD, LANCET_MAD],
         ledger: [G + 'sad-half-life', G + 'sad-half-life-hours', G + 'mad-half-life-abstract', G + 'albumin-mechanism'],
@@ -199,14 +202,14 @@ export default {
         estimate: true,
       },
       {
+        // fix (safety review): shown only in "How it works", never on the explorer timeline, and with no
+        // schedule or number of weeks: the accumulation fact, nothing a reader could use as a plan.
         id: 'steadyState',
         tDays: 28,
-        label: 'Steady level with weekly shots',
-        display: 'About 4 to 5 weeks (predicted)',
-        text: 'With weekly shots the drug builds up. In Lilly\'s 12-week study in people with type 2 diabetes, one group stayed on the same weekly dose. By week 12, the total drug in their blood over a week was about twice as high as after the first shot (worked out from the study\'s tables). The authors did not report how many weeks it took to level off. Lilly\'s study plan predicted about 4 to 5 weeks, but that was a prediction, not a measurement. For tirzepatide, a related Lilly drug, the FDA label says levels are steady after 4 weeks of weekly shots.',
-        sources: [LANCET_MAD_APP, LANCET_MAD_2, ZEP_LABEL],
-        ledger: [G + 'mad-accumulation-3mg', G + 'mad-steady-state-statement', G + 'protocol-steady-state-4-5-weeks', G + 'class-tirzepatide-steady-state'],
-        estimate: true,
+        label: 'If shots are repeated',
+        text: 'If shots are repeated, the drug builds up in the blood, because some of each shot is still there when the next one arrives. In Lilly\'s 12-week study in people with type 2 diabetes, the total drug in the blood of the group that stayed on one dose was about twice as high at the end of the study as after the first shot (worked out from the study\'s tables).',
+        sources: [LANCET_MAD_APP, LANCET_MAD_2],
+        ledger: [G + 'mad-accumulation-3mg', G + 'mad-steady-state-statement'],
       },
     ],
     sources: [CELL_SAD, LANCET_MAD, LANCET_MAD_2, LANCET_MAD_APP],
@@ -246,9 +249,11 @@ export default {
     ],
     sites: {
       abdomen: {
-        text: 'In Lilly\'s 12-week study and its phase 2 trials, the study plans said every shot was to go into the belly area. So the 12-week study\'s peak and half-life numbers come from planned belly shots, not from the thigh or upper arm.',
-        sources: [LANCET_MAD_APP, LILLY_PROTO_PH2],
-        ledger: [G + 'mad-belly-only', G + 'phase2-belly-only'],
+        // fix (safety review): the protocol instruction ("every shot was to go into…") is left out; only
+        // what it means for the numbers stays.
+        text: 'The peak and half-life numbers from Lilly\'s 12-week study come from shots in the belly area, not from the thigh or upper arm.',
+        sources: [LANCET_MAD_APP],
+        ledger: [G + 'mad-belly-only'],
       },
       thigh: {
         text: 'Lilly ran a study in 85 healthy adults with a high BMI (weight compared with height) to test whether thigh or upper-arm shots get into the blood differently from belly shots. It finished in July 2024, but as of October 2026 no results have been posted, and no published paper was found. For tirzepatide, a related drug, its FDA label says belly, thigh and upper-arm shots gave similar levels in the blood. That is tirzepatide data, not retatrutide.',

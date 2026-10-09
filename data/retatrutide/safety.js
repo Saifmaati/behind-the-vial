@@ -28,7 +28,7 @@ export default {
       },
       {
         sign: "A racing or pounding heart together with chest pain, passing out, trouble breathing, unusual sweating, or feeling dizzy or light-headed",
-        why: "With any of these signs, a racing heart is an emergency. Retatrutide raises resting heart rate. In its phase 2 trial, the rise was bigger at higher doses.",
+        why: "With any of these signs, a racing heart is an emergency. Retatrutide raises heart rate. In its phase 2 trial, the rise was bigger at higher doses.",
         sources: ["u-s-2026-heart-palpitations-medlineplus-medical", "new-england-2023-triple-hormone-receptor-agonist-2"],
         ledger: ["gap-red-flags-us-911-split-palpitations-plus-symptoms-911", "safety-heart-rate-retatrutide"],
       },
@@ -120,7 +120,7 @@ export default {
       },
       {
         sign: "A racing or pounding heart that lasts several minutes, a pulse over 100 beats a minute that is not from exercise, nerves or fever, lots of extra or skipped beats (more than 6 a minute, or 3 or more in a row), or heart flutters that are new or feel different",
-        why: "Drugs in this family can raise your heart rate, even at rest, and retatrutide raises resting heart rate too. The Wegovy guide says to tell your doctor if your heart races or pounds for several minutes. If it comes with chest pain, passing out or trouble breathing, call 911.",
+        why: "Drugs in this family can raise your heart rate, even at rest, and retatrutide raises heart rate too. The Wegovy guide says to tell your doctor if your heart races or pounds for several minutes. If it comes with chest pain, passing out or trouble breathing, call 911.",
         sources: ["novo-nordisk-2026-wegovy-semaglutide-prescribing-information", "u-s-2026-heart-palpitations-medlineplus-medical", "new-england-2023-triple-hormone-receptor-agonist-2"],
         ledger: ["gap-red-flags-us-911-split-wegovy-guide-racing-several-minutes", "gap-red-flags-us-911-split-resting-pulse-over-100-doctor-today", "gap-red-flags-us-911-split-frequent-extra-beats-doctor-today", "gap-red-flags-us-911-split-new-palpitations-doctor-today", "gap-red-flags-us-911-split-palpitations-plus-symptoms-911", "safety-heart-rate-retatrutide"],
       },
@@ -199,11 +199,23 @@ export default {
     ledger: ["safety-retatrutide-not-approved", "gap-red-flags-us-911-split-retatrutide-no-label", "pk-half-life-6-days", "gray-dar-unknowing-dose"],
   },
   risk: {
+    // The audience's own risk (teen review): nobody under 18 was studied. wholeBody: no single organ is
+    // lit on the 3D body for it.
+    "under-18": [
+      {
+        organ: "blood",
+        wholeBody: true,
+        title: "It has never been tested in anyone under 18",
+        text: "The TRIUMPH trials only included adults aged 18 or older, and there are no completed trials of retatrutide in anyone younger, so nobody knows what it does to a growing body.",
+        sources: ["new-england-2026-retatrutide-triple-hormone-receptor-2", "diabetes-obesity-2025-retatrutide-treatment-obesity-obstruct-3"],
+        ledger: ["trials-unknown-adults-only", "gap-personal-history-trial-exclusions-adults-only"],
+      },
+    ],
     "heart-rhythm": [
       {
         organ: "heart",
         title: "It raises your heart rate",
-        text: "Retatrutide raises resting heart rate. In its phase 2 trial, the rise was bigger at higher doses, peaked around week 24, and then came down. A 2026 review put the average rise in that trial at about 3.5 beats a minute more than placebo (a dummy shot). In the larger TRIUMPH-1 trial, in adults with obesity but no diabetes, heart rate was highest at about week 20 in the 9 mg and 12 mg groups.",
+        text: "Retatrutide raises heart rate. In its phase 2 trial, the rise was bigger at higher doses, peaked around week 24, and then came down. A 2026 review put the average rise in that trial at about 3.5 beats a minute more than placebo (a dummy shot). In the larger TRIUMPH-1 trial, in adults with obesity but no diabetes, heart rate was highest at about week 20 in the 9 mg and 12 mg groups.",
         sources: ["new-england-2023-triple-hormone-receptor-agonist-2", "biomed-central-2026-effect-glucagon-like-peptide", "new-england-2026-retatrutide-triple-hormone-receptor-3"],
         ledger: ["safety-heart-rate-retatrutide", "safety-heart-rate-meta-analysis", "gap-phase3-serious-ae-rates-and-heart-rate-t1-pulse-peaked-week20"],
       },

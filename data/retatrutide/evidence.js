@@ -328,43 +328,7 @@ const evidence = {
 };
 
 const claims = [
-  {
-    claim: 'It caused big weight loss in clinical trials.',
-    verdict: 'supported',
-    evidence: 'In the peer-reviewed TRIUMPH-1 trial, the 12 mg group lost 25.0% of their body weight on average over 80 weeks, versus 3.9% on placebo, counting everyone who started. Everyone in the main TRIUMPH trials also got healthy-eating and activity advice.',
-    sources: ['new-england-2026-retatrutide-triple-hormone-receptor-2', 'diabetes-obesity-2025-retatrutide-treatment-obesity-obstruct-2'],
-    ledger: ['claims-1-nejm-everyone-counted', 'claims-8-trials-with-diet'],
-  },
-  {
-    claim: 'You\'ll lose a quarter to almost a third of your body weight.',
-    verdict: 'partly',
-    evidence: 'Those are averages for the highest-dose trial groups, not what each person gets. In TRIUMPH-1\'s 12 mg group the average was 25.0% counting everyone who started, and fewer than half (45.3%) lost 30% or more even when figured as if everyone kept taking the drug. People with type 2 diabetes lost less: 18.8% in TRIUMPH-2\'s 12 mg group.',
-    sources: [
-      'new-england-2026-retatrutide-triple-hormone-receptor-2',
-      'eli-lilly-2026-lilly-s-triple-agonist',
-      'lancet-via-2026-retatrutide-adults-obesity-type',
-    ],
-    ledger: ['claims-1-nejm-everyone-counted', 'claims-1-not-everyone-30', 'claims-1-type2-diabetes-less'],
-  },
-  {
-    claim: 'It keeps or even builds muscle. Only fat comes off.',
-    verdict: 'not-supported',
-    evidence: 'In a small body-scan study of 103 people with type 2 diabetes, lean tissue (which includes muscle) was lost along with fat, in about the same share as with other obesity treatments. No retatrutide trial has shown it builds muscle.',
-    sources: ['lancet-diabetes-2025-effects-retatrutide-body-composition'],
-    ledger: ['claims-2-lean-mass-also-lost', 'claims-2-small-diabetes-only-sample'],
-  },
-  {
-    claim: 'It works better than Ozempic or Mounjaro, with fewer side effects.',
-    verdict: 'not-supported',
-    evidence: 'No finished final-stage trial has compared them head to head, and the trial against tirzepatide (Mounjaro) is still running. Side effects were common: in TRIUMPH-1, 42.4% of the 12 mg group had nausea versus 14.8% on placebo, and a 2026 analysis that pooled 58 trials found people stopped retatrutide because of side effects more often than several other weight-loss drugs (low-certainty evidence).',
-    sources: [
-      'eli-lilly-2026-how-does-retatrutide-compare',
-      'clinicaltrials-gov-2026-study-retatrutide-ly3437943-compared',
-      'eli-lilly-2026-lilly-s-triple-agonist',
-      'bmj-medicine-2026-comparative-efficacy-safety-glucagon',
-    ],
-    ledger: ['claims-3-no-head-to-head', 'claims-3-triumph5-pending', 'claims-3-gi-rates-triumph1', 'claims-3-nma-more-dropouts'],
-  },
+  // fix (safety review): the safety and legality checks come first; the weight-loss claims follow.
   {
     claim: 'It\'s safe because it\'s in phase 3. It\'s basically approved.',
     verdict: 'not-supported',
@@ -391,8 +355,8 @@ const claims = [
     claim: 'It\'s legal as long as it\'s labeled "for research use".',
     verdict: 'not-supported',
     evidence: 'The FDA says companies selling it labeled "for research purposes" or "not for human consumption" are selling it illegally. Lilly says it is legally available only through its clinical trials; the one narrow exception is a Lilly program that a doctor can request for certain adults with severe obesity who can\'t join a trial.',
-    sources: ['u-s-2026-fda-s-concerns-unapproved-2', 'eli-lilly-2026-lilly-s-triple-agonist'],
-    ledger: ['claims-11-fda-falsely-labeled', 'claims-11-lilly-only-trials'],
+    sources: ['u-s-2026-fda-s-concerns-unapproved-2', 'eli-lilly-2026-lilly-s-triple-agonist', 'clinicaltrials-gov-2026-clinicaltrials-gov-nct07629401-pre'],
+    ledger: ['claims-11-fda-falsely-labeled', 'claims-11-lilly-only-trials', 'pk-regulatory-expanded-access'],
   },
   {
     claim: 'It\'s natural, just a peptide, so it\'s gentle.',
@@ -416,9 +380,57 @@ const claims = [
   {
     claim: 'Microdosing it boosts energy, longevity and anti-aging.',
     verdict: 'not-supported',
-    evidence: 'None of the 35 retatrutide studies on ClinicalTrials.gov tests longevity or anti-aging, and the biggest finished weight-loss trial tested set doses, not tiny "microdoses". Experts reviewing microdosing of drugs like semaglutide and tirzepatide say good-quality evidence for it is essentially absent.',
+    evidence: 'No registered retatrutide study tests longevity or anti-aging, and the biggest finished weight-loss trial tested set doses, not tiny "microdoses". Experts reviewing microdosing of drugs like semaglutide and tirzepatide say good-quality evidence for it is essentially absent.',
     sources: ['new-england-2026-retatrutide-triple-hormone-receptor-2', 'expert-opinion-2026-considerations-challenges-microdosing-gl'],
     ledger: ['claims-6-trials-tested-weight-not-aging', 'claims-6-microdosing-evidence-absent'],
+  },
+  {
+    claim: 'It keeps or even builds muscle. Only fat comes off.',
+    verdict: 'not-supported',
+    evidence: 'In a small body-scan study of 103 people with type 2 diabetes, lean tissue (which includes muscle) was lost along with fat, in about the same share as with other obesity treatments. No retatrutide trial has shown it builds muscle.',
+    sources: ['lancet-diabetes-2025-effects-retatrutide-body-composition'],
+    ledger: ['claims-2-lean-mass-also-lost', 'claims-2-small-diabetes-only-sample'],
+  },
+  {
+    claim: 'It works better than Ozempic or Mounjaro, with fewer side effects.',
+    verdict: 'not-supported',
+    evidence: 'No finished final-stage trial has compared them head to head, and the trial against tirzepatide (Mounjaro) is still running. Side effects were common: in TRIUMPH-1, 42.4% of the 12 mg group had nausea versus 14.8% on placebo, and a 2026 analysis that pooled 58 trials found people stopped retatrutide because of side effects more often than several other weight-loss drugs (low-certainty evidence).',
+    sources: [
+      'eli-lilly-2026-how-does-retatrutide-compare',
+      'clinicaltrials-gov-2026-study-retatrutide-ly3437943-compared',
+      'eli-lilly-2026-lilly-s-triple-agonist',
+      'bmj-medicine-2026-comparative-efficacy-safety-glucagon',
+    ],
+    ledger: ['claims-3-no-head-to-head', 'claims-3-triumph5-pending', 'claims-3-gi-rates-triumph1', 'claims-3-nma-more-dropouts'],
+  },
+  {
+    claim: 'The glucagon part burns fat, so you don\'t need to diet.',
+    verdict: 'not-supported',
+    evidence: 'The extra calorie-burning was shown in mice, and Lilly\'s study of calories burned in people has not posted results. In the four main TRIUMPH trials, everyone got healthy-eating and activity advice along with the drug or placebo.',
+    sources: [
+      'cell-metabolism-2022-ly3437943-novel-triple-glucagon',
+      'clinicaltrials-gov-2025-effect-ly3437943-placebo-calorie',
+      'diabetes-obesity-2025-retatrutide-treatment-obesity-obstruct-2',
+    ],
+    ledger: ['claims-8-energy-burn-in-mice', 'claims-8-human-burn-study-unreported', 'claims-8-trials-with-diet'],
+  },
+  {
+    claim: 'It caused big weight loss in clinical trials.',
+    verdict: 'supported',
+    evidence: 'In the peer-reviewed TRIUMPH-1 trial, the 12 mg group lost 25.0% of their body weight on average over 80 weeks, versus 3.9% on placebo, counting everyone who started. Everyone in the main TRIUMPH trials also got healthy-eating and activity advice. These results are in adults, in a supervised trial, with the real product, not an internet vial.',
+    sources: ['new-england-2026-retatrutide-triple-hormone-receptor-2', 'diabetes-obesity-2025-retatrutide-treatment-obesity-obstruct-2'],
+    ledger: ['claims-1-nejm-everyone-counted', 'claims-8-trials-with-diet'],
+  },
+  {
+    claim: 'You\'ll lose a quarter to almost a third of your body weight.',
+    verdict: 'partly',
+    evidence: 'Those are averages for the highest-dose trial groups, not what each person gets. In TRIUMPH-1\'s 12 mg group the average was 25.0% counting everyone who started, and fewer than half (45.3%) lost 30% or more even when figured as if everyone kept taking the drug. People with type 2 diabetes lost less: 18.8% in TRIUMPH-2\'s 12 mg group.',
+    sources: [
+      'new-england-2026-retatrutide-triple-hormone-receptor-2',
+      'eli-lilly-2026-lilly-s-triple-agonist',
+      'lancet-via-2026-retatrutide-adults-obesity-type',
+    ],
+    ledger: ['claims-1-nejm-everyone-counted', 'claims-1-not-everyone-30', 'claims-1-type2-diabetes-less'],
   },
   {
     claim: 'It reverses fatty liver.',
@@ -433,17 +445,6 @@ const claims = [
     evidence: 'The knee results come only from adults with excess weight and knee arthritis, and their pain also dropped a lot on placebo (by about 40% in Lilly\'s knee trial). In the peer-reviewed TRIUMPH-1 knee group, the extra benefit over placebo was about 1.6 to 1.8 points on a 10-point pain scale.',
     sources: ['eli-lilly-2025-lilly-s-triple-agonist', 'new-england-2026-retatrutide-triple-hormone-receptor-2'],
     ledger: ['claims-10-who-was-studied', 'claims-10-placebo-improved-too', 'claims-10-nejm-difference'],
-  },
-  {
-    claim: 'The glucagon part burns fat, so you don\'t need to diet.',
-    verdict: 'not-supported',
-    evidence: 'The extra calorie-burning was shown in mice, and Lilly\'s study of calories burned in people has not posted results. In the four main TRIUMPH trials, everyone got healthy-eating and activity advice along with the drug or placebo.',
-    sources: [
-      'cell-metabolism-2022-ly3437943-novel-triple-glucagon',
-      'clinicaltrials-gov-2025-effect-ly3437943-placebo-calorie',
-      'diabetes-obesity-2025-retatrutide-treatment-obesity-obstruct-2',
-    ],
-    ledger: ['claims-8-energy-burn-in-mice', 'claims-8-human-burn-study-unreported', 'claims-8-trials-with-diet'],
   },
   {
     claim: 'The weight stays off after you stop.',

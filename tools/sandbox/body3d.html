@@ -5,42 +5,46 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <link rel="icon" href="data:,">
 <title>Body3D Sandbox</title>
-<!-- Dev-only harness for js/scene/* (body3d). Simulates the bus: sites, sequence, time, effects, risk, focus, theme.
+<!-- Dev-only harness for js/scene/* (body). Simulates the bus: sites, sequence, time, effects, risk, focus, theme.
      Query: ?anatomy=procedural|auto  ?theme=light|dark  ?site=abdomen|thigh|arm  ?rm=1 (reduced motion)
             ?speed=N (scales scene time; headless SwiftShader renders at a few fps and dt is clamped)
             ?assets=/tools/.cache/body3d-glbtest/ (load body.glb + landmarks.json from another folder)
             Editable body (appearance only): ?sex=male|female&h=<cm>&w=<kg>&age=<years>&tone=tone-1..6 (applied before mount),
             and the "Body" button in the stage.
             Lifelike view (v3): ?xray=0..1 (0 lifelike, 1 glass)  ?detail=<detail glb path>  ?atlas=<atlas json path>
-            ?quality=high|low  ?poster=1 (hides the harness bars for the fallback still) -->
+            ?quality=high|low  ?poster=1 (hides the harness bars for the fallback still and the intro stills)
+            ?nodetail=1 (never fetch the detail model)  -->
 <script type="importmap">
 { "imports": { "three": "/vendor/three/three.module.min.js", "three/addons/": "/vendor/three/addons/" } }
 </script>
 <script>
   (function () {
     var q = new URLSearchParams(location.search);
-    var t = q.get('theme') || (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+    var t = q.get('theme') || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
     document.documentElement.dataset.theme = t;
     if (q.get('rm') === '1') document.documentElement.dataset.motion = 'reduce';
     if (q.get('poster') === '1') document.documentElement.classList.add('poster');
   })();
 </script>
-<link rel="stylesheet" href="/css/tokens.css">
-<link rel="stylesheet" href="/css/app.css">
 <link rel="stylesheet" href="/css/stage.css">
 <style>
-  html, body { margin: 0; background: var(--bg); color: var(--text); font-family: var(--font-sans); }
+  html { --sb-bg: #f7f6fb; --sb-text: #17142b; --sb-muted: #5b5873; --sb-line: #e4e1f0; --sb-surface: #fff; }
+  html[data-theme="dark"] { --sb-bg: #0f0e17; --sb-text: #f3f2fa; --sb-muted: #a9a6c4; --sb-line: #2c2a45; --sb-surface: #17162a; }
+  html, body { margin: 0; background: var(--sb-bg); color: var(--sb-text); font-family: system-ui, sans-serif; }
   .sb { display: grid; gap: 10px; padding: 12px 16px 16px; max-width: 1180px; margin: 0 auto; }
-  .sb-bar { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; font-size: 0.78rem; }
-  .sb-bar b { font-weight: 600; color: var(--text-2); margin-right: 4px; font-size: 0.7rem; letter-spacing: 0.1em; text-transform: uppercase; }
-  .sb-bar button { font: inherit; padding: 6px 10px; border-radius: 6px; border: 1px solid var(--line-strong); background: var(--surface); color: var(--text); cursor: pointer; }
-  .sb-bar button[aria-pressed="true"] { border-color: var(--accent); color: var(--accent); }
+  .sb-bar { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; font-size: 0.8rem; }
+  .sb-bar b { font-weight: 700; color: var(--sb-muted); margin-right: 4px; font-size: 0.74rem; }
+  .sb-bar button { font: inherit; padding: 6px 10px; border-radius: 999px; border: 1px solid var(--sb-line); background: var(--sb-surface); color: var(--sb-text); cursor: pointer; }
+  .sb-bar button[aria-pressed="true"] { border-color: #6246ea; color: #6246ea; }
   .sb-bar input[type=range] { width: 200px; }
-  .sb-log { font: 0.72rem/1.4 var(--font-mono); color: var(--muted); min-height: 1.4em; }
-  #stage-host { height: min(76vh, 760px); }
+  .sb-log { font: 0.74rem/1.4 ui-monospace, monospace; color: var(--sb-muted); min-height: 1.4em; }
+  #stage-host { position: relative; height: min(76vh, 760px); border-radius: 24px; overflow: hidden; border: 1px solid var(--sb-line); container-type: inline-size; container-name: stage; }
+  #stage-canvas-host, #callout-layer { position: absolute; inset: 0; }
+  #callout-layer { pointer-events: none; }
   html.poster .sb-bar, html.poster .sb-log { display: none; }
   html.poster .sb { padding: 0; max-width: none; }
-  html.poster #stage-host { height: 100vh; border-radius: 0; }
+  html.poster #stage-host { height: 100vh; border-radius: 0; border: 0; }
+  html.poster .stage-tools, html.poster .stage-panel-btns, html.poster .stage-hint, html.poster .stage-credit, html.poster .stage-legend, html.poster #callout-layer { display: none !important; }
   @media (max-width: 600px) { .sb { padding: 8px 12px 12px; } #stage-host { height: 62vh; } .sb-bar button { padding: 5px 8px; } }
 </style>
 </head>
@@ -50,6 +54,7 @@
     <button data-site="abdomen">Abdomen</button><button data-site="thigh">Thigh</button><button data-site="arm">Upper arm</button>
     <button id="inject">Inject</button><button id="skip">Skip</button>
     <button id="theme">Theme</button>
+    <button id="stats">Stats</button>
   </div>
   <div class="sb-bar"><b>Body (test)</b>
     <button data-body='{"sex":"male","heightCm":175,"weightKg":75,"age":35}'>Default</button>
@@ -64,6 +69,7 @@
     <button data-view='{"xray":1}'>Glass</button>
     <button data-view='{"layers":{"skin":false,"organs":true,"vessels":true,"skeleton":true}}'>No skin</button>
     <button data-view='{"layers":{"skin":true,"organs":true,"vessels":true,"skeleton":true}}'>All layers</button>
+    <button data-view='{"layers":{"skin":true,"organs":true,"vessels":true,"skeleton":false}}'>Default layers</button>
   </div>
   <div class="sb-bar"><b>Time (test)</b><input id="time" type="range" min="0" max="22" step="0.05" value="0" aria-label="Time since injection, days (test harness)"><span id="time-out">0 d</span>
     <button id="fx">Effects</button><button id="risk">Risk</button><button id="focus">Focus liver</button><button id="clear">Clear</button>
@@ -80,7 +86,7 @@
       <span class="hud-label hud-label--br">Site <span id="hud-site">not set</span></span>
     </div>
     <div id="callout-layer" class="callout-layer"></div>
-    <div id="stage-loading" class="stage-loading" role="status"><span class="loader" aria-hidden="true"><span></span></span><span class="stage-loading-text">Preparing the 3D body…</span></div>
+    <div id="stage-loading" class="stage-loading" role="status" style="position:absolute;left:16px;top:16px"><span class="stage-loading-text">Preparing the 3D body…</span></div>
     <div id="stage-fallback" class="stage-fallback" hidden><div class="stage-fallback-inner"><p class="stage-fallback-title">The 3D view isn’t available here</p></div></div>
   </div>
   <div class="sb-log" id="log" aria-live="polite"></div>
@@ -103,7 +109,7 @@
   const body = await mountBody(host, {
     bus, theme: html.dataset.theme, reducedMotion: html.dataset.motion === 'reduce' || matchMedia('(prefers-reduced-motion: reduce)').matches,
     anatomy: q.get('anatomy') || 'auto', assetBase: q.get('assets') || undefined, creditHref: '/ASSETS.md',
-    detail: q.get('detail') || q.get('atlas') ? { glb: q.get('detail') || undefined, atlas: q.get('atlas') || undefined } : undefined,
+    detail: q.get('nodetail') === '1' ? false : q.get('detail') || q.get('atlas') ? { glb: q.get('detail') || undefined, atlas: q.get('atlas') || undefined } : undefined,
     quality: q.get('quality') || undefined,
   });
   // the view as a visitor would set it in the Layers panel (sync the panel too)
@@ -111,8 +117,19 @@
     const cur = body.view;
     const next = { layers: { ...cur.layers, ...(v.layers || {}) }, xray: Number.isFinite(v.xray) ? v.xray : cur.xray };
     body.layers.sync(next);
-    body.layers.elements.panel.querySelector('input[type=range]').dispatchEvent(new Event('change'));
+    body.layers.elements.slider.dispatchEvent(new Event('change'));
   };
+  // work per frame: draw calls, triangles and point sprites for one frame, and whether the loop is idle
+  const stats = () => {
+    const st = body.stage, r = st.renderer;
+    r.info.autoReset = false; r.info.reset();
+    st.renderOnce();
+    const out = { calls: r.info.render.calls, triangles: r.info.render.triangles, points: r.info.render.points, programs: r.info.programs?.length,
+      pixelRatio: r.getPixelRatio(), running: st.running, frames: st.stats.frames, particles: body.vessels.particleCount };
+    r.info.autoReset = true;
+    return out;
+  };
+  $('#stats').addEventListener('click', () => log(JSON.stringify(stats())));
   if (q.get('xray') != null) setView({ xray: Number(q.get('xray')) });
   if (q.get('speed')) body.stage.timeScale = Number(q.get('speed')) || 1;
   host.dataset.state = 'ready';
@@ -137,7 +154,7 @@
   $('#inject').addEventListener('click', () => bus.emit('sequence:start', { site: site || 'abdomen', peptideId: entry?.id }));
   $('#skip').addEventListener('click', () => body.injection.skip());
   $('#theme').addEventListener('click', () => {
-    const t = html.dataset.theme === 'light' ? 'dark' : 'light';
+    const t = html.dataset.theme === 'dark' ? 'light' : 'dark';
     html.dataset.theme = t;
     bus.emit('theme:change', { theme: t });
   });
@@ -176,7 +193,7 @@
     bus.emit('effects:active', { ids: [], items: [] }); bus.emit('risk:change', { items: [], warnings: [] });
     body.stage.homeView();
   });
-  window.__sb = { bus, body, entry, setTime, mountMs, setView, emit: (t, d) => bus.emit(t, d) };
+  window.__sb = { bus, body, entry, setTime, mountMs, setView, stats, emit: (t, d) => bus.emit(t, d) };
   if (site) bus.emit('site:select', { site });
   html.classList.add('sb-ready');
   log(`ready · anatomy: ${body.anatomy.source} · mount ${mountMs} ms`);

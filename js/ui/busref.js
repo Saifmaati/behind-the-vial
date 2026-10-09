@@ -11,7 +11,7 @@ try {
 }
 
 if (!bus || typeof bus.on !== 'function' || typeof bus.emit !== 'function') {
-  bus = globalThis.__btvFallbackBus || (globalThis.__btvFallbackBus = (() => {
+  bus = globalThis.__psFallbackBus || (globalThis.__psFallbackBus = (() => {
     const map = new Map();
     return {
       on(type, fn) {

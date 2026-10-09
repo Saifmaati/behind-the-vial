@@ -35,7 +35,9 @@
    "safety-unknown-strength-lilly-mhra",
    "gray-core-lilly-faq-contents",
    "gap-pk-peak-and-steady-state-primary-not-approved-no-label",
-   "gap-gray-contaminant-sterility-data-lilly-contaminant-warning"
+   "gap-gray-contaminant-sterility-data-lilly-contaminant-warning",
+   "protect-real-11",
+   "protect-real-12"
   ]
  },
  {
@@ -617,7 +619,13 @@
    "gray-fda-cannot-compound",
    "gray-fda-ruo-falsely-labeled",
    "gray-core-fda-unknown-quality",
-   "gray-core-fda-online-contents"
+   "gray-core-fda-online-contents",
+   "protect-real-04",
+   "protect-real-05",
+   "protect-real-06",
+   "protect-real-07",
+   "protect-real-10",
+   "protect-real-15"
   ]
  },
  {
@@ -940,7 +948,9 @@
    "gap-surgery-pregnancy-practical-guidance-mhra-public-tell-team",
    "gap-surgery-pregnancy-practical-guidance-mhra-washout-table",
    "gap-surgery-pregnancy-practical-guidance-mhra-oc-barrier-tirzepatide",
-   "gap-surgery-pregnancy-practical-guidance-inference-pregnancy-timeline"
+   "gap-surgery-pregnancy-practical-guidance-inference-pregnancy-timeline",
+   "protect-real-16",
+   "protect-real-17"
   ]
  },
  {
@@ -1388,7 +1398,8 @@
   "type": "regulator",
   "usedBy": [
    "gray-core-mhra-no-guarantee",
-   "claims-11-mhra-uk-illegal"
+   "claims-11-mhra-uk-illegal",
+   "protect-real-18"
   ]
  },
  {
@@ -3051,6 +3062,219 @@
   "type": "nonprofit",
   "usedBy": [
    "gap-gray-contaminant-sterility-data-apc-no-peptide-advisory"
+  ]
+ },
+ {
+  "id": "u-s-2024-disposal-unused-medicines-what",
+  "title": "Disposal of Unused Medicines: What You Should Know",
+  "publisher": "U.S. Food and Drug Administration (FDA)",
+  "url": "https://www.fda.gov/drugs/safe-disposal-medicines/disposal-unused-medicines-what-you-should-know",
+  "date": "2024-10-31 (content current as of)",
+  "type": "regulator",
+  "usedBy": [
+   "protect-dispose-01",
+   "protect-dispose-04",
+   "protect-dispose-08",
+   "protect-dispose-09"
+  ]
+ },
+ {
+  "id": "u-s-2024-drug-disposal-drug-take",
+  "title": "Drug Disposal: Drug Take-Back Options",
+  "publisher": "U.S. Food and Drug Administration (FDA)",
+  "url": "https://www.fda.gov/drugs/disposal-unused-medicines-what-you-should-know/drug-disposal-drug-take-back-locations",
+  "date": "2024-10-31 (content current as of)",
+  "type": "regulator",
+  "usedBy": [
+   "protect-dispose-02",
+   "protect-dispose-03"
+  ]
+ },
+ {
+  "id": "u-s-2026-national-prescription-drug-take",
+  "title": "National Prescription Drug Take Back Day",
+  "publisher": "U.S. Drug Enforcement Administration (DEA), Diversion Control Division",
+  "url": "https://www.deadiversion.usdoj.gov/drug_disposal/takeback/takeback.html",
+  "date": "Undated page announcing the 2026-10-24 event (accessed 2026-10-08)",
+  "type": "regulator",
+  "usedBy": [
+   "protect-dispose-05",
+   "protect-dispose-07"
+  ]
+ },
+ {
+  "id": "u-s-2026-what-do-unwanted-household",
+  "title": "What To Do with Unwanted Household Medicines",
+  "publisher": "U.S. Environmental Protection Agency (EPA)",
+  "url": "https://www.epa.gov/household-medication-disposal/what-do-unwanted-household-medicines",
+  "date": "2026-06-17 (last updated)",
+  "type": "regulator",
+  "usedBy": [
+   "protect-dispose-06"
+  ]
+ },
+ {
+  "id": "u-s-2024-drug-disposal-questions-answers",
+  "title": "Drug Disposal: Questions and Answers",
+  "publisher": "U.S. Food and Drug Administration (FDA)",
+  "url": "https://www.fda.gov/drugs/disposal-unused-medicines-what-you-should-know/drug-disposal-questions-and-answers",
+  "date": "2024-10-31 (content current as of)",
+  "type": "regulator",
+  "usedBy": [
+   "protect-dispose-10"
+  ]
+ },
+ {
+  "id": "u-s-2023-best-way-get-rid",
+  "title": "Best Way to Get Rid of Used Needles and Other Sharps",
+  "publisher": "U.S. Food and Drug Administration (FDA)",
+  "url": "https://www.fda.gov/medical-devices/safely-using-sharps-needles-and-syringes-home-work-and-travel/best-way-get-rid-used-needles-and-other-sharps",
+  "date": "2023-08-10 (content current as of)",
+  "type": "regulator",
+  "usedBy": [
+   "protect-dispose-11",
+   "protect-dispose-15"
+  ]
+ },
+ {
+  "id": "u-s-2021-safely-using-sharps-needles",
+  "title": "Safely Using Sharps (Needles and Syringes) at Home, at Work and on Travel",
+  "publisher": "U.S. Food and Drug Administration (FDA)",
+  "url": "https://www.fda.gov/medical-devices/consumer-products/safely-using-sharps-needles-and-syringes-home-work-and-travel",
+  "date": "2021-11-19 (content current as of)",
+  "type": "regulator",
+  "usedBy": [
+   "protect-dispose-12",
+   "protect-dispose-13",
+   "protect-dispose-14",
+   "protect-dispose-17"
+  ]
+ },
+ {
+  "id": "u-s-2021-dos-don-ts-proper",
+  "title": "DOs and DON'Ts of Proper Sharps Disposal",
+  "publisher": "U.S. Food and Drug Administration (FDA)",
+  "url": "https://www.fda.gov/medical-devices/safely-using-sharps-needles-and-syringes-home-work-and-travel/dos-and-donts-proper-sharps-disposal",
+  "date": "2021-04-28 (content current as of)",
+  "type": "regulator",
+  "usedBy": [
+   "protect-dispose-16"
+  ]
+ },
+ {
+  "id": "u-s-2025-what-can-increase-hiv",
+  "title": "What Can Increase HIV Risk? (HIV Risk Reduction Tool)",
+  "publisher": "U.S. Centers for Disease Control and Prevention (CDC)",
+  "url": "https://hivrisk.cdc.gov/can-increase-hiv-risk/?mid=what-we-know-about-sharing-needles-syringes-or-other-drug-injection-equipment-1901",
+  "date": "Version as of 2025-01-29, restored under court order per page banner (accessed 2026-10-08)",
+  "type": "regulator",
+  "usedBy": [
+   "protect-dispose-18",
+   "protect-dispose-19"
+  ]
+ },
+ {
+  "id": "u-s-2026-zepbound-tirzepatide-injection-prescribing",
+  "title": "ZEPBOUND (tirzepatide) injection: Prescribing Information and Medication Guide",
+  "publisher": "U.S. Food and Drug Administration (FDA)-approved labeling (Eli Lilly and Company)",
+  "url": "https://www.accessdata.fda.gov/drugsatfda_docs/label/2026/217806s042lbl.pdf",
+  "date": "2026-02 (Revised: 02/2026)",
+  "type": "label",
+  "usedBy": [
+   "protect-dispose-20"
+  ]
+ },
+ {
+  "id": "u-s-2022-development-approval-process-drugs",
+  "title": "Development & Approval Process | Drugs",
+  "publisher": "U.S. Food and Drug Administration (FDA)",
+  "url": "https://www.fda.gov/drugs/development-approval-process-drugs",
+  "date": "2022-08-08",
+  "type": "regulator",
+  "usedBy": [
+   "protect-real-01",
+   "protect-real-02"
+  ]
+ },
+ {
+  "id": "u-s-2024-frequently-asked-questions-about",
+  "title": "Frequently Asked Questions about Labeling for Prescription Medicines",
+  "publisher": "U.S. Food and Drug Administration (FDA)",
+  "url": "https://www.fda.gov/drugs/fdas-labeling-resources-human-prescription-drugs/frequently-asked-questions-about-labeling-prescription-medicines",
+  "date": "2024-04-01",
+  "type": "regulator",
+  "usedBy": [
+   "protect-real-03"
+  ]
+ },
+ {
+  "id": "u-s-2026-warning-letter-royal-peptides",
+  "title": "Warning Letter: Royal Peptides LLC (MARCS-CMS 734884)",
+  "publisher": "U.S. Food and Drug Administration (FDA), Center for Drug Evaluation and Research",
+  "url": "https://www.fda.gov/inspections-compliance-enforcement-and-criminal-investigations/warning-letters/royal-peptides-llc-734884-08242026",
+  "date": "2026-08-24",
+  "type": "regulator",
+  "usedBy": [
+   "protect-real-08",
+   "protect-real-09"
+  ]
+ },
+ {
+  "id": "u-s-2025-counterfeit-medicine",
+  "title": "Counterfeit Medicine",
+  "publisher": "U.S. Food and Drug Administration (FDA)",
+  "url": "https://www.fda.gov/drugs/buying-using-medicine-safely/counterfeit-medicine",
+  "date": "2025-12-08",
+  "type": "regulator",
+  "usedBy": [
+   "protect-real-13"
+  ]
+ },
+ {
+  "id": "u-s-2025-how-buy-medicines-safely",
+  "title": "How to Buy Medicines Safely From an Online Pharmacy",
+  "publisher": "U.S. Food and Drug Administration (FDA)",
+  "url": "https://www.fda.gov/consumers/consumer-updates/how-buy-medicines-safely-online-pharmacy",
+  "date": "2025-01-02",
+  "type": "regulator",
+  "usedBy": [
+   "protect-real-14"
+  ]
+ },
+ {
+  "id": "medicines-healthcare-2025-mhra-urges-public-avoid",
+  "title": "MHRA urges public to avoid illegal online weight-loss medicines this New Year",
+  "publisher": "Medicines and Healthcare products Regulatory Agency (MHRA), GOV.UK",
+  "url": "https://www.gov.uk/government/news/mhra-urges-public-to-avoid-illegal-online-weight-loss-medicines-this-new-year",
+  "date": "2025-12-29",
+  "type": "regulator",
+  "usedBy": [
+   "protect-real-19"
+  ]
+ },
+ {
+  "id": "health-canada-2026-think-twice-before-injecting",
+  "title": "Think twice before injecting peptides bought online: unauthorized products can seriously harm you",
+  "publisher": "Health Canada (Government of Canada)",
+  "url": "https://recalls-rappels.canada.ca/en/alert-recall/think-twice-injecting-peptides-bought-online-unauthorized-products-can-seriously-harm",
+  "date": "2026-04-09",
+  "type": "regulator",
+  "usedBy": [
+   "protect-real-20",
+   "protect-real-21",
+   "protect-real-22"
+  ]
+ },
+ {
+  "id": "medlineplus-u-2025-poisoning-first-aid-medlineplus",
+  "title": "Poisoning first aid (MedlinePlus Medical Encyclopedia)",
+  "publisher": "MedlinePlus, U.S. National Library of Medicine (NIH)",
+  "url": "https://medlineplus.gov/ency/article/007579.htm",
+  "date": "2025-01-08",
+  "type": "health-service",
+  "usedBy": [
+   "protect-real-23",
+   "protect-real-24"
   ]
  }
 ]

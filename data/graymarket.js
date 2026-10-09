@@ -64,7 +64,7 @@ export const GRAY = {
     {
       id: 'pc-companies',
       value: '100+',
-      text: 'Companies that appear to be selling retatrutide openly, according to Public Citizen\'s June 2026 report. It said the FDA had mostly sent only warning letters. In February 2026 the government charged a Florida man with selling retatrutide, and in April 2026 prosecutors in Utah charged a doctor who had obtained peptides from China, retatrutide among them. A charge is an accusation, not proof of guilt.',
+      text: 'Companies that appear to be selling retatrutide openly, according to Public Citizen\'s June 2026 report. It said the FDA had mostly sent only warning letters. In February 2026 the government charged a Florida man with selling retatrutide. A charge is an accusation, not proof of guilt.',
       sources: [PUBLIC_CITIZEN],
       ledger: ['gray-pc-100-companies'],
     },
@@ -190,7 +190,7 @@ export const GRAY = {
     {
       id: 'not-tested',
       title: 'Germs and bacterial toxins are mostly not tested',
-      text: 'Most lab test panels for these vials do not check for endotoxin, a toxin left behind by bacteria that can cause dangerous reactions when injected. Finnrick\'s public results table has no column for sterility (being free of germs) or endotoxin; those are optional add-on tests. The Australian journal study did not test for either. No peer-reviewed study has yet published sterility or endotoxin results for gray-market retatrutide. So a "pass" does not mean a vial is clean.',
+      text: 'Most lab test panels for these vials do not check for endotoxin, a toxin left behind by bacteria. Finnrick\'s public results table has no column for sterility (being free of germs) or endotoxin; those are optional add-on tests. The Australian journal study did not test for either. No peer-reviewed study has yet published sterility or endotoxin results for gray-market retatrutide. So a "pass" does not mean a vial is clean.',
       sources: [FINNRICK_METHOD, FINNRICK, DAR_STUDY],
       ledger: [
         'gray-finnrick-endotoxin-not-required',
@@ -200,8 +200,8 @@ export const GRAY = {
     },
     {
       id: 'semaglutide-study',
-      title: 'Online semaglutide vials: endotoxin found in all three',
-      text: 'A peer-reviewed study tested three "research use only" vials of semaglutide (the drug in Ozempic) from online sellers that asked for no prescription. It reports that endotoxin, a toxin left behind by bacteria, was found in all three, even though no live germs were found. Each vial held about 29% to 39% more drug than its label said. Yet the drug made up only about 8% to 14% of what was in each vial, though the labels claimed 99% purity. This study tested semaglutide, not retatrutide.',
+      title: 'Online semaglutide vials: endotoxin reported in all three',
+      text: 'A peer-reviewed study tested three "research use only" vials of semaglutide (the drug in Ozempic) from online sellers that asked for no prescription. It reports that endotoxin, a toxin left behind by bacteria, was found in all three, even though no live germs were found. For two of the three, the paper gives only an upper limit, so the amount there may have been very small. Each vial held about 29% to 39% more drug than its label said. Yet the drug made up only about 8% to 14% of what was in each vial, though the labels claimed 99% purity. This study tested semaglutide, not retatrutide.',
       sources: [JMIR_SEMA],
       ledger: ['gray-jmir-sema-endotoxin', 'gray-jmir-sema-purity', 'gray-jmir-sema-quantity'],
     },

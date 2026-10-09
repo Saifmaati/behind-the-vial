@@ -1,6 +1,6 @@
 // Validates the content data against the contract in docs/ARCHITECTURE.md.
 //   node --test tests/                       (fails while any sample: true remains)
-//   BTV_ALLOW_SAMPLES=1 node --test tests/   (schema checks only, samples allowed)
+//   PEPTIDESCOPE_ALLOW_SAMPLES=1 node --test tests/   (schema checks only, samples allowed)
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
@@ -9,7 +9,7 @@ const { PEPTIDES } = await import('../data/peptides.js');
 const { RISK_ITEMS } = await import('../data/riskitems.js');
 const { GRAY } = await import('../data/graymarket.js');
 
-const ALLOW_SAMPLES = process.env.BTV_ALLOW_SAMPLES === '1';
+const ALLOW_SAMPLES = process.env.PEPTIDESCOPE_ALLOW_SAMPLES === '1';
 
 const ORGANS = new Set(['brain', 'thyroid', 'heart', 'lungs', 'liver', 'gallbladder', 'stomach', 'pancreas', 'spleen',
   'small_intestine', 'large_intestine', 'kidneys', 'bladder', 'skin', 'fat', 'injection_site', 'muscle', 'eyes', 'blood']);
@@ -236,7 +236,7 @@ test('data text never reads as dosing instructions or a safety verdict', () => {
   assert.deepEqual(hits, []);
 });
 
-test('no sample placeholders remain (set BTV_ALLOW_SAMPLES=1 to skip while building)', { skip: ALLOW_SAMPLES ? 'BTV_ALLOW_SAMPLES=1' : false }, () => {
+test('no sample placeholders remain (set PEPTIDESCOPE_ALLOW_SAMPLES=1 to skip while building)', { skip: ALLOW_SAMPLES ? 'PEPTIDESCOPE_ALLOW_SAMPLES=1' : false }, () => {
   const samples = [];
   for (const [name, data] of DATASETS()) {
     for (const { value, path } of walk(data, name)) {

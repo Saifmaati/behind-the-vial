@@ -5,9 +5,10 @@
 // entry under `risk` (e.g. data/retatrutide/safety.js), with citations. The
 // check only ever shows warnings. It never says anyone is safe or cleared.
 //
-// Shape: { id, label, hint }
+// Shape: { id, label, hint, hintWhenMapped? }
 
 export const RISK_ITEMS = [
+  { id: 'under-18', label: 'I’m under 18', hint: 'Teens and kids.' },
   { id: 'heart-rhythm', label: 'Heart rhythm problems', hint: 'A fast, slow or irregular heartbeat, such as atrial fibrillation (AFib).' },
   { id: 'pancreatitis', label: 'Past pancreatitis', hint: 'An inflamed pancreas, at any time in the past.' },
   { id: 'gallbladder', label: 'Gallbladder problems', hint: 'Gallstones, gallbladder attacks, or a gallbladder that was taken out.' },
@@ -20,6 +21,7 @@ export const RISK_ITEMS = [
   { id: 'surgery', label: 'Surgery or sedation coming up', hint: 'Any procedure where you are put to sleep or deeply sedated, such as an endoscopy.' },
   { id: 'gastroparesis', label: 'Slow stomach emptying (gastroparesis)', hint: 'Food stays in the stomach longer than it should.' },
   { id: 'birth-control', label: 'Taking birth-control pills', hint: 'Hormonal birth control taken by mouth.' },
-  { id: 'moles-melanoma', label: 'Many moles, or past melanoma', hint: 'Matters most for the tanning peptides.' },
+  // hintWhenMapped: the hint shows only for a peptide that has warnings mapped for this item
+  { id: 'moles-melanoma', label: 'Many moles, or past melanoma', hint: 'Matters most for the tanning peptides.', hintWhenMapped: true },
   { id: 'eating-disorder', label: 'History of an eating disorder', hint: 'Such as anorexia, bulimia or binge eating disorder.' },
 ];

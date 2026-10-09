@@ -52,7 +52,57 @@ One line each: decision, then why. Files: `js/scene/{stage,anatomy,vessels,injec
 
 ## Contract requests (for ARCHITECTURE.md)
 - `body:change` gains `skinTone: 'tone-1' … 'tone-6'` (appearance only, consumed by `js/scene/*` only).
-- Additive scene APIs: `stage.focusPoint()`, `stage.surfacePicker`, `stage.pivotToSurface()`, `stage.autoCenter`, `stage.quality`, `stage.lights`, `stage.setBloom()`, `stage.minDistance`, `stage.zoomed`; `anatomy.setLayers()`, `anatomy.layers`, `anatomy.layerFade`, `anatomy.setXray()`, `anatomy.xray`, `anatomy.setSkinTone()`, `anatomy.setSkinAge()`, `anatomy.pickStructure()`, `anatomy.structures()`, `anatomy.loadDetail()`, `anatomy.detailInfo`, `anatomy.hasMuscles`; `mountLayersPanel()` in `js/ui/bodyeditor.js`; `mountBody(host, { detail, quality })`; `host.__btvBody.layers` and `.view`.
+- Additive scene APIs: `stage.focusPoint()`, `stage.surfacePicker`, `stage.pivotToSurface()`, `stage.autoCenter`, `stage.quality`, `stage.lights`, `stage.setBloom()`, `stage.minDistance`, `stage.zoomed`; `anatomy.setLayers()`, `anatomy.layers`, `anatomy.layerFade`, `anatomy.setXray()`, `anatomy.xray`, `anatomy.setSkinTone()`, `anatomy.setSkinAge()`, `anatomy.pickStructure()`, `anatomy.structures()`, `anatomy.loadDetail()`, `anatomy.detailInfo`, `anatomy.hasMuscles`; `mountLayersPanel()` in `js/ui/bodyeditor.js`; `mountBody(host, { detail, quality })`; `host.__psBody.layers` and `.view`.
 - `loadAnatomy({ source: 'procedural' })` replaces the old `'placeholder'` value (owner rule: no "placeholder" anywhere).
 - Anatomy pipeline: when `detail-<sex>.glb` / `atlas-<sex>.json` ship, add `"detail": { "glb": "detail-male.glb", "atlas": "atlas-male.json" }` to the matching landmarks file so the scene loads them.
 - Foundation/integration: show `assets/img/body-poster.webp` in `#stage-fallback`.
+
+# v4: simpler, faster, for teens (owner, 2026-10-08 evening)
+
+One line each. Supersedes the luxury-palette items above where they conflict (colours, bloom, HUD, the
+two panel buttons, the poster).
+
+## Performance (owner: "it's very laggy")
+34. **The stage draws on demand**: every frame callback returns whether it is still animating; the loop runs only while the camera moves or damps, a flight, the sequence, a tween, a fade or a pulse is in progress, and releases requestAnimationFrame when the picture is still (`stage.invalidate()` asks for a frame after any change). Measured in the sandbox: 0 frames per second at rest (v3 drew 60 per second all the time).
+35. **No post-processing**: the composer, the HDR multisampled target, bloom and the output pass are gone; the canvas is drawn directly with MSAA and Neutral tone mapping, and custom shaders end with three's tone-mapping and colour-space chunks. One frame of the default view: 20 draw calls (v3: 66 including the bloom passes), 288k triangles (v3: 376k), 5 shader programs (v3: 18), 2 textures (v3: 16).
+36. **Pixel ratio ≤ 1.25 on desktop, 1 on phones and low-end devices** (v3: 1.75 / 1.5), stepped down to 0.85 / 0.75 while continuous frames stay under 45 fps.
+37. **Organs use MeshStandardMaterial** (v3: MeshPhysical with clearcoat and sheen); fully opaque organs leave the transparent pass.
+38. **Point-sprite budget: 1,500 desktop / 600 phones in all**: blood cells ≤ 800 / 300 (spread over the routes by length), drug particles 160 × 3 / 70 × 2, tissue seep 80 × 2 / 50 × 2, 7 anchor glows (1,447 / 547 allocated). Blood cells are drawn only while the drug travels in the sequence, so a resting body draws no points.
+39. **The 28 flow lines are one merged mesh and one draw call** (per-route activity in a uniform array), built the first time the injection or the timeline needs them; the syringe module loads once a site is chosen.
+40. **Highlights pulse for 2.6 s when they appear, then hold steady**; re-applying the same highlight list (every timeline step) keeps the pulse phase, so scrubbing does not restart it.
+41. **No idle animation anywhere**: the scan band, contour hairlines, breathing site rings and the always-flowing blood are gone.
+42. **The detail model (`detail-<sex>.glb`, ~3 MB) is fetched only after the visitor's own zoom stays within 0.62 m of the pivot for a moment** (never during the injection close-up, never by default on phones); the atlas (names, ~30 KB) is fetched on the first label or when the Body panel opens. Its close-up skin then draws alone: 3 draw calls at the deepest zoom.
+
+## Look
+43. **Light-first stage**: CSS #F7F6FB with a faint radial vignette behind the transparent canvas (dark: #0F0E17), a soft contact shadow under the feet instead of the watch-dial floor.
+44. **Glass skin = clean frosted glass**: light theme a faint lavender frost (10 %) with a soft violet rim (#6A52EC); dark theme additive with a lavender rim (#A89CF0) kept low (34 %) so the body does not turn purple.
+45. **Organs in clear, friendly natural tones** (pink lungs, red heart, red-brown liver, salmon gut, golden pancreas, golden-ochre gallbladder; no green), lit by softer lights (key 1.55, hemisphere 0.6) so they do not wash out on the light stage.
+46. **Arteries #E5484D, veins #3E63DD, drug violet #6246EA (light) / #B3A4FF (dark)** in vessels, blood, drug particles, tissue capillaries, arrival glows and the colour key.
+47. **No HUD**: the corner marks, rulers and model/phase/site labels are hidden; the stage keeps a short "Drag to turn the body" hint (fades after the first touch or 9 s), three round zoom buttons bottom right, the CC BY credit bottom left, and a colour key that appears with the injection.
+48. **Labels are white cards with a coloured dot and sentence-case text** (amber and red only for warnings, violet for the drug), 13–14 px, and they keep clear of the Body button and the zoom buttons.
+49. **Side-effect labels wait until the visitor starts the injection or moves the timeline**, so the first view of the body is calm (they used to show the t = 0 effects before anything had happened); risk-check warnings still show at once because the visitor asked for them.
+50. **The site marker is a static violet ring and dot** that fills softly once chosen.
+61. **At most six labels show at once (five on a stage under 560 px)**, the most important first (hover > tissue > warnings > side effects > arrivals), because the end of the sequence plus the first side effects reached eight and read as bunched up.
+51. **Clean white syringe plastic and a clear barrel** on the light stage (the 3D syringe is not the intro's; the intro now uses photographs).
+
+## Modesty (kids audience)
+52. **Garments are signed distances baked per skin vertex (`aCloth`)** from the body-shape capsules (trunk and thighs for the shorts, trunk only for the top), so the edges are crisp, anti-aliased and follow the editable body; hands and arms are never covered.
+53. **Shorts from 0.955 to 0.745 of a 1.75 m body** (heights normalised per model): below the abdomen site (1.01) and above the thigh sites (0.65–0.70), and below the lowest point of the male crotch (0.755, measured on the mesh); a small gusset dips 1.5 cm (male) / 3 cm (female) at the midline. The female top runs from 1.165 to 1.405.
+54. **Under the shorts the front of the male pelvis is eased back onto a smooth profile in the vertex shader** (and the female chest a little under the top), and the fabric is shaded with a softened normal, so the cloth reads smooth; picking and landmarks are unaffected.
+55. **The glass look frosts the shorts region with a soft-edged panel** (light: #E7E4F4 at 80 %; dark: #3B3664 at 78 %) that occludes in both themes; the chest stays clear so the heart and lungs remain visible.
+56. **Fabric colour #2B2E4A (deep navy), matte knit with darker hems**, the same in both themes.
+
+## Body panel
+57. **One "Body" button opens one panel with two tabs**, Shape (sex, height, weight, age, skin tone, Reset, the appearance-only line) and Layers (Skin, Organs, Blood vessels, Skeleton, Muscles once the detail model is in; the skin look from "Real skin" to "See-through"; "Find a part" list); `mountLayersPanel` is gone, `mountBodyEditor(..., { view })` returns `.layers`.
+58. **Default layers: skin, organs and vessels; the skeleton is off** (less clutter, 60k fewer triangles); one switch brings it back.
+59. **All controls are at least 40–44 px**, sentence case, DM Sans / Nunito through the page's font tokens, with stage-scoped colour tokens so the sandbox matches the page.
+
+## Stills
+60. **Stills are rendered from the sandbox at 2× and downsampled (Lanczos), WebP quality 95**: `body-poster.webp` 1600 × 1000 (60 KB; default glass view, light, no markers), `intro-body-{800,1600}.webp` 16:9 (19 / 53 KB), `intro-organs-{800,1600}.webp` 16:9 with the brain, stomach, heart, liver and pancreas softly highlighted in violet (35 / 94 KB). The intro markup also asks for 4:5 versions, so `intro-body-4x5-{640,1280}.webp` and `intro-organs-4x5-{640,1280}.webp` are made the same way (40–133 KB).
+
+## Contract notes (for ARCHITECTURE.md)
+- `stage.invalidate(frames?)`, `stage.running`, `stage.stats.frames`; `stage.onFrame(fn)` callbacks may return `true` while still animating. `stage.composer` and `stage.bloom` are `null`; `stage.setBloom()` is a no-op.
+- `anatomy.loadAtlas()`, `anatomy.detailLoading`, `anatomy.detailLoaded`; `loadAnatomy({ detail: false })` turns the detail files off.
+- `vessels.particleCount`, `vessels.particleBudget`; `PARTICLE_BUDGET` export; `injection.preload()`.
+- `mountBody(host, { detailOnZoom })`; `mountBodyEditor(host, { view })` → `{ ..., layers, showTab() }` replaces `mountLayersPanel`.
+- Theme default is light when neither the option nor `html[data-theme]` says otherwise (prefers-color-scheme decides).

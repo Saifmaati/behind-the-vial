@@ -4,11 +4,11 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Page not found · PeptideScope</title>
-  <meta name="description" content="This page does not exist. Go back to PeptideScope, an education-only look at what a trending peptide does inside the body.">
+  <meta name="description" content="This page does not exist. Go back to PeptideScope, an education-only look at what viral peptides really do inside your body.">
   <meta name="robots" content="noindex">
-  <meta name="color-scheme" content="dark light">
-  <meta name="theme-color" content="#0A0A0B" media="(prefers-color-scheme: dark)">
-  <meta name="theme-color" content="#F6F2EA" media="(prefers-color-scheme: light)">
+  <meta name="color-scheme" content="light dark">
+  <meta name="theme-color" content="#F7F6FB" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#0F0E17" media="(prefers-color-scheme: dark)">
   <!-- GitHub Pages serves this file for any missing path at any depth, so links are absolute to the project site. -->
   <link rel="icon" href="/peptidescope/favicon.svg" type="image/svg+xml">
   <script>
@@ -19,89 +19,83 @@
     })();
   </script>
   <style>
-    @font-face { font-family: "Inter"; font-style: normal; font-weight: 100 900; font-display: swap; src: url("/peptidescope/assets/fonts/InterVariable-latin.woff2") format("woff2"); }
-    @font-face { font-family: "Newsreader"; font-style: normal; font-weight: 200 800; font-display: swap; src: url("/peptidescope/assets/fonts/NewsreaderVariable-latin.woff2") format("woff2"); }
-    @font-face { font-family: "Newsreader"; font-style: italic; font-weight: 200 800; font-display: swap; src: url("/peptidescope/assets/fonts/NewsreaderVariable-Italic-latin.woff2") format("woff2"); }
-    /* v2 luxury palette (css/tokens.css): obsidian, ivory, champagne gold. Never neon, never green. */
+    @font-face { font-family: "Nunito"; font-style: normal; font-weight: 600 900; font-display: swap; src: url("/peptidescope/assets/fonts/Nunito-latin.woff2") format("woff2"); }
+    @font-face { font-family: "DM Sans"; font-style: normal; font-weight: 400 700; font-display: swap; src: url("/peptidescope/assets/fonts/DMSans-latin.woff2") format("woff2"); }
+    /* v4 palette (css/tokens.css): light first, one violet accent. Never neon, never green. */
     :root {
-      color-scheme: dark;
-      --bg: #0A0A0B; --surface: #151417; --line: rgba(232, 220, 196, .12); --line-strong: rgba(232, 220, 196, .24);
-      --text: #F3EEE6; --text-2: #D9D2C5; --muted: #A39C8F; --accent: #C8A96A; --accent-2: #E6D3A3; --accent-ink: #1A1408;
-      --focus: #E6D3A3; --glass: rgba(12, 11, 13, .78); --glow: rgba(200, 169, 106, .08);
-      --gold-fill: linear-gradient(180deg, #E9D7AA 0%, #CDB073 46%, #B39150 100%);
+      color-scheme: light;
+      --bg: #F7F6FB; --surface: #FFFFFF; --surface-2: #F0EEF8; --line: #E4E1F0;
+      --text: #17142B; --muted: #5B5873; --primary: #6246EA; --on-primary: #FFFFFF; --primary-soft: #ECE8FF; --focus: #6246EA;
     }
-    @media (prefers-color-scheme: light) {
-      :root:not([data-theme="dark"]) {
-        color-scheme: light;
-        --bg: #F6F2EA; --surface: #FFFDF8; --line: rgba(40, 32, 20, .12); --line-strong: rgba(40, 32, 20, .24);
-        --text: #17140F; --text-2: #2E2920; --muted: #6B6355; --accent: #7A5C28; --accent-2: #A88645; --accent-ink: #FFFDF8;
-        --focus: #7A5C28; --glass: rgba(250, 247, 241, .84); --glow: rgba(122, 92, 40, .06);
-        --gold-fill: linear-gradient(180deg, #8E6D35 0%, #7A5C28 52%, #664A1C 100%);
+    @media (prefers-color-scheme: dark) {
+      :root:not([data-theme="light"]) {
+        color-scheme: dark;
+        --bg: #0F0E17; --surface: #17162A; --surface-2: #1F1D35; --line: #2C2A45;
+        --text: #F3F2FA; --muted: #A9A6C4; --primary: #9D8CFF; --on-primary: #17142B; --primary-soft: #2A2550; --focus: #B3A4FF;
       }
     }
-    :root[data-theme="light"] {
-      color-scheme: light;
-      --bg: #F6F2EA; --surface: #FFFDF8; --line: rgba(40, 32, 20, .12); --line-strong: rgba(40, 32, 20, .24);
-      --text: #17140F; --text-2: #2E2920; --muted: #6B6355; --accent: #7A5C28; --accent-2: #A88645; --accent-ink: #FFFDF8;
-      --focus: #7A5C28; --glass: rgba(250, 247, 241, .84); --glow: rgba(122, 92, 40, .06);
-      --gold-fill: linear-gradient(180deg, #8E6D35 0%, #7A5C28 52%, #664A1C 100%);
+    :root[data-theme="dark"] {
+      color-scheme: dark;
+      --bg: #0F0E17; --surface: #17162A; --surface-2: #1F1D35; --line: #2C2A45;
+      --text: #F3F2FA; --muted: #A9A6C4; --primary: #9D8CFF; --on-primary: #17142B; --primary-soft: #2A2550; --focus: #B3A4FF;
     }
     * { box-sizing: border-box; margin: 0; }
     html { background: var(--bg); }
     body {
       min-height: 100vh; min-height: 100dvh;
       display: grid; place-items: center;
-      padding: 24px 16px 84px;
-      background: radial-gradient(60% 50% at 50% 42%, var(--glow) 0%, transparent 70%), var(--bg);
+      padding: 32px 16px 96px;
+      background: var(--bg);
       color: var(--text);
-      font: 400 1rem/1.6 "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      font: 400 1.0625rem/1.55 "DM Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
       -webkit-font-smoothing: antialiased;
       text-align: center;
     }
-    main { max-width: 520px; display: grid; justify-items: center; gap: 18px; }
-    .brand { display: grid; justify-items: center; gap: 6px; color: var(--text); text-decoration: none; }
-    .mark { width: 34px; height: 34px; color: var(--text-2); margin-bottom: 6px; }
-    .word { font: 400 1.6rem/1 "Newsreader", Georgia, serif; letter-spacing: .004em; }
-    .word em { font-style: italic; color: var(--accent); }
-    .tagline { font-size: .8125rem; color: var(--muted); letter-spacing: .01em; }
-    .rule { width: 64px; height: 1px; margin: 10px 0 4px; background: linear-gradient(90deg, transparent, var(--accent), transparent); }
-    .code { font: 500 .6875rem/1 "Inter", system-ui, sans-serif; font-feature-settings: "case", "tnum"; letter-spacing: .24em; text-transform: uppercase; color: var(--accent); }
-    h1 { font: 380 clamp(2.1rem, 1.5rem + 2.6vw, 3.2rem)/1.04 "Newsreader", Georgia, serif; letter-spacing: -.014em; }
-    p { color: var(--text-2); }
+    main { max-width: 520px; display: grid; justify-items: center; gap: 20px; }
+    .brand { display: grid; justify-items: center; gap: 8px; color: var(--text); text-decoration: none; border-radius: 16px; }
+    .mark { display: grid; place-items: center; width: 56px; height: 56px; border-radius: 16px; background: var(--primary); color: var(--on-primary); margin-bottom: 4px; }
+    .mark svg { width: 36px; height: 36px; }
+    .word { font: 900 1.75rem/1.1 "Nunito", ui-rounded, system-ui, sans-serif; letter-spacing: -.01em; }
+    .word span { color: var(--primary); }
+    .tagline { font-size: .9375rem; color: var(--muted); }
+    .code { margin-top: 12px; padding: 4px 14px; border-radius: 999px; background: var(--primary-soft); color: var(--primary); font-size: .8125rem; font-weight: 700; }
+    h1 { font: 900 clamp(2rem, 1.6rem + 2vw, 2.75rem)/1.1 "Nunito", ui-rounded, system-ui, sans-serif; letter-spacing: -.02em; }
+    p { color: var(--muted); }
     a.btn {
-      display: inline-flex; align-items: center; gap: 10px; min-height: 50px; padding: 0 28px; margin-top: 8px;
-      border-radius: 999px; background: var(--gold-fill); color: var(--accent-ink); font-weight: 600; letter-spacing: .02em; text-decoration: none;
-      box-shadow: 0 1px 0 rgba(255, 252, 240, .38) inset, 0 10px 30px -14px rgba(200, 169, 106, .4);
+      display: inline-flex; align-items: center; justify-content: center; min-height: 52px; padding: 0 28px; margin-top: 4px;
+      border-radius: 999px; background: var(--primary); color: var(--on-primary); font-weight: 700; text-decoration: none;
     }
-    a:focus-visible { outline: 1.5px solid var(--focus); outline-offset: 3px; border-radius: 999px; }
-    .purpose { font: 500 .6875rem/1.5 "Inter", system-ui, sans-serif; font-feature-settings: "case"; letter-spacing: .16em; text-transform: uppercase; color: var(--muted); }
+    a:focus-visible { outline: 2.5px solid var(--focus); outline-offset: 3px; }
+    .purpose { font-size: .875rem; font-weight: 500; }
     .bar {
       position: fixed; left: 0; right: 0; bottom: 0; padding: 9px 16px calc(9px + env(safe-area-inset-bottom));
-      border-top: 1px solid var(--line); background: var(--glass); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
-      color: var(--text-2); font: 500 .6875rem/1.4 "Inter", system-ui, sans-serif; font-feature-settings: "case"; letter-spacing: .12em; text-transform: uppercase;
+      border-top: 1px solid var(--line); background: var(--surface);
+      color: var(--text); font-size: .8125rem; font-weight: 500; line-height: 1.4;
+      display: flex; flex-wrap: wrap; justify-content: center; gap: 2px 10px;
     }
     .bar span { white-space: nowrap; }
-    .bar .sep { display: inline-block; width: 3px; height: 3px; margin: 0 10px; overflow: hidden; vertical-align: middle; color: transparent; background: var(--accent); transform: rotate(45deg); }
+    .bar .sep { color: var(--muted); }
   </style>
 </head>
 <body>
   <main>
     <a class="brand" href="/peptidescope/" aria-label="PeptideScope home">
-      <svg class="mark" viewBox="0 0 32 32" aria-hidden="true" focusable="false">
-        <rect x="10.75" y="2.75" width="10.5" height="4.25" rx="1.2" fill="none" stroke="currentColor" stroke-width="1.5"/>
-        <path d="M12.5 7v1.6c0 1.3-3 1.9-3 4.1V26a3 3 0 0 0 3 3h7a3 3 0 0 0 3-3V12.7c0-2.2-3-2.8-3-4.1V7" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
-        <path d="M12.2 13.4v2.8" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" opacity=".55"/>
-      </svg>
-      <span class="word">Peptide<em>Scope</em></span>
+      <span class="mark" aria-hidden="true">
+        <svg viewBox="0 0 32 32" focusable="false">
+          <rect x="11.25" y="3.5" width="9.5" height="3.8" rx="1.4" fill="none" stroke="currentColor" stroke-width="1.8"/>
+          <path d="M12.9 7.3v1.4c0 1.1-2.9 1.8-2.9 3.9v12.2a3 3 0 0 0 3 3h6a3 3 0 0 0 3-3V12.6c0-2.1-2.9-2.8-2.9-3.9V7.3" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
+          <path d="M11.8 18.6h8.4v6.3a1.4 1.4 0 0 1-1.4 1.4h-5.6a1.4 1.4 0 0 1-1.4-1.4z" fill="currentColor" opacity=".35"/>
+        </svg>
+      </span>
+      <span class="word">Peptide<span>Scope</span></span>
       <span class="tagline">See what viral peptides really do inside your body.</span>
     </a>
-    <span class="rule" aria-hidden="true"></span>
     <p class="code">Error 404 · Page not found</p>
     <h1>This page isn’t here</h1>
     <p>The link may be old or mistyped. Everything on PeptideScope lives on one page.</p>
     <a class="btn" href="/peptidescope/">Back to PeptideScope</a>
-    <p class="purpose">Independent education · Not a seller</p>
+    <p class="purpose">Independent education · Not a seller · Nothing for sale</p>
   </main>
-  <div class="bar" role="note" aria-label="Disclaimer"><span>Education only</span><span class="sep" aria-hidden="true">·</span><span>Not medical advice</span><span class="sep" aria-hidden="true">·</span><span>No dosing guidance</span><span class="sep" aria-hidden="true">·</span><span>Talk to a clinician</span></div>
+  <div class="bar" role="note" aria-label="Disclaimer"><span>Education only</span><span class="sep" aria-hidden="true">·</span><span>Not medical advice</span><span class="sep" aria-hidden="true">·</span><span>No dosing guidance</span><span class="sep" aria-hidden="true">·</span><span>Talk to a trusted adult or a doctor</span></div>
 </body>
 </html>

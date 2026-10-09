@@ -4,7 +4,7 @@ One line each: the decision, then why.
 
 ## Data (samples)
 
-1. **All data files are schema-complete samples (`sample: true` on every object).** The verified research replaces them wholesale; `tests/data.test.mjs` fails while any sample remains (`BTV_ALLOW_SAMPLES=1` skips only that check).
+1. **All data files are schema-complete samples (`sample: true` on every object).** The verified research replaces them wholesale; `tests/data.test.mjs` fails while any sample remains (`PEPTIDESCOPE_ALLOW_SAMPLES=1` skips only that check).
 2. **Text placeholders use "00" ("00%", "00 days", "000 adults").** Nothing that looks like a real figure can leak into the shipped site.
 3. **Numbers that only drive geometry use artificial repdigit steps (11, 22, 33 ... 133; pk half-life 4.4 d, tmax 1.1 d).** Charts and the timeline need non-zero numbers to be checked visually; a repdigit staircase is obviously fake and none of it is from memory.
 4. **Coming-soon statuses are best guesses, flagged sample, with the label "Sample status label: not yet verified".** The enum must hold a valid value for the UI; the label says plainly it is unverified.

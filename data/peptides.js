@@ -122,7 +122,7 @@ export const PEPTIDES = [
     status: 'research-only',
     statusLabel: 'Once FDA-approved as Geref; no FDA-approved sermorelin medicine today',
     ready: false,
-    oneLine: 'Sermorelin used to be an FDA-approved medicine called Geref, approved in 1997 for children who weren’t growing because their bodies didn’t make enough growth hormone. The maker stopped selling it, and FDA withdrew both Geref approvals in 2009. In 2013, FDA said Geref was not taken off the market because of safety or effectiveness problems. Sermorelin custom-mixed by compounding pharmacies is not an FDA-approved drug.',
+    oneLine: 'Sermorelin used to be an FDA-approved medicine called Geref, approved in 1997 for children who weren’t growing because their bodies didn’t make enough growth hormone. The maker stopped selling it, and FDA withdrew both Geref approvals in 2009. Sermorelin custom-mixed by compounding pharmacies is not an FDA-approved drug. In 2013, FDA said Geref was not taken off the market because of safety or effectiveness problems. That does not make the versions sold today safe or tested.',
     sources: ['u-s-2013-determination-that-geref-sermorelin'],
     ledger: ['catalog-sermorelin-was-approved', 'catalog-sermorelin-discontinued', 'catalog-sermorelin-not-safety-withdrawal'],
   },
@@ -181,17 +181,62 @@ export const PEPTIDES = [
       'wiley-international-2017-risks-unregulated-use-alpha',
     ],
     ledger: ['catalog-melanotan2-what', 'catalog-melanotan2-status-unlicensed', 'catalog-melanotan2-fda-safety', 'catalog-melanotan2-melanoma-reports'],
+    // Warnings-only risk check (js/ui/riskcheck.js), from claims already verified for this catalog entry.
+    risk: {
+      'moles-melanoma': [
+        {
+          organ: 'skin',
+          title: 'Melanoma has been reported growing out of moles',
+          text: 'Doctors have published cases of melanoma (a dangerous skin cancer) growing out of existing moles during or soon after melanotan use, plus new or changing moles. These reports can’t prove melanotan caused the cancer.',
+          sources: ['wiley-international-2017-risks-unregulated-use-alpha'],
+          ledger: ['catalog-melanotan2-melanoma-reports'],
+        },
+        {
+          organ: 'skin',
+          title: 'FDA lists melanoma among the problems reported',
+          text: 'FDA notes published reports of serious problems after melanotan II use, and melanoma is one of them.',
+          sources: ['u-s-2026-certain-bulk-drug-substances'],
+          ledger: ['catalog-melanotan2-fda-safety'],
+        },
+        {
+          organ: 'skin',
+          title: 'Skin cancer is the biggest worry',
+          text: 'Australia’s medicines regulator says the most worrying risk of tanning products with melanotan is serious skin cancer, and that melanotan II has been linked to more moles and freckles.',
+          sources: ['therapeutic-goods-2025-don-t-risk-using'],
+          ledger: ['safety-history-melanotan-moles'],
+        },
+      ],
+    },
   },
   {
     id: 'melanotan-1',
     name: 'Melanotan I',
     aka: ['Afamelanotide', 'Scenesse'],
-    status: 'approved',
-    statusLabel: 'FDA-approved as Scenesse, an implant only for a rare disease (EPP); online “melanotan I” vials are not this product',
+    // fix (accuracy review): the status of what is sold online; the approved implant is named in the label
+    status: 'research-only',
+    statusLabel: 'Online “melanotan I” vials are untested and unregulated; afamelanotide is FDA-approved only as Scenesse, an implant for a rare disease (EPP)',
     ready: false,
     oneLine: '“Melanotan I” is another name for afamelanotide, a lab-made, slightly changed version of the hormone that tells skin cells to make dark pigment. FDA approved it in 2019 as Scenesse, a tiny implant placed under the skin by a trained clinician, for adults with EPP, a rare disease that makes sunlight extremely painful. The “melanotan I” vials sold online for tanning are not that product: they are untested and unregulated.',
     sources: ['journal-pharmaceutical-2026-investigation-stability-profile', 'clinuvel-u-2026-scenesse-afamelanotide-implant-prescribing', 'wiley-international-2017-risks-unregulated-use-alpha'],
     ledger: ['catalog-melanotan1-is-afamelanotide', 'catalog-melanotan1-fda-approved', 'catalog-melanotan1-online-unregulated'],
+    risk: {
+      'moles-melanoma': [
+        {
+          organ: 'skin',
+          title: 'Mole changes and melanoma have been reported',
+          text: 'Doctors have reported changes in existing moles, new unusual moles, and a handful of melanomas in people using melanotan, though case reports can’t prove the drug caused them.',
+          sources: ['wiley-international-2017-risks-unregulated-use-alpha'],
+          ledger: ['safety-history-melanotan-case-review'],
+        },
+        {
+          organ: 'skin',
+          title: 'Skin cancer is the biggest worry',
+          text: 'Australia’s medicines regulator says the most worrying risk of tanning products with melanotan is serious skin cancer.',
+          sources: ['therapeutic-goods-2025-don-t-risk-using'],
+          ledger: ['safety-history-melanotan-moles'],
+        },
+      ],
+    },
   },
   {
     id: 'pt-141',

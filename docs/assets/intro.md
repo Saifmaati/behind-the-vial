@@ -1,18 +1,20 @@
 # Intro: third-party assets
 
-The intro downloads no images, videos, models or textures of its own. Everything below is either
-already vendored by foundation or produced by the anatomy pipeline.
+The v4 intro adds no third-party assets of its own. It shows pictures produced by two other steps,
+and loads no three.js, models or textures any more.
 
-| What | Where it comes from | License | Notes |
-|---|---|---|---|
-| three.js core and the addons `postprocessing/EffectComposer`, `UnrealBloomPass`, `Pass` (`FullScreenQuad`), `loaders/GLTFLoader`, `libs/meshopt_decoder.module`, `utils/BufferGeometryUtils` | `vendor/three/` (r185.1, vendored by foundation) | MIT | Imported by `js/intro.js`; not modified. |
-| `environments/RoomEnvironment` | `vendor/three/addons/` | MIT | Not used any more (the sandbox product views use the intro's own studio environment). |
-| `assets/anatomy/body.glb`, `assets/anatomy/landmarks.json` | anatomy pipeline (HRA 3D Reference Organs / Visible Human, VOXEL-MAN SIO, BodyParts3D) | CC BY 4.0 | Loaded by the intro for the lifelike belly and the see-through body; attribution is in ASSETS.md and the site footer. |
-| Inter, Newsreader | `assets/fonts/` (self-hosted by foundation) | OFL 1.1 | Inter is drawn into the vial label canvas; the copy uses both. |
+| What | Files | Where it comes from | Licence | Changes made by the intro |
+|---|---|---|---|---|
+| Real photographs: glass medicine vials (Bill Branson, NCI), vial caps (Epolk), insulin syringe with orange caps (Rehab Center Parus), electron micrograph of human blood (Bruce Wetzel and Harry Schaefer, NCI) | `assets/img/intro-vial-*`, `intro-vial-caps-*`, `intro-syringe-cutout-*`, `intro-blood-*` | photos step; sources, licence evidence and crops in `docs/assets/photos.md` | Public domain (NCI) and CC BY-SA 4.0 (Epolk, Rehab Center Parus) | Displayed only. The syringe cut-out is turned 45° with CSS in portrait frames; the blood micrograph gets a red tint with a CSS filter (its caption says "colour added"). The files are not modified. |
+| Renders of our 3D anatomy (whole body; organs) | `assets/img/intro-body-*`, `intro-organs-*` | body step, rendered from the project's anatomy (HRA 3D Reference Organs / Visible Human data, VOXEL-MAN, BodyParts3D) | CC BY 4.0 | Displayed only. |
+| Nunito, DM Sans | `assets/fonts/` (self-hosted by foundation) | foundation | OFL 1.1 | none |
 
-Made for this project (procedural, no source files): the studio light environment, the vial
-(`js/scene/vial.js`: glass, stopper, crimp seal, flip-off cap, freeze-dried cake, label canvas), the
-syringe (`js/scene/syringe.js`), the skin micro-relief texture (generated on the CPU at load), the
-navel and vellus hair, the tissue block and its cut-face shader, the capillary/vein tube and its
-endothelium shader, the red cells (Evans–Fung biconcave profile), the drug particles, the grade pass,
-and the inline SVG still in `index.html`.
+Attribution on the page: a one-line caption under each picture ("Real photo · author · licence",
+"Our 3D render of real anatomy data · CC BY 4.0") and a "Photo credits" disclosure on the end card
+with the full credit line, links to the CC BY-SA 4.0 and CC BY 4.0 deeds, and ASSETS.md. The intro
+does not write ASSETS.md; the photo section for it is ready to paste in `docs/assets/photos.md`.
+
+Removed with v4: the procedural vial (`js/scene/vial.js`, deleted), the intro's use of
+`js/scene/syringe.js` (kept for the 3D injection sequence), the studio environment, skin micro-relief,
+tissue block, red-cell meshes and the inline SVG still. They were all made for this project, so no
+licence records change.

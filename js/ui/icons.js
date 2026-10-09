@@ -20,6 +20,17 @@ const P = {
   vial: '<path d="M9 3.5h6"/><path d="M10 3.5v14a2 2 0 0 0 4 0v-14"/><path d="M10 11h4"/>',
   eye: '<path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12Z"/><circle cx="12" cy="12" r="2.8"/>',
   list: '<path d="M9 6.5h11M9 12h11M9 17.5h11"/><path d="M4.5 6.5h.01M4.5 12h.01M4.5 17.5h.01"/>',
+  // v4 friendly set (same grid and stroke)
+  stop: '<path d="M8.2 3.5h7.6l4.7 4.7v7.6l-4.7 4.7H8.2l-4.7-4.7V8.2Z"/><path d="M8.5 12h7"/>',
+  people: '<circle cx="9" cy="8.2" r="3"/><path d="M3.5 19.5a5.5 5.5 0 0 1 11 0"/><circle cx="17" cy="9.2" r="2.4"/><path d="M15.6 14.3a4.4 4.4 0 0 1 4.9 4.6"/>',
+  doctor: '<path d="M6 3.5v5a4 4 0 0 0 8 0v-5"/><path d="M5 3.5h2M13 3.5h2"/><path d="M10 12.5v2.2a4.5 4.5 0 0 0 9 0v-2.4"/><circle cx="19" cy="10.3" r="2"/>',
+  bin: '<path d="M4.5 6.5h15"/><path d="M9.5 6.5v-2h5v2"/><path d="M6.5 6.5l.9 12.6a1.6 1.6 0 0 0 1.6 1.4h6a1.6 1.6 0 0 0 1.6-1.4l.9-12.6"/><path d="M10 10.5v6M14 10.5v6"/>',
+  shield: '<path d="M12 3.5 19 6v5.6c0 4.3-2.9 7.9-7 8.9-4.1-1-7-4.6-7-8.9V6Z"/><path d="m9 12 2.2 2.2 3.8-4"/>',
+  check: '<path d="m5 12.5 4.5 4.5L19 7.5"/>',
+  cross: '<path d="M7 7l10 10M17 7 7 17"/>',
+  chevron: '<path d="m7.5 10 4.5 4.5 4.5-4.5"/>',
+  heart: '<path d="M12 19.8s-7.5-4.3-7.5-10A4.3 4.3 0 0 1 12 7.2a4.3 4.3 0 0 1 7.5 2.6c0 5.7-7.5 10-7.5 10Z"/>',
+  book: '<path d="M4.5 5.5a2 2 0 0 1 2-2h12v15h-12a2 2 0 0 0-2 2Z"/><path d="M4.5 20.5a2 2 0 0 1 2-2h12v2"/>',
 };
 
 /** icon('phone') → Safe <svg>. size in px. */

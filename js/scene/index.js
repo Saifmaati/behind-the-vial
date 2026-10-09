@@ -1,46 +1,54 @@
-// PeptideScope: the only 3D entry point main.js uses (body3d).
+// PeptideScope: the only 3D entry point main.js uses (body).
 //
-//   const body = await mountBody(host /* #stage-host */, { reducedMotion, theme });
+//   const body = await mountBody(host /* #stage-host */, { reducedMotion, theme, creditHref });
 //   body.dispose();
 //
 // Listens: site:select, sequence:start, time:change, effects:active, risk:change, organ:focus,
-//          theme:change, peptide:loaded, body:change (and motion:change { reducedMotion } when main sends it)
+//          theme:change, peptide:loaded, body:change, motion:change
 // Emits:   site:select (hotspot / site label click), organ:focus (callout or organ click),
 //          sequence:phase, sequence:done (via the injection module), stage:ready,
-//          body:change { sex, heightCm, weightKg, age } (from the body editor it mounts in the stage)
+//          body:change { sex, heightCm, weightKg, age, skinTone } (from the Body panel it mounts in the stage)
 //
-// Editable body (appearance only): the "Body" button in the stage corner opens js/ui/bodyeditor.js.
-// body:change reaches only this scene: height scales the anatomy about the feet, weight offsets the
-// skin by region and thickens or thins the fat layer of the injection cross-section, age adds a slight
-// stature loss and shifts fat toward the abdomen, and Female swaps in body-female.glb when published.
-// It never touches the timeline, the effects, the risk check or any content. Locked while the
-// injection sequence plays. Skin tone (appearance only) colours the lifelike skin.
+// v4 (simpler, faster, for teens): one small "Body" button opens one panel with two tabs: Shape (sex,
+// height, weight, age, skin tone; appearance only) and Layers (skin, organs, blood vessels, skeleton,
+// muscles once the detail model is in, and the skin look from real skin to see-through). The stage draws
+// only while something changes (stage.js). No HUD: a short hint, the zoom buttons, the anatomy credit,
+// and a colour key that appears with the injection.
 //
-// Lifelike anatomy (v3): the "Layers" button opens the layers panel (Skin · Muscles when the detail
-// asset exists · Skeleton · Organs · Vessels, and the skin look from lifelike to glass). Pointing at a
-// structure names it (hover on desktop, tap on touch); the wheel and pinch zoom toward the surface under
-// the pointer; double-click or double-tap flies to that spot. While the drug travels (bloodstream and
-// distribution) the scene switches to the glass view with organs and vessels shown, then restores the
-// visitor's choice. The detail asset (close-up skin, muscles, atlas names) loads lazily when named.
+// Editable body (appearance only): body:change reaches only this scene: height scales the anatomy about
+// the feet, weight offsets the skin by region and thickens or thins the fat layer of the injection
+// cross-section, age adds a slight stature loss and shifts fat toward the abdomen, Female swaps in
+// body-female.glb. It never touches the timeline, the effects, the risk check or any content. Locked
+// while the injection sequence plays.
+//
+// Labels and zoom: pointing at a structure names it (hover on desktop, tap on touch) with its plain name
+// from the atlas (fetched on the first label); the wheel and pinch zoom toward the surface under the
+// pointer; double-click or double-tap flies to that spot. The detail model (close-up skin, muscles) is
+// fetched only on a deep zoom, and never by default on phones. While the drug travels (bloodstream and
+// distribution) the scene switches to the see-through view with organs and vessels shown and the blood
+// flowing, then restores the visitor's choice.
 //
 // Extra options (optional, for tests and the sandbox): { bus, anatomy: 'auto' | 'procedural' | 'glb', assetBase,
-//   detail: { glb, atlas } (detail asset paths relative to the asset folder), quality: 'auto' | 'high' | 'low' }.
+//   detail: { glb, atlas } | false, quality: 'auto' | 'high' | 'low', detailOnZoom: true,
+//   glb: ArrayBuffer | Promise<ArrayBuffer|null> (the male body.glb bytes the page already downloaded; main.js) }.
 import * as THREE from 'three';
 import { createStage } from './stage.js';
-import { loadAnatomy, ORGAN_LABELS, bodyParams, hasVariant } from './anatomy.js';
+import { loadAnatomy, ORGAN_LABELS, bodyParams, hasVariant, clearAnatomyCache } from './anatomy.js';
 import { createVessels } from './vessels.js';
 import { createInjection } from './injection.js';
 import { createCallouts } from './callouts.js';
-import { mountBodyEditor, mountLayersPanel, normalizeBody, BODY_EDITOR_DEFAULTS } from '../ui/bodyeditor.js';
+import { mountBodyEditor, normalizeBody, BODY_EDITOR_DEFAULTS } from '../ui/bodyeditor.js';
 
-const SITE_LABELS = { abdomen: 'Abdomen', thigh: 'Thigh', arm: 'Upper arm' };
+// The same words as the site picker (WCAG 3.2.4: one control, one name)
+const SITE_LABELS = { abdomen: 'Belly', thigh: 'Thigh', arm: 'Upper arm' };
 const SEVERITY = { common: 1, notable: 2, serious: 3 };
-// 3D highlight colours (the --warn bronze amber, --danger and champagne --focus of the luxury palette;
-// never green).
+// 3D highlight colours (v4 tokens: --warn amber, --danger red, --focus violet; never green).
 const HL = {
-  dark: { warn: 0xd9a05b, danger: 0xe06a5f, focus: 0xe6d3a3, drug: 0xf1dda8 },
-  light: { warn: 0x8f5410, danger: 0xb3261e, focus: 0x7a5c28, drug: 0x8f6c2c },
+  light: { warn: 0xd97706, danger: 0xd92d20, focus: 0x6246ea, drug: 0x6246ea },
+  dark: { warn: 0xf5b454, danger: 0xff7a70, focus: 0xb3a4ff, drug: 0xb3a4ff },
 };
+// Close enough to the skin to fetch the detail model (metres from the orbit pivot, at body scale 1).
+const DETAIL_DISTANCE = 0.62;
 
 function miniBus() {
   const m = new Map();
@@ -55,8 +63,8 @@ async function resolveBus(opt) {
     const mod = await import('../bus.js');
     if (mod?.bus) return mod.bus;
   } catch (e) { console.warn('[scene] bus.js unavailable; using a local bus.', e); }
-  globalThis.__btvBus ||= miniBus();
-  return globalThis.__btvBus;
+  globalThis.__psBus ||= miniBus();
+  return globalThis.__psBus;
 }
 const unwrap = (d) => (typeof Event !== 'undefined' && d instanceof Event ? d.detail : d) || {};
 
@@ -75,14 +83,21 @@ const ICONS = {
   minus: '<path d="M5 12h14"/>',
   reset: '<path d="M4 12a8 8 0 1 0 2.4-5.7"/><path d="M4 4v4.5h4.5"/>',
   skip: '<path d="M6 5l9 7-9 7z"/><path d="M18 5v14"/>',
+  hand: '<path d="M8 13V6.5a1.5 1.5 0 0 1 3 0V12"/><path d="M11 11.5v-2a1.5 1.5 0 0 1 3 0V12"/><path d="M14 11v-.5a1.5 1.5 0 0 1 3 0V15a6 6 0 0 1-6 6h-.6a5 5 0 0 1-4-2L5 16.5a1.6 1.6 0 0 1 2.5-2L8 15"/>',
 };
-const svgIcon = (name) => `<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${ICONS[name]}</svg>`;
+const svgIcon = (name) => `<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ICONS[name]}</svg>`;
+function initialTheme(t) {
+  if (t === 'light' || t === 'dark') return t;
+  const h = document.documentElement.dataset.theme;
+  if (h === 'light' || h === 'dark') return h;
+  return globalThis.matchMedia?.('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+}
 
 export async function mountBody(host, opts = {}) {
   if (!host) throw new Error('mountBody: host element required');
   const bus = await resolveBus(opts.bus);
   const reducedMotionInit = opts.reducedMotion ?? !!globalThis.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
-  const themeInit = opts.theme === 'light' ? 'light' : 'dark';
+  const themeInit = initialTheme(opts.theme);
 
   // ---------------------------------------------------------------- DOM (internals of #stage-host)
   const added = [];
@@ -91,7 +106,8 @@ export async function mountBody(host, opts = {}) {
   let layer = host.querySelector('#callout-layer');
   if (!layer) { layer = document.createElement('div'); layer.id = 'callout-layer'; host.appendChild(layer); added.push(layer); }
 
-  if (!hasWebGL2()) {
+  // main.js has already probed WebGL 2 (opts.webgl2): no second throwaway context
+  if (opts.webgl2 !== true && !hasWebGL2()) {
     const fb = host.querySelector('#stage-fallback');
     if (fb) fb.hidden = false;
     throw new Error('WebGL 2 unavailable');
@@ -104,7 +120,7 @@ export async function mountBody(host, opts = {}) {
   const stage = await createStage(host, { reducedMotion: reducedMotionInit, theme: themeInit, quality: opts.quality || 'auto' });
   let anatomy, vessels, callouts, injection;
   try {
-    anatomy = await loadAnatomy(stage, { source: opts.anatomy || 'auto', base: opts.assetBase, detail: opts.detail || null });
+    anatomy = await loadAnatomy(stage, { source: opts.anatomy || 'auto', base: opts.assetBase, detail: opts.detail ?? null, glb: opts.glb ?? null });
     vessels = createVessels(stage, anatomy);
     callouts = createCallouts(stage, layer, { onSelect: (organ) => bus.emit('organ:focus', { organ }) });
     injection = createInjection(stage, anatomy, vessels, { emit: seqEmit, callouts });
@@ -123,15 +139,15 @@ export async function mountBody(host, opts = {}) {
   };
   let HC = HL[stage.theme];
 
-  // controls overlay: zoom / reset, skip, colour key
+  // controls overlay (v4, kept small): zoom out / in / reset, skip, a colour key with the injection, a hint
   const tools = document.createElement('div');
   tools.className = 'stage-tools';
   tools.setAttribute('role', 'group');
   tools.setAttribute('aria-label', '3D view controls');
   tools.innerHTML = `
-    <button type="button" class="stage-tool" data-act="in" aria-label="Zoom in" title="Zoom in">${svgIcon('plus')}</button>
     <button type="button" class="stage-tool" data-act="out" aria-label="Zoom out" title="Zoom out">${svgIcon('minus')}</button>
-    <button type="button" class="stage-tool" data-act="reset" aria-label="Reset view" title="Reset view">${svgIcon('reset')}</button>`;
+    <button type="button" class="stage-tool" data-act="in" aria-label="Zoom in" title="Zoom in">${svgIcon('plus')}</button>
+    <button type="button" class="stage-tool" data-act="reset" aria-label="Reset the view" title="Reset the view">${svgIcon('reset')}</button>`;
   const skipBtn = document.createElement('button');
   skipBtn.type = 'button';
   skipBtn.className = 'stage-skip';
@@ -141,23 +157,26 @@ export async function mountBody(host, opts = {}) {
   legend.className = 'stage-legend';
   legend.setAttribute('aria-label', 'Colour key');
   legend.innerHTML = '<li><span class="sw sw--artery" aria-hidden="true"></span>Arteries</li><li><span class="sw sw--vein" aria-hidden="true"></span>Veins</li><li><span class="sw sw--drug" aria-hidden="true"></span>Drug</li>';
+  const hint = document.createElement('p');
+  hint.className = 'stage-hint';
+  hint.setAttribute('aria-hidden', 'true');
+  hint.innerHTML = `${svgIcon('hand')}<span>Drag to turn the body</span>`;
   // Attribution for the anatomy (CC BY 4.0 requires it next to the work); links to the asset register.
   const credit = document.createElement('p');
   credit.className = 'stage-credit';
   credit.innerHTML = `Anatomy: <a href="${opts.creditHref || './ASSETS.md'}" target="_blank" rel="noopener" aria-label="Anatomy: CC BY 4.0, from HRA, VOXEL-MAN and BodyParts3D. Asset licences (opens in a new tab)"><span class="stage-credit__long">CC BY 4.0 (HRA, VOXEL-MAN, BodyParts3D)</span><span class="stage-credit__short">CC BY 4.0</span></a>`;
-  // "Layers" and "Body" sit together in the top-right corner
+  // the one "Body" button sits in the top-right corner
   const panelBtns = document.createElement('div');
   panelBtns.className = 'stage-panel-btns';
-  host.append(tools, skipBtn, legend, credit, panelBtns);
-  added.push(tools, skipBtn, legend, credit, panelBtns);
+  host.append(tools, skipBtn, legend, hint, credit, panelBtns);
+  added.push(tools, skipBtn, legend, hint, credit, panelBtns);
   host.classList.add('has-body3d');
 
   let disposed = false;
 
   // ---------------------------------------------------------------- editable body (appearance only)
   // body:change → anatomy.setBody (tweened). Each tween step refreshes the cached callout anchors and
-  // the camera's home framing (no allocation). Female swaps in the female anatomy when it is published.
-  const hudModel = host.querySelector('.hud-label--tl');
+  // the camera's home framing (no allocation). Female swaps in the female anatomy.
   let bodyDesc = { ...BODY_EDITOR_DEFAULTS.male };
   let pendingBody = null;
   let lastBodyH = anatomy.modelHeight * anatomy.bodyScale;
@@ -172,44 +191,38 @@ export async function mountBody(host, opts = {}) {
     lastBodyH = h;
   }
   let offBodyStep = anatomy.onBodyChange(onBodyStep);
-  function updateHud() {
-    if (!hudModel) return;
-    const kind = hudModel.querySelector('.hud-tl-kind');
-    const text = `Visible Human ${anatomy.variant === 'female' ? 'Female' : 'Male'} · ${(bodyDesc.heightCm / 100).toFixed(2)} m`;
-    // keep the "Anatomical model · " prefix (app.css hides it on narrow stages); replace the rest
-    const node = kind ? kind.nextSibling : hudModel.firstChild;
-    if (node && node.nodeType === 3) node.nodeValue = text;
-    else if (!node) hudModel.append(document.createTextNode(text));
-  }
-  // Labels keep clear of the open panel: a side panel on wide stages, a bottom sheet on narrow ones.
-  // Only one of the two panels is open at a time.
-  function panelToggled(which, open, panel) {
-    if (open) (which === 'body' ? layersUI : editor)?.close({ restoreFocus: false });
-    editorInsets(open, panel);
-  }
+  // The open Body panel never hides the body it edits (teen-ux review). In single-column layouts it is a
+  // sheet under the body, in room the stage grows by (css); beside the body (desktop) the camera frames
+  // the body in the part of the stage the panel leaves free, and the labels keep clear of it.
   function editorInsets(open, panel) {
-    if (!open || !panel) { callouts.setInsets(state.playing ? { right: 0 } : { right: 0, bottom: 0 }); return; }
+    // while the panel is open the side-effect, warning and arrival labels step aside: the panel is about
+    // the body's shape, and the labels would crowd the space it leaves (restored on close)
+    state.editorOpen = !!(open && panel);
+    for (const g of ['effects', 'risk', 'arrival']) callouts.setGroupVisible(g, !state.editorOpen && !(state.playing && g !== 'arrival'));
+    if (!open || !panel) {
+      stage.setFrameInset({});
+      callouts.setInsets(state.playing ? { right: 0 } : { right: 0, bottom: 0 });
+      return;
+    }
     const hr = host.getBoundingClientRect(), pr = panel.getBoundingClientRect();
-    if (pr.width > hr.width * 0.7) callouts.setInsets({ bottom: Math.max(0, hr.bottom - pr.top + 8 - 40), right: 0 });
-    else callouts.setInsets({ right: Math.max(0, hr.right - pr.left + 8 - 56), bottom: 0 });
+    const sheet = pr.width > hr.width * 0.7;
+    if (sheet) {
+      stage.setFrameInset({});
+      callouts.setInsets({ right: 0, bottom: 0 });
+    } else {
+      const right = Math.max(0, hr.right - pr.left + 8);
+      stage.setFrameInset({ right });
+      callouts.setInsets({ right: Math.max(0, right - 20), bottom: 0 });
+    }
   }
-  const editor = mountBodyEditor(host, {
-    initial: bodyDesc,
-    femaleAvailable: false,
-    onChange: (d) => bus.emit('body:change', d),
-    onToggle: (open, panel) => panelToggled('body', open, panel),
-    onOpen: () => { if (!femaleOk) checkFemale(); },
-    buttonHost: panelBtns,
-  });
-  added.push(editor.elements.toggle, editor.elements.panel);
 
-  // ---------------------------------------------------------------- anatomy layers + skin look (view only)
-  // view = what the visitor chose; while the drug travels the sequence borrows the glass view.
+  // ---------------------------------------------------------------- the Body panel: shape + layers
+  // view = what the visitor chose; while the drug travels the sequence borrows the see-through view.
   const view = { layers: { ...anatomy.layers }, xray: anatomy.xray };
   let seqGlass = false;
   function applyView({ instant = false } = {}) {
     if (state.playing) {
-      // the sequence needs the organs and vessels; the glass look once the drug is travelling
+      // the sequence needs the organs and vessels; the see-through look once the drug is travelling
       anatomy.setLayers({ ...view.layers, organs: true, vessels: true });
       anatomy.setXray(seqGlass ? 1 : view.xray, { instant });
     } else {
@@ -217,27 +230,46 @@ export async function mountBody(host, opts = {}) {
       anatomy.setXray(view.xray, { instant });
     }
   }
-  const layersUI = mountLayersPanel(host, {
-    initial: view,
-    muscles: anatomy.hasMuscles,
-    structures: anatomy.structures(),
-    onChange: (v) => { view.layers = { ...v.layers }; view.xray = v.xray; applyView(); },
-    onFocus: (organ) => bus.emit('organ:focus', { organ }),
-    onToggle: (open, panel) => panelToggled('layers', open, panel),
+  const editor = mountBodyEditor(host, {
+    initial: bodyDesc,
+    femaleAvailable: false,
+    onChange: (d) => bus.emit('body:change', d),
+    onToggle: (open, panel) => editorInsets(open, panel),
+    onOpen: () => { if (!femaleOk) checkFemale(); anatomy.loadAtlas?.(); },
     buttonHost: panelBtns,
+    view: {
+      initial: view,
+      muscles: anatomy.hasMuscles,
+      structures: anatomy.structures(),
+      onChange: (v) => { view.layers = { ...v.layers }; view.xray = v.xray; applyView(); },
+      onFocus: (organ) => bus.emit('organ:focus', { organ }),
+    },
   });
-  panelBtns.prepend(layersUI.elements.toggle);
-  added.push(layersUI.elements.toggle, layersUI.elements.panel);
-  function loadDetailLater() {
-    const a = anatomy;
-    if (!a.detailInfo) return;
-    const go = () => a.loadDetail().then((ok) => {
-      if (!ok || disposed || a !== anatomy) return;
+  const layersUI = editor.layers;
+  added.push(editor.elements.toggle, editor.elements.panel);
+  // names (atlas) and the detail model are fetched on demand; a panel already open learns about them
+  function wireDetail(a) {
+    return a.onDetail?.(() => {
+      if (disposed || a !== anatomy) return;
       layersUI.setMuscles(a.hasMuscles);
       layersUI.setStructures(a.structures());
       applyView({ instant: true });
-    });
-    if (typeof requestIdleCallback === 'function') requestIdleCallback(go, { timeout: 2500 }); else setTimeout(go, 1200);
+    }) || (() => {});
+  }
+  let offDetail = wireDetail(anatomy);
+  // Deep zoom fetches the detail model (desktop by default; phones only when asked with { detail: {...} }).
+  const detailAuto = opts.detailOnZoom !== false && (stage.quality !== 'low' || (opts.detail && typeof opts.detail === 'object'));
+  // Only a zoom the visitor makes counts (not the injection close-up or another camera flight), and only
+  // once the camera has stayed close for a moment.
+  let nearSince = -1;
+  function maybeLoadDetail(t) {
+    const a = anatomy;
+    if (!detailAuto || !a.detailInfo || a.detailLoading) return;
+    const d = stage.camera.position.distanceTo(stage.controls.target);
+    const near = !state.playing && !stage.flying && d < DETAIL_DISTANCE * (a.bodyScale || 1);
+    if (!near) { nearSince = -1; return; }
+    if (nearSince < 0) nearSince = t;
+    if (t - nearSince > 0.35) a.loadDetail();
   }
   function checkFemale() {
     if (opts.anatomy === 'procedural') return Promise.resolve(false);
@@ -268,15 +300,15 @@ export async function mountBody(host, opts = {}) {
     anatomy.setBody(bodyParams(bodyDesc, anatomy.modelHeight), { instant });
     anatomy.setSkinTone(bodyDesc.skinTone);
     anatomy.setSkinAge(bodyDesc.age);
-    updateHud();
   }
   async function swapVariant(variant) {
     if (swapping) { swapping.want = variant; return; }
     const job = { want: variant };
     swapping = job;
-    editor.setBusy(true, `Loading the ${variant} anatomy…`);
+    editor.setBusy(true, `Loading the ${variant} body…`);
+    host.classList.add('is-swapping');
     try {
-      const next = await loadAnatomy(stage, { source: opts.anatomy || 'auto', base: opts.assetBase, variant });
+      const next = await loadAnatomy(stage, { source: opts.anatomy || 'auto', base: opts.assetBase, variant, detail: opts.detail ?? null });
       if (disposed) { next.dispose(); return; }
       replaceAnatomy(next);
     } catch (e) {
@@ -290,6 +322,7 @@ export async function mountBody(host, opts = {}) {
     } finally {
       swapping = null;
       editor.setBusy(false);
+      host.classList.remove('is-swapping');
     }
     if (disposed) return;
     if (job.want !== anatomy.variant && (job.want !== 'female' || femaleOk)) { swapVariant(job.want); return; }
@@ -297,6 +330,7 @@ export async function mountBody(host, opts = {}) {
   }
   function replaceAnatomy(next) {
     offBodyStep();
+    offDetail();
     injection.dispose();
     vessels.dispose();
     anatomy.dispose();
@@ -307,10 +341,10 @@ export async function mountBody(host, opts = {}) {
     vessels = createVessels(stage, anatomy);
     injection = createInjection(stage, anatomy, vessels, { emit: seqEmit, callouts });
     offBodyStep = anatomy.onBodyChange(onBodyStep);
+    offDetail = wireDetail(anatomy);
     applyView({ instant: true });
     layersUI.setMuscles(anatomy.hasMuscles);
     layersUI.setStructures(anatomy.structures());
-    loadDetailLater();
     host.dataset.anatomy = anatomy.source;
     host.dataset.variant = anatomy.variant;
     // restore what the scene was showing
@@ -321,12 +355,18 @@ export async function mountBody(host, opts = {}) {
     applyRisk(state.warnings);
     if (state.focus) { const f = state.focus; state.focus = null; setFocus(f); }
     renderSiteLabels();
+    stage.invalidate();
   }
 
   // ---------------------------------------------------------------- state
   const state = {
     site: null, peptideId: null, entry: undefined, playing: false, focus: null,
     effects: [], warnings: [], level: 0,
+    // v4: side-effect labels wait until the visitor has started the injection or moved the timeline, so
+    // the first view of the body is calm and uncluttered
+    engaged: false,
+    // the explorer step (main.js step:change): the three site markers and labels show only on step 2
+    step: null,
   };
 
   // ---------------------------------------------------------------- views
@@ -347,9 +387,18 @@ export async function mountBody(host, opts = {}) {
   }
 
   // ---------------------------------------------------------------- highlights + callouts
+  // Step 2 ("Pick a spot") shows all three markers with their labels; afterwards only the chosen spot's
+  // marker stays (teen-ux review: a kid who picked the arm must not see a target on the belly). Without
+  // step events (sandbox) the old rule applies: all three until a site is chosen.
+  const sitesStep = () => (state.step ? state.step === 'site' : !state.site);
+  function syncSiteMarkers() {
+    if (state.playing) return; // the injection sequence owns the markers while it plays
+    anatomy.setSiteMarkers?.(sitesStep() ? 'all' : state.site ? 'chosen' : 'none');
+  }
   function renderSiteLabels() {
-    const busy = state.effects.length > 0 || state.warnings.length > 0;
-    const show = !state.site && !state.playing && !state.focus && !busy;
+    syncSiteMarkers();
+    const busy = (state.engaged && state.effects.length > 0) || state.warnings.length > 0;
+    const show = sitesStep() && !state.playing && !state.focus && !(busy && !state.step);
     if (!show) { callouts.clear('sites'); return; }
     for (const s of Object.keys(SITE_LABELS)) {
       const f = anatomy.siteFrame(s);
@@ -373,7 +422,7 @@ export async function mountBody(host, opts = {}) {
     state.effects = Array.isArray(items) ? items : [];
     anatomy.clearHighlights('effect');
     callouts.clear('effects');
-    if (state.playing) return; // the sequence owns the body; effects come back when it ends
+    if (state.playing || !state.engaged) { renderSiteLabels(); return; } // the sequence owns the body; effects come back when it ends
     const byOrgan = new Map();
     const also = new Set();
     for (const it of state.effects) {
@@ -390,9 +439,13 @@ export async function mountBody(host, opts = {}) {
       const serious = e.sev >= 3;
       anatomy.highlight(organ, { channel: 'effect', color: serious ? HC.danger : HC.warn, intensity: serious ? 1.15 : 0.95, pulse: 0.6 });
       const text = e.names.length > 2 ? `${e.names.slice(0, 2).join(', ')} +${e.names.length - 2} more` : e.names.join(', ');
+      const site = organ === 'injection_site';
       callouts.set(`effect:${organ}`, {
         anchor: anchorOf(organ), normal: surfaceNormal(organ), title: label(organ), text, tone: serious ? 'danger' : 'warn', organ, group: 'effects',
         ariaLabel: `${label(organ)}: ${e.names.join(', ')}. Show on the body.`,
+        // the injection site ranks right after serious effects and is never dropped for space; its skin
+        // faces sideways on the arm, so it stays up at grazing angles too (teen-ux review)
+        ...(site ? { priority: 5.4, keep: true, facing: -0.45 } : {}),
       });
     }
     for (const organ of also) {
@@ -447,10 +500,16 @@ export async function mountBody(host, opts = {}) {
   function setPlaying(on) {
     const was = state.playing;
     state.playing = on;
+    // focus never drops to <body> when the focused Skip button hides (a11y review)
+    if (!on && skipBtn.contains(document.activeElement)) {
+      const next = document.getElementById('play-sequence') || stage.canvas;
+      next?.focus({ preventScroll: true });
+    }
     skipBtn.hidden = !on;
     editor.setLocked(on);
-    layersUI.setLocked(on);
     stage.autoCenter = !on;
+    if (on) { host.classList.add('has-drug-key'); hideHint(); }
+    if (!on) vessels.setBloodFlow(false);
     if (on !== was) {
       seqGlass = false;
       clearPin();
@@ -458,9 +517,10 @@ export async function mountBody(host, opts = {}) {
       applyView();
     }
     host.classList.toggle('is-sequence-playing', on);
-    for (const g of ['effects', 'risk', 'focus']) callouts.setGroupVisible(g, !on);
-    // keep labels clear of the skip button while it shows (it sits higher on wide stages; see stage.css)
-    callouts.setInsets({ bottom: on ? (host.clientWidth > 600 ? 52 : 26) : 0 });
+    for (const g of ['effects', 'risk', 'focus']) callouts.setGroupVisible(g, !on && !(state.editorOpen && g !== 'focus'));
+    // keep labels clear of the skip button while it shows
+    // (the button sits higher on narrow stages, above the colour key: measure where it really is)
+    callouts.setInsets({ bottom: on ? Math.max(44, Math.round(host.clientHeight - skipBtn.offsetTop) + 6) : 0 });
     if (on !== was) {
       // While the sequence plays it owns the organ glow: warnings and side effects step back, and the
       // timeline's drug level waits until the drug has actually been shown arriving.
@@ -471,12 +531,18 @@ export async function mountBody(host, opts = {}) {
     renderSiteLabels();
     if (!on && pendingBody) { const b = pendingBody; pendingBody = null; applyBody(b); }
   }
+  // GPU reset: main.js keeps Watch disabled until the 3D view is back; a sequence that was playing ends
+  const offContext = stage.onContextChange?.((lost) => {
+    if (lost && state.playing) { injection.reset(); setPlaying(false); }
+    bus.emit('stage:context', { lost: !!lost });
+  }) || (() => {});
 
-  // The drug travels from the bloodstream phase on: glass view until the sequence ends.
+  // The drug travels from the bloodstream phase on: see-through view and flowing blood until it ends.
   onSeqEvent = (t, d) => {
     if (t !== 'sequence:phase' || !state.playing) return;
     const travel = d?.phase === 'bloodstream' || d?.phase === 'distribution';
     if (travel !== seqGlass) { seqGlass = travel; applyView(); }
+    vessels.setBloodFlow(travel);
   };
 
   // ---------------------------------------------------------------- bus wiring
@@ -497,22 +563,35 @@ export async function mountBody(host, opts = {}) {
       const v = siteView(site);
       if (v) stage.flyTo({ ...v, duration: 1300 });
     }
+    // the syringe model is only needed for the injection: fetch it once a site is chosen, then compile
+    // the sequence's shaders ahead so the first Watch does not hitch at each phase (performance review)
+    const pre = () => {
+      if (disposed) return;
+      injection.preload?.();
+      injection.warm?.(site)?.then?.(() => { if (!disposed && !state.playing) anatomy.warmVariants?.(stage.renderer, stage.camera); });
+    };
+    if (typeof requestIdleCallback === 'function') requestIdleCallback(pre, { timeout: 2000 }); else setTimeout(pre, 400);
   });
 
   on('peptide:loaded', ({ id, entry }) => {
     state.peptideId = id ?? null;
     state.entry = entry ?? null;
     if (state.playing) { injection.reset(); setPlaying(false); }
+    // a new choice starts fresh: side-effect labels wait for this peptide's own shot or timeline move
+    if (state.engaged) { state.engaged = false; applyEffects(state.effects); }
     const targets = (state.entry?.targets || []).map((t) => t.organ).filter(Boolean);
     vessels.setDrugTargets(targets);
     if (!state.entry) vessels.setDrugLevel(0);
+    host.classList.remove('has-drug-key');
   });
 
   on('sequence:start', ({ site, peptideId }) => {
     const entry = state.entry;
     if (!entry || (peptideId && state.peptideId && peptideId !== state.peptideId)) return; // coming soon: no sequence
+    if (stage.contextLost) return; // nothing can draw; main.js says the view is restoring
     const s = SITE_LABELS[site] ? site : state.site || 'abdomen';
     state.site = s;
+    state.engaged = true;
     if (state.focus) setFocus(null);
     setPlaying(true);
     injection.play({ site: s, peptide: entry }).then((res) => {
@@ -520,9 +599,17 @@ export async function mountBody(host, opts = {}) {
     }).catch((e) => { console.error('[scene] sequence failed', e); setPlaying(false); });
   });
 
+  // main.js gave up waiting for the sequence (its watchdog): drop it here too, so both sides agree
+  on('sequence:cancel', () => { if (state.playing) { injection.reset(); setPlaying(false); } });
+  on('step:change', ({ step }) => {
+    state.step = step || null;
+    renderSiteLabels();
+    stage.invalidate();
+  });
   on('time:change', ({ level, levelNorm, tDays }) => {
     // weekly mode reports level > 1 (build-up); the glow takes the 0..1 level within the current view
     state.level = Number.isFinite(levelNorm) ? levelNorm : Number.isFinite(level) ? Math.min(1, Math.max(0, level)) : 0;
+    if (Number(tDays) > 0.01 && !state.engaged) { state.engaged = true; applyEffects(state.effects); }
     if (state.playing) return;
     vessels.setDrugLevel(state.level);
     // once the visitor moves along the timeline, its level drives the glow instead of the arrival flash
@@ -543,12 +630,12 @@ export async function mountBody(host, opts = {}) {
     stage.flyTo({ ...organView(organ), duration: 1300 });
   });
   on('theme:change', ({ theme }) => {
-    stage.setTheme(theme === 'light' ? 'light' : 'dark');
+    stage.setTheme(theme === 'dark' ? 'dark' : 'light');
   });
   on('motion:change', ({ reducedMotion }) => stage.setReducedMotion(!!reducedMotion));
   on('body:change', (d) => applyBody(d));
   stage.onTheme((t) => {
-    HC = HL[t] || HL.dark;
+    HC = HL[t] || HL.light;
     applyEffects(state.effects);
     applyRisk(state.warnings);
     if (state.focus) anatomy.highlight(state.focus, { channel: 'focus', color: HC.focus, intensity: 0.16, pulse: 0 });
@@ -574,7 +661,9 @@ export async function mountBody(host, opts = {}) {
   }
   const hoverAnchor = new THREE.Vector3();
   const pinAnchor = new THREE.Vector3();
+  // the names come from the atlas once it is in (fetched on the first label, ~30 KB)
   function structureLabel(id, info, anchor) {
+    anatomy.loadAtlas?.();
     anchor.copy(info.point);
     callouts.set(id, { anchor, title: info.title, text: info.text, tone: 'info', group: 'hover', interactive: false, organ: info.organ || undefined });
   }
@@ -597,7 +686,7 @@ export async function mountBody(host, opts = {}) {
     if (state.focus) setFocus(null);
   }
   let lastTap = null, tapTimer = 0;
-  const onDown = (e) => { down = { x: e.clientX, y: e.clientY, t: performance.now() }; };
+  const onDown = (e) => { down = { x: e.clientX, y: e.clientY, t: performance.now() }; hideHint(); };
   const onUp = (e) => {
     if (!down) return;
     const moved = Math.hypot(e.clientX - down.x, e.clientY - down.y);
@@ -662,21 +751,27 @@ export async function mountBody(host, opts = {}) {
   });
   skipBtn.addEventListener('click', () => { injection.skip(); });
 
+  // the "drag to turn" hint fades after the first touch of the body (or after a while)
+  let hintTimer = setTimeout(hideHint, 9000);
+  function hideHint() { clearTimeout(hintTimer); hint.classList.add('is-hidden'); }
+
   renderSiteLabels();
-  // site labels step aside in a close-up (the rings do too, in anatomy.js)
+  // site labels step aside in a close-up (the rings do too, in anatomy.js); a deep zoom fetches the
+  // detail model
   let sitesShown = true;
-  const offSitesFrame = stage.onFrame(() => {
+  const offSitesFrame = stage.onFrame((dt, t) => {
     const show = stage.camera.position.distanceTo(stage.controls.target) > 0.3;
     if (show !== sitesShown) { sitesShown = show; callouts.setGroupVisible('sites', show); }
+    maybeLoadDetail(t);
+    return nearSince >= 0 && !anatomy.detailLoading; // keep a frame coming until the short wait is over
   });
 
   // ---------------------------------------------------------------- ready
   host.dataset.anatomy = anatomy.source;
   host.dataset.variant = anatomy.variant;
   checkFemale();
-  loadDetailLater();
   // a body set before the scene mounted (sandbox, tests) is applied at once
-  { const last = bus.last?.('body:change'); if (last) applyBody(last, { instant: true }); else updateHud(); }
+  { const last = bus.last?.('body:change'); if (last) applyBody(last, { instant: true }); }
   try { bus.emit('stage:ready', { anatomy: anatomy.source }); } catch (e) { console.error(e); }
 
   const api = {
@@ -689,15 +784,17 @@ export async function mountBody(host, opts = {}) {
     dispose() {
       if (disposed) return;
       disposed = true;
-      delete host.__btvBody;
+      delete host.__psBody;
       offBodyStep();
+      offDetail();
+      offContext();
+      clearTimeout(hintTimer);
       editor.dispose();
       for (const off of offs) { try { off(); } catch { /* ignore */ } }
       cancelAnimationFrame(hoverRaf);
       clearTimeout(tapTimer);
       offSitesFrame();
       stage.surfacePicker = null;
-      layersUI.dispose();
       canvas.removeEventListener('dblclick', onDbl);
       canvas.removeEventListener('pointerdown', onDown);
       canvas.removeEventListener('pointerup', onUp);
@@ -708,14 +805,15 @@ export async function mountBody(host, opts = {}) {
       callouts.dispose();
       vessels.dispose();
       anatomy.dispose();
+      clearAnatomyCache();
       stage.dispose();
       for (const el of added) el.remove();
-      host.classList.remove('has-body3d', 'is-sequence-playing', 'has-body-editor-open');
+      host.classList.remove('has-body3d', 'is-sequence-playing', 'has-body-editor-open', 'has-drug-key', 'is-swapping');
       delete host.dataset.anatomy;
       delete host.dataset.variant;
     },
   };
   // Dev/test handle (headless checks reach the scene through the host element, not a global).
-  Object.defineProperty(host, '__btvBody', { value: api, configurable: true, enumerable: false });
+  Object.defineProperty(host, '__psBody', { value: api, configurable: true, enumerable: false });
   return api;
 }

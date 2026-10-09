@@ -38,7 +38,8 @@ export function createCiteContext(sources = DEFAULT_SOURCES) {
       const label = `Source ${r.n}: ${r.source.title}`;
       return `<sup class="cite"><a href="#src-${esc(id)}" aria-label="${esc(label)}">${r.n}</a></sup>`;
     });
-    return raw(out.join(''));
+    // several numbers stay together on one line (the comma between them must never start a line)
+    return raw(out.length > 1 ? `<span class="cite-group">${out.join('')}</span>` : out.join(''));
   }
 
   function chips(obj = {}) {

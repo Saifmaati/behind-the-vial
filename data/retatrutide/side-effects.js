@@ -169,7 +169,7 @@ export default [
     timing: { fromDays: 0, toDays: 2, text: "Shown in the first day or two after a shot, at the spot where it went in." },
   },
   {
-    id: "heart-rate", name: "Faster resting heart rate", organ: "heart", alsoOrgans: [], severity: "notable",
+    id: "heart-rate", name: "Faster heart rate", organ: "heart", alsoOrgans: [], severity: "notable",
     frequency: {
       text: "In the peer-reviewed phase 2 trial (adults with obesity or overweight, without diabetes), heart rate measured with a wearable monitor at week 24 was on average about 9 beats per minute higher than at the start in the 12 mg group, versus less than 1 beat per minute on a dummy shot (placebo). In the larger TRIUMPH-1 trial, by week 80 the rise had shrunk to 1.5 to 2.7 beats per minute on retatrutide, versus 0.3 below the start on placebo. A normal resting heart rate is 60 to 100 beats per minute.",
       sources: ["new-england-2023-supplementary-appendix-table-s8", "new-england-2023-triple-hormone-receptor-agonist-2", "new-england-2026-supplementary-appendix-retatrutide-triple"],
@@ -219,11 +219,11 @@ export default [
       ledger: ["gap-side-effect-mechanism-and-mitigation-dys-what-it-is-retatrutide-rates", "gap-side-effect-mechanism-and-mitigation-dys-ema-mechanism-unknown", "gap-side-effect-mechanism-and-mitigation-dys-mechanism-hypothesis-sensory-nerves", "gap-side-effect-mechanism-and-mitigation-dys-dose-and-blood-level-linked", "gap-side-effect-mechanism-and-mitigation-dys-onset-3-to-93-days-resolves-after-stopping"],
     },
     reduce: {
-      text: "Lilly said most cases in TRIUMPH-1 were mild to moderate, most went away while people kept taking the drug, and most people continued. In the phase 2 trial, cases were mild to moderate and no one stopped because of them. For high-dose semaglutide, European regulators found that episodes that cleared with no change to treatment typically took about 2 months (63 days), and about 15% had not cleared when the studies ended. Experts say doctors handle it case by case, based on how much it affects daily life.",
+      text: "In TRIUMPH-1 and in the phase 2 trial, most cases were mild to moderate. For high-dose semaglutide, European regulators found that episodes that cleared on their own typically took about 2 months (63 days), and about 15% had not cleared when the studies ended. Experts say doctors handle it case by case, based on how much it affects daily life. Tell a doctor about burning or tingling skin, especially if it spreads or does not stop.",
       sources: ["eli-lilly-2026-lilly-s-triple-agonist", "new-england-2023-triple-hormone-receptor-agonist", "european-medicines-2025-wegovy---chmp", "springer-european-2026-dysesthesia-associated-glp-1"],
       ledger: ["trials-triumph1-dysesthesia-course", "trials-ph2-skin-sensation-mild", "gap-side-effect-mechanism-and-mitigation-dys-ema-median-recovery-no-change", "gap-side-effect-mechanism-and-mitigation-dys-ema-unrecovered-and-dose-dependent-recovery", "gap-side-effect-mechanism-and-mitigation-dys-management-depends-on-impact"],
     },
-    timing: { fromDays: 3, toDays: 14, cumulative: true, text: "Tied to higher drug levels, so it builds with repeated shots. In reports on related drugs it began anywhere from days to about three months after the first shot, and episodes often lasted weeks to months." },
+    timing: { fromDays: 3, toDays: 14, cumulative: true, text: "With high-dose semaglutide, a related drug, it was more common at higher drug levels in the blood. In reports on related drugs it began anywhere from days to about three months after the first shot, and episodes often lasted weeks to months." },
   },
   {
     id: "uti", name: "Bladder infection (UTI)", organ: "bladder", alsoOrgans: [], severity: "notable",
@@ -238,7 +238,7 @@ export default [
       ledger: ["trials-triumph1-uti", "gap-side-effect-mechanism-and-mitigation-uti-general-prevention-fluids"],
     },
     reduce: {
-      text: "Lilly said the UTIs in TRIUMPH-1 were mostly mild to moderate and most went away while people kept taking the drug. General NHS advice, not specific to retatrutide: drinking plenty of fluids, mostly water, helps prevent UTIs.",
+      text: "Lilly said the UTIs in TRIUMPH-1 were mostly mild to moderate. General NHS advice, not specific to retatrutide: drinking plenty of fluids, mostly water, helps prevent UTIs. Tell a doctor about burning when you pee, needing to pee often, or a fever.",
       sources: ["eli-lilly-2026-lilly-s-triple-agonist", "nhs-nhs-2025-urinary-tract-infections-utis"],
       ledger: ["trials-triumph1-dysesthesia-course", "gap-side-effect-mechanism-and-mitigation-uti-general-prevention-fluids"],
     },

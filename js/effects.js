@@ -1,9 +1,16 @@
 // PeptideScope: timeline time → side effects active at that moment.
 //
 // Listens to time:change from js/timeline.js, works out which of the entry's
-// side effects are typically present at that point, renders compact cards
-// (name, organ, how often, severity, "why it happens", "how to reduce it or
-// when it passes", citations) and tells the 3D body which organs to light up.
+// side effects are typically present at that point, renders compact rows and
+// tells the 3D body which organs to light up.
+//
+// v4 fix (teen-ux review: "wall of text"): each effect is one compact row: severity pill, name,
+// organ, one plain line about when it tends to show, and a "Show on the body" button. "How often"
+// (trial figures), "Why it happens" and "What helps, or when it passes" sit behind "Learn more",
+// each label stacked above full-width text. The serious ones show, plus up to three others, then
+// "Show all N". Trial dose-group names ("12 mg group") are written as "the highest-dose group"
+// here (safety review; 12 mg is the highest group in every trial cited); the exact arms stay in
+// "The trials". Effects that come with weeks of repeated use are left off this one-shot timeline.
 //
 // Public API (docs/ARCHITECTURE.md):
 //   mountEffects(host, entry) → { dispose() }
@@ -22,6 +29,7 @@
 
 import { bus } from './bus.js';
 import { fillCitations, citePlaceholder } from './timeline.js';
+import { isRepeatedUse } from './ui/util.js';
 
 const SEVERITY = {
   serious: { rank: 0, label: 'Serious' },
@@ -35,7 +43,7 @@ const ORGAN_LABELS = {
   injection_site: 'Injection site', muscle: 'Muscle', eyes: 'Eyes', blood: 'Blood',
 };
 const ANNOUNCE_DEBOUNCE_MS = 900;
-const VISIBLE_LIMIT = 4; // more than this → "Show N more" (most serious first, so the rest are milder)
+const OTHERS_SHOWN = 3; // the serious ones always show, plus this many others; the rest behind "Show all N" 
 const LEAVE_MS = 220;
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -43,6 +51,13 @@ const num = (x) => typeof x === 'number' && Number.isFinite(x);
 const organLabel = (id) => ORGAN_LABELS[id] || String(id || '').replace(/_/g, ' ').replace(/^./, (c) => c.toUpperCase());
 const f1 = (v) => (Math.round(v * 10) / 10).toFixed(1);
 const listJoin = (a) => (a.length <= 1 ? a.join('') : `${a.slice(0, -1).join(', ')} and ${a.at(-1)}`);
+const firstSentence = (t) => { const m = String(t || '').match(/^.*?[.!?](?=\s+[A-Z0-9“"(]|$)/); return m ? m[0] : String(t || ''); };
+// Trial arms by name stay in "The trials"; here, the highest arm is named by what it is.
+const plainArms = (t) => String(t || '')
+  .replace(/\bthe 12 mg group\b/g, 'the highest-dose group')
+  .replace(/\bon 12 mg\b/g, 'on the highest dose')
+  .replace(/\b12 mg group\b/g, 'highest-dose group')
+  .replace(/\bthe \d+(?:\.\d+)? mg group had the highest rate\b/g, 'a lower-dose group had the highest rate');
 
 /**
  * Pure: ids of side effects active at a timeline state.
@@ -116,14 +131,17 @@ export function mountEffects(host, entry) {
   if (rm) root.classList.add('fx-rm');
 
   function setEntry(e) {
-    list = Array.isArray(e?.sideEffects) ? e.sideEffects.filter((x) => x && x.id) : [];
+    // effects of weeks of repeated use are not part of the one-shot timeline (safety review)
+    list = Array.isArray(e?.sideEffects) ? e.sideEffects.filter((x) => x && x.id && !isRepeatedUse(x)) : [];
     byId = new Map(list.map((x) => [x.id, x]));
     for (const li of cards.values()) li.remove();
     cards.clear();
     activeKey = '';
     expanded = false;
     toggleEl.hidden = true;
-    announced = new Set();
+    // the effects present at t = 0 are not announced on load (a11y review): only changes after the
+    // time has actually moved are
+    announced = new Set(activeEffectIds(list, { tDays: 0, mode: 'single' }));
     clearTimeout(announceTimer);
     live.textContent = '';
     root.classList.toggle('is-disabled', !e);
@@ -143,19 +161,18 @@ export function mountEffects(host, entry) {
     const freq = fx.frequency || {};
     const why = fx.why || {};
     const reduce = fx.reduce || {};
-    const also = Array.isArray(fx.alsoOrgans) && fx.alsoOrgans.length ? ` <span class="fx-also">+ ${esc(fx.alsoOrgans.map(organLabel).join(', '))}</span>` : '';
-    const timing = fx.timing?.text ? `<p class="fx-row fx-timing"><span class="fx-k">When</span><span class="fx-v">${esc(fx.timing.text)}</span></p>` : '';
+    const line = fx.timing?.text ? firstSentence(fx.timing.text) : '';
+    const kv = (k, obj, text) => (text ? `<div class="fx-kv"><p class="fx-k">${k}</p><p class="fx-v">${esc(text)}${obj.unverified ? ' <span class="tl-chip tl-chip-unv">Unverified</span>' : ''} ${citePlaceholder(obj.sources)}</p></div>` : '');
+    const details = kv('How often', freq, plainArms(freq.text)) + kv('Why it happens', why, why.text) + kv('What helps, or when it passes', reduce, reduce.text);
     return `
       <div class="fx-card-top">
         <span class="fx-sev fx-sev-${sev}">${SEVERITY[sev].label}</span>
-        <span class="fx-organ"><span class="fx-organ-dot" aria-hidden="true"></span>${esc(organLabel(fx.organ))}${also}</span>
-        ${fx.organ ? `<button type="button" class="fx-locate" data-organ="${esc(fx.organ)}" title="Show on the body"><span aria-hidden="true" class="fx-locate-ico"></span><span aria-hidden="true">Show</span><span class="fx-sr">Show ${esc(organLabel(fx.organ).toLowerCase())} on the body (${esc(fx.name)})</span></button>` : ''}
+        <span class="fx-organ"><span class="fx-organ-dot" aria-hidden="true"></span>${esc(organLabel(fx.organ))}</span>
+        ${fx.organ ? `<button type="button" class="fx-locate" data-organ-focus="${esc(fx.organ)}"><span aria-hidden="true" class="fx-locate-ico"></span><span aria-hidden="true">Show</span><span class="fx-sr">Show ${esc(organLabel(fx.organ).toLowerCase())} on the body (${esc(fx.name)})</span></button>` : ''}
       </div>
       <h3 class="fx-name">${esc(fx.name)}</h3>
-      ${freq.text ? `<p class="fx-row fx-freq"><span class="fx-k">How often</span><span class="fx-v">${esc(freq.text)}${freq.unverified ? ' <span class="tl-chip tl-chip-unv">Unverified</span>' : ''} ${citePlaceholder(freq.sources)}</span></p>` : ''}
-      ${timing}
-      ${why.text ? `<details class="fx-more"><summary>Why it happens</summary><p>${esc(why.text)} ${citePlaceholder(why.sources)}</p></details>` : ''}
-      ${reduce.text ? `<details class="fx-more"><summary>How to reduce it or when it passes</summary><p>${esc(reduce.text)} ${citePlaceholder(reduce.sources)}</p></details>` : ''}`;
+      ${line ? `<p class="fx-line">${esc(line)}</p>` : ''}
+      ${details ? `<details class="fx-more"><summary>Learn more<span class="fx-sr"> about ${esc(fx.name.toLowerCase())}</span></summary><div class="fx-more-body">${details}</div></details>` : ''}`;
   }
 
   function ordered(ids) {
@@ -236,33 +253,34 @@ export function mountEffects(host, entry) {
     emptyEl.hidden = items.length > 0;
     if (!items.length) emptyEl.textContent = 'None of the listed side effects is tied to this point on the timeline. They can still happen at any time.';
     root.dataset.count = String(items.length);
-    countEl.textContent = items.length ? `${items.length} linked to this point` : '';
+    countEl.textContent = items.length ? `${items.length} side effect${items.length === 1 ? '' : 's'} can show up around now` : '';
     emitActive(items);
-    scheduleAnnounce(items);
+    if (Number(state.tDays) > 0) scheduleAnnounce(items);
+    else announced = new Set(items.map((x) => x.id));
   }
 
+  // The serious ones always show, plus up to three others (the list is ordered most serious first).
   function applyLimit() {
     const shown = [...listEl.children].filter((li) => !li.classList.contains('is-leaving'));
-    const extra = shown.length - VISIBLE_LIMIT;
+    const serious = shown.filter((li) => li.classList.contains('fx-card-serious')).length;
+    const limit = serious + OTHERS_SHOWN;
+    const extra = shown.length - limit;
     shown.forEach((li, i) => {
-      const hide = !expanded && i >= VISIBLE_LIMIT;
+      const hide = !expanded && i >= limit;
       if (hide && li.contains(document.activeElement)) toggleEl.focus({ preventScroll: true });
       li.hidden = hide;
     });
     toggleEl.hidden = extra <= 0;
     toggleEl.setAttribute('aria-expanded', String(expanded));
-    toggleEl.textContent = expanded ? 'Show fewer' : `Show ${extra} more`;
+    toggleEl.textContent = expanded ? 'Show fewer' : `Show all ${shown.length}`;
   }
   toggleEl.addEventListener('click', () => { expanded = !expanded; applyLimit(); });
-
-  listEl.addEventListener('click', (ev) => {
-    const b = ev.target.closest('.fx-locate');
-    if (!b) return;
-    try { bus.emit('organ:focus', { organ: b.dataset.organ }); } catch (e) { console.warn('[effects] organ:focus listener failed', e); }
-  });
+  // "Show" buttons carry data-organ-focus: the shared handler in js/ui/index.js emits organ:focus and
+  // brings the body into view (a11y review: on phones the body is far above this list).
   const safeOn = (type, fn) => { try { const off = bus.on(type, fn); if (typeof off === 'function') offs.push(off); } catch (e) { console.warn('[effects] bus.on failed', e); } };
   safeOn('time:change', (d) => { if (d && num(d.tDays)) update(d); });
-  safeOn('peptide:loaded', (d) => setEntry(d?.entry ?? null));
+  // a fresh list per peptide: the limit folds again
+  safeOn('peptide:loaded', (d) => { if (!d?.replay) setEntry(d?.entry ?? null); });
   safeOn('motion:change', (d) => { rm = !!d?.reducedMotion; root.classList.toggle('fx-rm', rm); });
 
   setEntry(entry ?? null);

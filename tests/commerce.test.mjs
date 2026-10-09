@@ -30,9 +30,30 @@ test('no buy, shop, discount or checkout language', () => {
   assert.deepEqual(hitsFor(/\b(buy|buys|buying|bought|purchas\w*|shop|shops|shopping|discount\w*|coupon\w*|promo(?:tion(?:al)?)? codes?|add to cart|checkout|order now|best price|cheap\w*)\b/gi), []);
 });
 
+const SELLERS = /\b(Prime Peptides|Swisschems|Xcel Research|Summit Research|Pink Pony|Gram Peptides|Prime Sciences|Mile High Compounds|Peak Performance Peptides|Royal Peptides|NuScience|Peptide Partners|TXP Innovations|Darmerica|GenoGenix|Aesthetic Envy|Astra Peptides|Legendary Peptides|INDR Labs|BiotechPeptides|SemaSpace|USChemLabs|Peptide Gurus|VertexBio|Reta-Peptide|Loti Labs|Maddox Research|Lumira|Forever Young Pharmacy|Injectify)\b/gi;
+
 test('no seller names (only regulators, labs, journals and the manufacturer are named)', () => {
-  const sellers = /\b(Prime Peptides|Swisschems|Xcel Research|Summit Research|Pink Pony|Gram Peptides|Prime Sciences|Mile High Compounds|Peak Performance Peptides|Royal Peptides|NuScience|Peptide Partners|TXP Innovations|Darmerica|GenoGenix|Aesthetic Envy|Astra Peptides|Legendary Peptides|INDR Labs|BiotechPeptides|SemaSpace|USChemLabs|Peptide Gurus|VertexBio|Reta-Peptide|Loti Labs|Maddox Research|Lumira|Forever Young Pharmacy|Injectify)\b/gi;
-  assert.deepEqual(hitsFor(sellers), []);
+  assert.deepEqual(hitsFor(new RegExp(SELLERS.source, 'gi')), []);
+});
+
+// The source registry ships too (data/sources.js, generated): a citation must never become a
+// buyer's guide one tap away. Titles may not name sellers, vendors or prices; URLs may not point at
+// product, vendor, seller, price or per-seller certificate pages. The one allowed "/products/" path is
+// the manufacturer's medical-information Q&A (medical.lilly.com/…/products/answers/…), which sells nothing.
+test('source records (titles and URLs) name no seller and link no product, vendor or price page', async () => {
+  const { SOURCES } = await import(join(ROOT, 'data/sources.js'));
+  const bad = [];
+  for (const [id, s] of Object.entries(SOURCES)) {
+    const title = String(s.title || '');
+    const url = String(s.url || '');
+    let host = '';
+    try { host = new URL(url).host; } catch { bad.push(`${id}: bad url`); }
+    if (new RegExp(SELLERS.source, 'i').test(`${title} ${url}`)) bad.push(`${id}: names a seller`);
+    if (/vendor|price/i.test(title)) bad.push(`${id}: title "${title}"`);
+    if (/vendor|seller|price|testing-certificate/i.test(url)) bad.push(`${id}: url ${url}`);
+    if (/\/products\//i.test(url) && !(host === 'medical.lilly.com' && /\/products\/answers\//.test(url))) bad.push(`${id}: product page ${url}`);
+  }
+  assert.deepEqual(bad, []);
 });
 
 test('every external link points to a cited source host or a project page', async () => {

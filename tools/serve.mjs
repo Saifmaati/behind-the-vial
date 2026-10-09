@@ -27,7 +27,7 @@ createServer(async (req, res) => {
     if (s && s.isDirectory()) { file = join(file, 'index.html'); s = await stat(file).catch(() => null); }
     if (!s) { res.writeHead(404, { 'content-type': 'text/plain' }).end('not found'); return; }
     const body = await readFile(file);
-    res.writeHead(200, { 'content-type': TYPES[extname(file)] || 'application/octet-stream', 'cache-control': 'no-store' });
+    res.writeHead(200, { 'content-type': TYPES[extname(file)] || 'application/octet-stream', 'content-length': body.length, 'cache-control': 'no-store' });
     res.end(body);
   } catch (e) {
     res.writeHead(500).end(String(e));

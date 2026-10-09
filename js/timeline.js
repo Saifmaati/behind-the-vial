@@ -6,7 +6,7 @@
 //   - play / pause and one native range input, "Time since injection";
 //   - a large readout of the time in words ("6 hours after the shot", "Day 3", "Week 4") and the
 //     phase name ("Peak", "Half gone" …);
-//   - a milestone row, Starts working · Peak · Half gone · Mostly cleared, whose terms, reported
+//   - a milestone row, In the blood · Peak · Half gone · Mostly cleared, whose terms, reported
 //     figures and texts come from entry.pk.phases; each one is a button that jumps the scrubber;
 //   - the cited text of the current milestone, and the caption.
 // The only control is TIME. Nothing here is, or can become, a dose or an amount.
@@ -35,19 +35,23 @@ const DISABLED_MSG = 'Timeline arrives with the full entry';
 // Plain-language milestone names. The entry's own term (pk.phases[].label, e.g. "Half-life") is
 // shown next to the name when it differs; the reported figure (pk.phases[].display) and the text
 // (pk.phases[].text, cited) always come from the entry.
+// fix (accuracy review): the first stop is when it was first found in the blood (2 hours, small study);
+// the first measured effects came about a day later, which the stop's own cited text says.
 const MILESTONES = [
-  { id: 'onset', name: 'Starts working' },
+  { id: 'onset', name: 'In the blood' },
   { id: 'peak', name: 'Peak' },
   { id: 'halfLife', name: 'Half gone' },
   { id: 'clearance', name: 'Mostly cleared' },
 ];
 // Phase states (readout, aria-valuetext, time:change.phaseId) and the milestone each one highlights.
+// After the half-life marker the readout says "More than half gone" (accuracy review: by week 2–3 far
+// less than half is left; "Half gone" would understate how much has cleared).
 const STATE_LABELS = {
   injection: 'Under the skin',
-  onset: 'Starts working',
+  onset: 'In the blood',
   peak: 'Peak',
   falling: 'Past the peak',
-  halfLife: 'Half gone',
+  halfLife: 'More than half gone',
   clearance: 'Mostly cleared',
 };
 const STATE_MILESTONE = { injection: null, onset: 'onset', peak: 'peak', falling: 'peak', halfLife: 'halfLife', clearance: 'clearance' };
@@ -195,7 +199,9 @@ function buildModel(entry) {
       display: str(ph.display),
       text: str(ph.text),
       sources: Array.isArray(ph.sources) ? ph.sources : [],
-      estimate: !!ph.estimate || (id === 'peak' && !!pk.tmaxEstimate) || !hasT,
+      // the reported range is measured; only the marker's exact position is a typical value (pk.tmaxEstimate),
+      // so the "Estimate" chip is reserved for estimated figures (accuracy review)
+      estimate: !!ph.estimate || !hasT,
       unverified: !!ph.unverified,
     };
   }).sort((a, b) => a.t - b.t);
@@ -204,10 +210,9 @@ function buildModel(entry) {
   const start = depot && str(depot.text)
     ? { id: 'injection', name: str(depot.title) || STATE_LABELS.injection, text: str(depot.text), sources: depot.sources || [], unverified: !!depot.unverified }
     : null;
-  const steady = byId.steadyState || byId.steady || null;
-  const weekly = steady && str(steady.text)
-    ? { label: str(steady.label) || 'With weekly shots', display: str(steady.display), text: str(steady.text), sources: steady.sources || [], estimate: !!steady.estimate, unverified: !!steady.unverified }
-    : null;
+  // No "with repeated shots" block on the explorer timeline (safety review): the one-shot story only.
+  // The accumulation fact lives in the "How it works" panel.
+  const weekly = null;
   const clearT = miles.find((m) => m.id === 'clearance')?.t ?? times.clearance;
   const end = Math.max(VIEW_END, Math.ceil((clearT + 3) / 7) * 7);
   return { id: entry.id, name: entry.name, params, times, miles, start, weekly, end, tau: params.intervalDays };
@@ -263,7 +268,6 @@ export function mountTimeline(host, entry, { reducedMotion } = {}) {
     <p class="tl-cue" hidden><span class="tl-cue-dot" aria-hidden="true"></span><span class="tl-cue-text"></span></p>
     <ol class="tl-miles" aria-label="Milestones after one shot"></ol>
     <div class="tl-detail"></div>
-    <details class="tl-weekly" hidden><summary class="tl-weekly-sum"></summary><p class="tl-weekly-text"></p></details>
     <p class="tl-caption">${esc(CAPTION)}</p>
     <p class="tl-sr" aria-live="polite" aria-atomic="true"></p>`;
   host.replaceChildren(root);
@@ -281,9 +285,7 @@ export function mountTimeline(host, entry, { reducedMotion } = {}) {
   const estChip = $('.tl-readout .tl-chip-est');
   const miles = $('.tl-miles');
   const detail = $('.tl-detail');
-  const weeklyEl = $('.tl-weekly');
-  const weeklySum = $('.tl-weekly-sum');
-  const weeklyText = $('.tl-weekly-text');
+
   const cue = $('.tl-cue');
   const cueText = $('.tl-cue-text');
   const live = root.querySelector('p.tl-sr[aria-live]');
@@ -331,15 +333,6 @@ export function mountTimeline(host, entry, { reducedMotion } = {}) {
     pinsEl.innerHTML = model.miles.map((m) => `<span class="tl-pin" data-id="${m.id}" style="--p:${(posFromT(m.t) / POS_MAX).toFixed(4)}"></span>`).join('');
   }
 
-  function buildWeekly() {
-    const w = model?.weekly;
-    weeklyEl.hidden = !w;
-    if (!w) { weeklySum.innerHTML = ''; weeklyText.innerHTML = ''; weeklyEl.open = false; return; }
-    weeklySum.innerHTML = `<span class="tl-weekly-label">${esc(w.label)}</span>${w.display ? `<span class="tl-detail-fig"><span class="tl-sr">Reported: </span>${esc(w.display)}</span>` : ''}${w.estimate ? '<span class="tl-chip tl-chip-est">Estimate</span>' : ''}${w.unverified ? '<span class="tl-chip tl-chip-unv">Unverified</span>' : ''}`;
-    weeklyText.innerHTML = `${esc(w.text)} ${citeSlot(w.sources)}`;
-    weeklyEl.open = view === 'weekly';
-    fillCitations(weeklyText);
-  }
 
   // ----- detail (text of the current milestone) ----------------------------
   function renderDetail(st) {
@@ -505,13 +498,12 @@ export function mountTimeline(host, entry, { reducedMotion } = {}) {
     t = clamp(Number(tDays), 0, tEnd());
     schedule();
   }
-  // No graphs: there is one time model (one shot). 'weekly' opens the cited "with weekly shots"
-  // text; the scrubber, the readout and time:change stay on the one-shot timeline.
+  // No graphs: there is one time model (one shot). setMode is kept for the API only; the scrubber, the
+  // readout and time:change always stay on the one-shot timeline.
   function setMode(m) {
     if (m !== 'single' && m !== 'weekly') return;
     view = m;
     root.dataset.view = view;
-    if (model?.weekly) weeklyEl.open = view === 'weekly';
   }
 
   // ----- init / re-init -----------------------------------------------------
@@ -536,7 +528,6 @@ export function mountTimeline(host, entry, { reducedMotion } = {}) {
       root.dataset.phase = 'none';
     }
     buildMiles();
-    buildWeekly();
     updatePlayBtn();
     if (model) schedule();
   }
@@ -576,10 +567,6 @@ export function mountTimeline(host, entry, { reducedMotion } = {}) {
     t = clamp(Number(b.dataset.t), 0, tEnd());
     schedule();
   });
-  weeklyEl.addEventListener('toggle', () => {
-    view = weeklyEl.open ? 'weekly' : 'single';
-    root.dataset.view = view;
-  });
 
   const safeOn = (type, fn) => { try { const off = bus.on(type, fn); if (typeof off === 'function') offs.push(off); } catch (e) { console.warn('[timeline] bus.on failed', e); } };
   safeOn('sequence:start', () => pause());
@@ -590,7 +577,8 @@ export function mountTimeline(host, entry, { reducedMotion } = {}) {
     schedule();
     setCue(true);
   });
-  safeOn('peptide:loaded', (d) => init(d?.entry ?? null));
+  // a replay (main.js re-sends the last state to the late-mounting 3D scene) never resets the timeline
+  safeOn('peptide:loaded', (d) => { if (!d?.replay) init(d?.entry ?? null); });
   safeOn('motion:change', (d) => {
     const next = !!d?.reducedMotion;
     if (next === rm) return;

@@ -32,3 +32,43 @@ One line each: decision, then why. Every change outside a module's own design is
 - `js/ui/util.js` (content): `prefersReducedMotion()` honours `html[data-motion]`.
 - `ASSETS.md`: merged the module asset records (anatomy, three.js, Inter, made-here list).
 - `docs/ARCHITECTURE.md`: `motion:change`, bus extras, additive detail fields and APIs from the module decision files, the desktop layout rule.
+
+# v4 integration (2026-10-08 evening)
+
+One line each: decision, then why.
+
+## Name sweep
+17. **Every remaining abbreviation of the working title renamed** (tests/name.test.mjs): the sample-data env flag is now `PEPTIDESCOPE_ALLOW_SAMPLES` (tests/data.test.mjs, docs), docs name the `peptidescope.*` storage keys, the dev handles are `__psBus`, `__psFallbackBus` and `__psBody`, and the stage label classes and their keyframes use the `ps-callout` prefix; storage keys, `ps-*` keyframes and `brand-accent` were already done by their owners.
+
+## Fixes
+18. **The 3D stage runs its own requestAnimationFrame loop instead of `renderer.setAnimationLoop()`**, because three.js's loop always schedules its next frame after the callback returns, so stopping it from inside a frame (where the stage decides it is idle) left an empty loop running 60 times a second while the page looked idle.
+19. **`body.glb` is downloaded once**: main.js already streamed it for the progress bar, and now hands the bytes to the scene (`mountBody({ glb })` → `loadAnatomy({ glb })` → `GLTFLoader.parseAsync`), because the second request doubled the download on servers without caching and was intermittently reported as `net::ERR_ABORTED` in headless checks; if the stream fails, the scene fetches the file itself as before.
+20. **Side-effect labels on the body reset when a different peptide is loaded**, because after one injection a later peptide switch showed "Serious allergic reaction" on the head at time 0 before the visitor had watched anything for that peptide.
+21. **`#stage-host` is a size container named `stage` again** (`container: stage / inline-size` in app.css), because the v4 app.css dropped it and every `@container stage` rule in stage.css (short credit, smaller labels, phone sheet) had stopped applying.
+22. **Skip animation sits above the colour key on stages narrower than 800 px, and the labels keep clear of wherever it really is** (the scene measures the button), because it overlapped the key and the zoom buttons on phones and at 1024–1280 px.
+23. **Several citation numbers in a row are wrapped in `.cite-group` (nowrap)**, because the comma between two numbers could start a new line, even on desktop.
+24. **Sources is the last Learn card and spans the whole row as a slim card**, so the other 12 cards fill every row evenly at 4, 3, 2 or 1 per row (13 cards left one alone on the last row).
+25. **In the intro, quick repeated keys add up** (PageDown twice = two chapters), because the second press used to restart from the chapter still showing while the smooth scroll was under way.
+26. **Footer carries both credit lines (anatomy CC BY 4.0, photos CC BY-SA 4.0 / public domain) with links to the licence deeds and ASSETS.md**; ASSETS.md now lists the male, female and both close-up anatomy files, the renders, the four photographs, three.js (with the addons actually loaded) and Nunito/DM Sans, and drops Inter/Newsreader.
+27. **The disclaimer bar keeps the shell's plain wording ("Talk to a trusted adult or a doctor") with "clinician" in its accessible description (`title`)**, because a doctor is the clinician a teen will actually see; the footer disclaimer spells out "a licensed clinician, like a doctor or pharmacist" in visible text.
+28. **The dev server sends `Content-Length`** (tools/serve.mjs), matching GitHub Pages.
+29. **Opened as a file, the "Loading the list…" placeholder is hidden**, since nothing loads there and the notice at the top explains why.
+30. **Two real data strings stay as they are although a naive placeholder scan flags them**: "not a random sample of what is sold" (gray market, a verified caveat) and the EU trial number "EU CT 2023-503658-11-00" (sources); neither is placeholder data.
+
+## Declined
+31. **Dosing, storage/refrigeration, preparation and how-long-to-use content was not built** (owner request, DECISIONS.md 14); the protective "If you have one" and "Real medicine vs. internet vial" panels show for every peptide instead.
+
+## Cross-module changes (v4; file → change)
+- `js/scene/stage.js` (body): own rAF loop.
+- `js/scene/index.js` (body): `__psBus`/`__psBody`; `glb` option; effects gate reset on `peptide:loaded`; Skip-aware label insets.
+- `js/scene/anatomy.js` (body): `loadAnatomy({ glb })`, `tryLoadGLB` parses supplied bytes.
+- `js/scene/callouts.js`, `css/stage.css` (body): `ps-callout*` classes; Skip position on narrow and mid-width stages.
+- `js/main.js` (shell): streamed bytes handed to `mountBody`.
+- `css/app.css` (shell): stage size container, footer fine-print links, slim Sources card, file-mode placeholder.
+- `index.html` (shell): photo credit line and `#credits` in the footer.
+- `js/intro.js` (intro): repeated keys add up.
+- `js/ui/cite.js`, `css/content.css`, `css/timeline.css` (learn, timeline): `.cite-group` / `.tl-cites` nowrap.
+- `js/ui/busref.js` (learn): `__psFallbackBus`.
+- `tests/data.test.mjs`: env flag renamed only (no assertion changed).
+- `tools/serve.mjs`: `Content-Length`.
+- `ASSETS.md`, `assets/anatomy/LICENSE.md` (female close-up layer row), `docs/ARCHITECTURE.md` (v4 DOM contract and APIs), `README.md`, docs/decisions content/foundation/body/body3d (renamed identifiers).
